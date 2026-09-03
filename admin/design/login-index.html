@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · My30A Host</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#EEF5F2;--surface:#fff;--ink:#16302B;--muted:#5F7570;--line:#D9E6E1;--sea:#0F6E56;--sea-deep:#0A4F3E;--sea-soft:#DCF0E8;--sand:#F3E9D6;--coral:#C8472E;--coral-soft:#FBE4DE}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:"IBM Plex Sans",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+  button,input{font:inherit}
+
+  .login{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr}
+
+  /* left — the coastal panel: the one memorable element */
+  .scene{position:relative;overflow:hidden;background:linear-gradient(160deg,#0A4F3E 0%,#0F6E56 55%,#2A8F76 100%);color:#fff;padding:clamp(28px,4vw,56px);display:flex;flex-direction:column;justify-content:space-between}
+  .scene .brand{font-weight:600;font-size:20px;letter-spacing:.2px}
+  .scene .brand small{display:block;font-weight:400;font-size:13px;color:#BFE4D6;margin-top:2px}
+  .scene h1{font-size:clamp(28px,3.4vw,44px);font-weight:600;line-height:1.15;max-width:14ch;position:relative;z-index:1}
+  .scene p{margin-top:14px;font-size:15px;color:#CFEBE0;max-width:38ch;line-height:1.55;position:relative;z-index:1}
+  .scene .foot{font-size:13px;color:#9FD0BF;position:relative;z-index:1}
+  /* layered waves + sun, pure CSS, no images */
+  .sun{position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#F6D98A,#E3A64B 60%,transparent 62%);opacity:.9}
+  .wave{position:absolute;left:-10%;width:120%;height:220px;border-radius:50% 50% 0 0/100% 100% 0 0;opacity:.18;background:#fff}
+  .w1{bottom:-120px}.w2{bottom:-150px;opacity:.12;transform:scaleX(1.15)}.w3{bottom:-180px;opacity:.08;transform:scaleX(1.3)}
+  @media (prefers-reduced-motion:no-preference){
+    .wave{animation:drift 9s ease-in-out infinite alternate}
+    .w2{animation-duration:12s}.w3{animation-duration:15s}
+    @keyframes drift{from{transform:translateX(-2%) scaleX(1.1)}to{transform:translateX(2%) scaleX(1.1)}}
+  }
+
+  /* right — form */
+  .panel{display:flex;align-items:center;justify-content:center;padding:clamp(24px,4vw,56px)}
+  .card{width:100%;max-width:400px}
+  .card h2{font-size:26px;font-weight:600}
+  .card .sub{color:var(--muted);font-size:14px;margin:6px 0 26px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .field .in{position:relative}
+  .field input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;transition:border-color .15s,box-shadow .15s}
+  .field input:focus{outline:none;border-color:var(--sea);box-shadow:0 0 0 3px var(--sea-soft)}
+  .field .eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);cursor:pointer;padding:4px;font-size:13px}
+  .row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);margin-bottom:22px}
+  .row label{display:flex;gap:6px;align-items:center;cursor:pointer}
+  .btn{width:100%;border:0;border-radius:10px;padding:13px;background:var(--sea);color:#fff;font-weight:500;font-size:15px;cursor:pointer;display:flex;justify-content:center;align-items:center;gap:8px;transition:background .15s,transform .1s}
+  .btn:hover{background:var(--sea-deep)}
+  .btn:active{transform:scale(.99)}
+  .btn[disabled]{opacity:.7;cursor:default}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error{display:none;background:var(--coral-soft);color:var(--coral);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:16px}
+  .error.show{display:block}
+  .help{margin-top:22px;font-size:13px;color:var(--muted);text-align:center;line-height:1.6}
+
+  @media (max-width:860px){
+    .login{grid-template-columns:1fr}
+    .scene{min-height:200px;padding:24px;justify-content:flex-start;gap:14px}
+    .scene h1{font-size:24px}.scene p,.scene .foot{display:none}
+    .sun{width:160px;height:160px;right:-40px;top:-50px}
+    .wave{height:120px}.w1{bottom:-70px}.w2{bottom:-85px}.w3{bottom:-100px}
+    .panel{align-items:flex-start;padding-top:32px}
+  }
+</style>
+</head>
+<body>
+<div class="login">
+  <section class="scene">
+    <div class="brand">My30A Host<small>Operations</small></div>
+    <div>
+      <h1>Every trip, every order, every dollar in its place.</h1>
+      <p>Drivers, shoppers and vehicle partners each see only what belongs to them. You see everything.</p>
+    </div>
+    <div class="foot">30A, Florida · Central time</div>
+    <div class="sun"></div>
+    <div class="wave w1"></div><div class="wave w2"></div><div class="wave w3"></div>
+  </section>
+
+  <section class="panel">
+    <form class="card" onsubmit="return false">
+      <h2>Sign in</h2>
+      <!-- admin: "Admin panel" · client: "Driver, partner and shopper access" -->
+      <div class="sub">Admin panel</div>
+      <div class="error" id="err">Email or password is incorrect. Try again or ask Welson to reset it.</div>
+      <div class="field"><label for="email">Email</label><div class="in"><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div></div>
+      <div class="field"><label for="pw">Password</label><div class="in"><input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••"><button class="eye" type="button">Show</button></div></div>
+      <div class="row"><label><input type="checkbox" checked> Keep me signed in</label><span>Forgot it? Ask Welson.</span></div>
+      <button class="btn" type="submit"><span class="spinner" style="display:none"></span><span>Sign in</span></button>
+      <div class="help">Accounts are created by the admin. There is no self-signup.</div>
+    </form>
+  </section>
+</div>
+<script>
+  // preview only
+  document.querySelector('.eye').onclick=e=>{const i=document.getElementById('pw');const t=i.type==='password';i.type=t?'text':'password';e.target.textContent=t?'Hide':'Show'};
+</script>
+</body>
+</html>

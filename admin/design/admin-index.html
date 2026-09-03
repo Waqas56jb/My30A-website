@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My30A Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EEF5F2; --surface:#FFFFFF; --ink:#16302B; --muted:#5F7570; --line:#D9E6E1;
+    --sea:#0F6E56; --sea-soft:#DCF0E8; --sand:#F3E9D6; --coral:#C8472E; --coral-soft:#FBE4DE;
+    --tip:#E3A64B; --owner:#4C8DA8; --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:15px;color:var(--ink);background:var(--bg)}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
+  input,select,textarea{font:inherit;color:inherit}
+
+  .shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+  .side{background:var(--ink);color:#DCE8E4;padding:22px 16px;display:flex;flex-direction:column;gap:6px}
+  .brand{font-weight:600;font-size:17px;color:#fff;margin-bottom:18px;padding-left:10px}
+  .brand small{display:block;font-weight:400;font-size:12px;color:#8FB0A6}
+  .nav a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;font-size:14px;color:#BFD3CC}
+  .nav a.active{background:rgba(255,255,255,.1);color:#fff}
+  .nav a .badge{margin-left:auto;background:var(--coral);color:#fff;font-size:11px;padding:1px 7px;border-radius:10px}
+  .side .me{margin-top:auto;padding:10px;font-size:13px;color:#8FB0A6;border-top:1px solid rgba(255,255,255,.1)}
+  .side .me b{display:block;color:#fff;font-weight:500}
+  main{padding:28px 34px;max-width:1180px}
+  .page{display:none}.page.show{display:block}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap}
+  h1{font-size:24px;font-weight:600}
+  .sub{color:var(--muted);font-size:14px;margin-top:4px}
+
+  .btn{border:1px solid var(--sea);background:var(--sea);color:#fff;border-radius:8px;padding:9px 14px;font-weight:500;font-size:14px}
+  .btn.ghost{background:#fff;color:var(--sea)}
+  .btn.quiet{background:#fff;border-color:var(--line);color:var(--ink)}
+  .btn.danger{background:#fff;border-color:var(--coral);color:var(--coral)}
+  .btn.sm{padding:6px 10px;font-size:13px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:1fr 1fr}
+  .stat .l{font-size:13px;color:var(--muted)}
+  .stat .v{font-size:26px;font-weight:600;margin-top:4px}
+  .stat .d{font-size:12px;color:var(--muted);margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  th.num{text-align:right}
+  .pill{display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:500;background:var(--sea-soft);color:var(--sea)}
+  .pill.warn{background:var(--coral-soft);color:var(--coral)}
+  .pill.neutral{background:#EEF1F0;color:var(--muted)}
+  .pill.sand{background:var(--sand);color:#7A5A1E}
+  .flag{color:var(--coral);font-weight:500}
+  .filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .filters select,.filters input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;font-size:14px}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:13px;color:var(--muted)}
+  .field input,.field select,.field textarea{border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff}
+  .field input:focus,.field select:focus,.filters select:focus{outline:2px solid var(--sea);outline-offset:1px;border-color:var(--sea)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .price-box{background:var(--sea-soft);border-radius:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin:6px 0 14px}
+  .price-box b{font-size:22px}
+  .price-box small{color:var(--sea)}
+  .empty{padding:28px;text-align:center;color:var(--muted)}
+
+  .split{display:flex;height:8px;border-radius:4px;overflow:hidden;width:150px;background:#EEF1F0}
+  .split i{display:block;height:100%}
+  .s-driver{background:var(--sea)} .s-tip{background:var(--tip)} .s-owner{background:var(--owner)} .s-host{background:#B9CFC8}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+  .drawer{position:fixed;top:0;right:0;width:440px;height:100vh;background:#fff;border-left:1px solid var(--line);padding:26px;overflow:auto;box-shadow:-8px 0 30px rgba(22,48,43,.08);display:none}
+  .drawer.open{display:block}
+  .drawer h2{font-size:18px;margin-bottom:2px}
+  .kv{display:grid;grid-template-columns:1fr auto;gap:8px 16px;font-size:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .kv span:nth-child(odd){color:var(--muted)}
+  .kv .num{font-weight:500}
+  .kv .total{font-weight:600;font-size:15px}
+  .timeline{list-style:none;font-size:13px;color:var(--muted);padding-top:12px}
+  .timeline li{padding:4px 0}
+  .timeline b{color:var(--ink);font-weight:500}
+
+  .modal{position:fixed;inset:0;background:rgba(22,48,43,.35);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal.open{display:flex}
+  .modal .card{width:560px;max-height:92vh;overflow:auto}
+  .modal h2{font-size:18px;margin-bottom:14px}
+  .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+
+  @media (max-width:900px){
+    .shell{grid-template-columns:1fr}.side{flex-direction:row;flex-wrap:wrap;padding:12px}.side .me{display:none}
+    .nav{display:flex;gap:4px;flex-wrap:wrap}.brand{width:100%;margin-bottom:6px}
+    main{padding:18px}.g3,.g4,.g2,.row2{grid-template-columns:1fr}.drawer{width:100%}
+    table{display:block;overflow:auto}
+  }
+  @media (prefers-reduced-motion:no-preference){.drawer.open{animation:in .18s ease}}
+  @keyframes in{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">My30A Host<small>Admin</small></div>
+    <nav class="nav">
+      <a href="#dashboard" class="active">Dashboard</a>
+      <a href="#transfers">Transfers<span class="badge">2</span></a>
+      <a href="#grocery">Grocery</a>
+      <a href="#payouts">Payouts</a>
+      <a href="#users">People</a>
+      <a href="#vehicles">Vehicles</a>
+      <a href="#settings">Settings</a>
+    </nav>
+    <div class="me"><b>Welson Santos</b>Sign out</div>
+  </aside>
+
+  <main>
+  <section id="dashboard" class="page show">
+    <div class="head"><div><h1>Today</h1><div class="sub">Wednesday, September 3 · Central time</div></div>
+      <div><button class="btn ghost" data-open="modal-trip">New transfer</button> <button class="btn ghost" data-open="modal-order">New grocery order</button></div></div>
+
+    <div class="grid g4">
+      <div class="card stat"><div class="l">Customer charges</div><div class="v">$1,214</div><div class="d">7 transfers · 3 grocery orders</div></div>
+      <div class="card stat"><div class="l">My30A Host amount</div><div class="v">$538.30</div><div class="d">after driver, owner and shopper shares</div></div>
+      <div class="card stat"><div class="l">Owed to staff</div><div class="v">$412.20</div><div class="d">4 people waiting for payout</div></div>
+      <div class="card stat"><div class="l">Needs review</div><div class="v flag">2 trips</div><div class="d">1 cash mismatch · 1 cancelled after start</div></div>
+    </div>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:10px">Flagged for review</h3>
+        <table>
+          <tr><td>#1052 · Seaside → ECP</td><td><span class="pill warn">Cash mismatch</span></td><td class="num">Expected $120 · reported $110</td><td><button class="btn quiet sm">Open</button></td></tr>
+          <tr><td>#1049 · Alys Beach → VPS</td><td><span class="pill warn">Cancelled after start</span></td><td class="num">Marcus R.</td><td><button class="btn quiet sm">Open</button></td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:10px">Waiting for payout</h3>
+        <table>
+          <tr><td>Marcus R. <span class="pill neutral">Driver</span></td><td class="num">$185.00</td><td class="num" style="color:var(--muted)">owes $45 cash</td><td><button class="btn quiet sm">Pay</button></td></tr>
+          <tr><td>Dana K. <span class="pill neutral">Partner</span></td><td class="num">$102.00</td><td></td><td><button class="btn quiet sm">Pay</button></td></tr>
+          <tr><td>Luis M. <span class="pill neutral">Shopper</span></td><td class="num">$125.20</td><td></td><td><button class="btn quiet sm">Pay</button></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3 style="font-size:15px;margin-bottom:10px">Upcoming transfers</h3>
+      <table>
+        <tr><th>Time</th><th>Trip</th><th>Route</th><th>Driver · Vehicle</th><th>Status</th></tr>
+        <tr><td>2:10 PM</td><td>#1055</td><td>ECP → Rosemary Beach · 3 pax · 4 bags</td><td>Marcus R. · Dana's Transit (14pax)</td><td><span class="pill sand">Assigned</span></td></tr>
+        <tr><td>4:45 PM</td><td>#1056</td><td>WaterColor → VPS · 2 pax</td><td>Welson (you) · Camry (4pax)</td><td><span class="pill sand">Assigned</span></td></tr>
+        <tr><td>6:30 PM</td><td>#1057</td><td>PNS → Alys Beach · 6 pax · 8 bags</td><td>Dana K. · Dana's Transit (14pax)</td><td><span class="pill">Started</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="transfers" class="page">
+    <div class="head"><div><h1>Transfers</h1><div class="sub">Every trip with its full money breakdown</div></div><button class="btn" data-open="modal-trip">New transfer</button></div>
+    <div class="filters">
+      <select><option>All statuses</option><option>Assigned</option><option>Started</option><option>Completed</option><option>Cancelled</option><option>Refunded</option></select>
+      <select><option>All drivers</option><option>Marcus R.</option><option>Dana K.</option><option>Welson (you)</option></select>
+      <input type="date" value="2026-09-01"> <input type="date" value="2026-09-30">
+      <label style="display:flex;align-items:center;gap:6px;font-size:14px"><input type="checkbox"> Flagged only</label>
+    </div>
+    <div class="card">
+      <table>
+        <tr><th>Trip</th><th>Route</th><th>Driver · Vehicle</th><th class="num">Customer</th><th class="num">Driver</th><th class="num">Tip</th><th class="num">Owner</th><th class="num">My30A</th><th>Split</th><th>Status</th></tr>
+        <tr data-open="drawer-trip"><td>#1048<br><small style="color:var(--muted)">Sep 3 · 9:15 AM</small></td><td>ECP → Rosemary Beach</td><td>Marcus R.<br><small style="color:var(--muted)">Dana's Transit</small></td><td class="num">$150</td><td class="num">$30</td><td class="num">$15</td><td class="num">$30</td><td class="num">$90</td><td><div class="split"><i class="s-driver" style="width:20%"></i><i class="s-owner" style="width:20%"></i><i class="s-host" style="width:60%"></i></div></td><td><span class="pill">Completed</span></td></tr>
+        <tr><td>#1050<br><small style="color:var(--muted)">Sep 3 · 11:00 AM</small></td><td>Seaside → VPS</td><td>Dana K.<br><small style="color:var(--muted)">Dana's Transit</small></td><td class="num">$385</td><td class="num">$231</td><td class="num">$40</td><td class="num">$77</td><td class="num">$77</td><td><div class="split"><i class="s-driver" style="width:60%"></i><i class="s-owner" style="width:20%"></i><i class="s-host" style="width:20%"></i></div></td><td><span class="pill">Completed</span></td></tr>
+        <tr><td>#1051<br><small style="color:var(--muted)">Sep 3 · 12:30 PM</small></td><td>Grayton → ECP</td><td>Welson (you)<br><small style="color:var(--muted)">Camry</small></td><td class="num">$130</td><td class="num">—</td><td class="num">$20</td><td class="num">—</td><td class="num">$130</td><td><div class="split"><i class="s-host" style="width:100%"></i></div></td><td><span class="pill">Completed</span></td></tr>
+        <tr><td>#1052<br><small style="color:var(--muted)">Sep 3 · 1:20 PM</small></td><td>Seaside → ECP</td><td>Marcus R.<br><small style="color:var(--muted)">Camry</small></td><td class="num">$120</td><td class="num">$30</td><td class="num">$0</td><td class="num">—</td><td class="num">$90</td><td><div class="split"><i class="s-driver" style="width:25%"></i><i class="s-host" style="width:75%"></i></div></td><td><span class="pill warn">Cash mismatch</span></td></tr>
+        <tr><td>#1055<br><small style="color:var(--muted)">Sep 3 · 2:10 PM</small></td><td>ECP → Rosemary Beach</td><td>Marcus R.<br><small style="color:var(--muted)">Dana's Transit</small></td><td class="num">$150</td><td class="num" colspan="4" style="color:var(--muted)">calculated on completion</td><td></td><td><span class="pill sand">Assigned</span></td></tr>
+        <tr><td>#1047<br><small style="color:var(--muted)">Sep 2 · 5:00 PM</small></td><td>Alys Beach → PNS</td><td>Marcus R.<br><small style="color:var(--muted)">Dana's Transit</small></td><td class="num">$335</td><td class="num">$30</td><td class="num">$0</td><td class="num">$67</td><td class="num">$238</td><td><div class="split"><i class="s-driver" style="width:9%"></i><i class="s-owner" style="width:20%"></i><i class="s-host" style="width:71%"></i></div></td><td><span class="pill neutral">Refunded</span></td></tr>
+      </table>
+      <div class="legend"><span><i class="s-driver"></i>Driver</span><span><i class="s-owner"></i>Vehicle owner</span><span><i class="s-host"></i>My30A Host</span><span style="margin-left:auto">Tips are never part of the split — 100% to the driver</span></div>
+    </div>
+  </section>
+
+  <section id="grocery" class="page">
+    <div class="head"><div><h1>Grocery orders</h1><div class="sub">Shopper fee is calculated on the service fee only. Publix total is passed through.</div></div><button class="btn" data-open="modal-order">New grocery order</button></div>
+    <div class="filters">
+      <select><option>All statuses</option><option>Assigned</option><option>Shopping</option><option>On the way</option><option>Delivered</option></select>
+      <select><option>All shoppers</option><option>Luis M.</option></select>
+      <input type="date" value="2026-09-01"> <input type="date" value="2026-09-30">
+    </div>
+    <div class="card">
+      <table>
+        <tr><th>Order</th><th>Delivery</th><th>Shopper</th><th class="num">Service fee</th><th class="num">Publix</th><th class="num">Shopper</th><th class="num">Tip</th><th class="num">My30A</th><th>Photos</th><th>Status</th></tr>
+        <tr><td>#2031<br><small style="color:var(--muted)">Sep 3 · 3:00 PM</small></td><td>Full pack · 44 Seagrove Ct, Seagrove</td><td>Luis M.</td><td class="num">$229</td><td class="num">$312</td><td class="num">$68.70</td><td class="num">$20</td><td class="num">$160.30</td><td><a href="#" style="color:var(--sea)">Receipt</a> · <a href="#" style="color:var(--sea)">Kitchen</a></td><td><span class="pill">Delivered</span></td></tr>
+        <tr><td>#2032<br><small style="color:var(--muted)">Sep 3 · 4:30 PM</small></td><td>Essentials · 12 Rosemary Ave</td><td>Luis M.</td><td class="num">$149</td><td class="num">—</td><td class="num" colspan="3" style="color:var(--muted)">calculated on delivery</td><td>—</td><td><span class="pill">On the way</span></td></tr>
+        <tr><td>#2033<br><small style="color:var(--muted)">Sep 4 · 10:00 AM</small></td><td>Full pack · 8 Alys Beach Blvd</td><td>Luis M.</td><td class="num">$229</td><td class="num">—</td><td class="num" colspan="3" style="color:var(--muted)">calculated on delivery</td><td>—</td><td><span class="pill sand">Assigned</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="payouts" class="page">
+    <div class="head"><div><h1>Payouts</h1><div class="sub">Pay whenever you like. The system keeps the running balance.</div></div></div>
+    <div class="card">
+      <h3 style="font-size:15px;margin-bottom:10px">Owed right now</h3>
+      <table>
+        <tr><th>Person</th><th class="num">Trip earnings</th><th class="num">Tips</th><th class="num">Cash collected</th><th class="num">Owes you</th><th class="num">Net to pay</th><th></th></tr>
+        <tr><td>Marcus R. <span class="pill neutral">Driver</span></td><td class="num">$150.00</td><td class="num">$35.00</td><td class="num">$120.00</td><td class="num flag">$45.00</td><td class="num"><b>$140.00</b></td><td><button class="btn sm">Generate payout</button></td></tr>
+        <tr><td>Dana K. <span class="pill neutral">Partner</span></td><td class="num">$102.00</td><td class="num">$0</td><td class="num">$0</td><td class="num">$0</td><td class="num"><b>$102.00</b></td><td><button class="btn sm">Generate payout</button></td></tr>
+        <tr><td>Luis M. <span class="pill neutral">Shopper</span></td><td class="num">$113.40</td><td class="num">$30.00</td><td class="num">$0</td><td class="num">$0</td><td class="num"><b>$143.40</b></td><td><button class="btn sm">Generate payout</button></td></tr>
+        <tr><td>Priya S. <span class="pill neutral">Driver</span></td><td class="num">$0</td><td class="num">$0</td><td class="num">$0</td><td class="num">$0</td><td class="num">$0</td><td></td></tr>
+      </table>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3 style="font-size:15px;margin-bottom:10px">Payout history</h3>
+      <table>
+        <tr><th>Created</th><th>Person</th><th class="num">Trip earnings</th><th class="num">Tips</th><th class="num">Total</th><th>Method</th><th>Status</th><th></th></tr>
+        <tr><td>Sep 3</td><td>Luis M.</td><td class="num">$44.70</td><td class="num">$20.00</td><td class="num">$64.70</td><td>Zelle</td><td><span class="pill">Paid · Sep 3</span></td><td><button class="btn quiet sm">Items</button></td></tr>
+        <tr><td>Sep 2</td><td>Marcus R.</td><td class="num">$90.00</td><td class="num">$25.00</td><td class="num">$115.00</td><td>—</td><td><span class="pill sand">Pending</span></td><td><button class="btn sm">Mark paid</button> <button class="btn quiet sm">Items</button></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="users" class="page">
+    <div class="head"><div><h1>People</h1><div class="sub">Drivers, shoppers and vehicle partners. You create every login here.</div></div><button class="btn" data-open="modal-user">Add person</button></div>
+    <div class="card">
+      <table>
+        <tr><th>Name</th><th>Roles</th><th>Compensation</th><th>Contact</th><th>Status</th><th></th></tr>
+        <tr><td>Marcus Reyes</td><td><span class="pill neutral">Driver</span></td><td>Fixed $30 per trip <small style="color:var(--muted)">since Aug 1</small></td><td>marcus@…  · (850) 555-0142</td><td><span class="pill">Active</span></td><td><button class="btn quiet sm" data-open="modal-comp">Change rate</button> <button class="btn quiet sm">Edit</button></td></tr>
+        <tr><td>Dana Klein</td><td><span class="pill neutral">Partner</span> <span class="pill neutral">Driver</span></td><td>Owner fee 20% · drives own van</td><td>dana@… · (850) 555-0177</td><td><span class="pill">Active</span></td><td><button class="btn quiet sm">Edit</button></td></tr>
+        <tr><td>Luis Morales</td><td><span class="pill neutral">Shopper</span></td><td>30% of service fee <small style="color:var(--muted)">since Sep 1</small></td><td>luis@… · (850) 555-0190</td><td><span class="pill">Active</span></td><td><button class="btn quiet sm" data-open="modal-comp">Change rate</button> <button class="btn quiet sm">Edit</button></td></tr>
+        <tr><td>Priya Shah</td><td><span class="pill neutral">Driver</span></td><td>$20 per hour <small style="color:var(--muted)">since Sep 2</small></td><td>priya@… · (850) 555-0121</td><td><span class="pill neutral">Inactive</span></td><td><button class="btn quiet sm">Edit</button></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="vehicles" class="page">
+    <div class="head"><div><h1>Vehicles</h1><div class="sub">Owner fee is set per vehicle. Changing it only affects future trips.</div></div><button class="btn" data-open="modal-vehicle">Add vehicle</button></div>
+    <div class="card">
+      <table>
+        <tr><th>Vehicle</th><th>Type</th><th>Owner</th><th class="num">Owner fee</th><th class="num">Trips this month</th><th class="num">Owner fees this month</th><th>Status</th><th></th></tr>
+        <tr><td>Toyota Camry 2022 · ADM-4PAX</td><td>Car · 4 pax</td><td>Welson (you)</td><td class="num">—</td><td class="num">9</td><td class="num">—</td><td><span class="pill">Active</span></td><td><button class="btn quiet sm">Edit</button></td></tr>
+        <tr><td>Ford Transit 2021 · PRT-14PAX</td><td>Van · 14 pax</td><td>Dana Klein</td><td class="num">20%</td><td class="num">12</td><td class="num">$412.00</td><td><span class="pill">Active</span></td><td><button class="btn quiet sm">Edit</button></td></tr>
+        <tr><td>Chevy Suburban 2020 · PRT-6PAX</td><td>SUV · 6 pax</td><td>Dana Klein</td><td class="num">20%</td><td class="num">3</td><td class="num">$96.00</td><td><span class="pill neutral">Inactive</span></td><td><button class="btn quiet sm">Edit</button></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="settings" class="page">
+    <div class="head"><div><h1>Settings</h1><div class="sub">Rates apply to future trips only. Completed trips never change.</div></div></div>
+    <div class="grid g2">
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">Platform fee</h3>
+        <div class="field"><label>My30A Host fee when a partner drives their own vehicle</label><input value="20" style="max-width:120px"> <small style="color:var(--muted)">percent of the customer charge, before tips</small></div>
+        <div class="field"><label>Default owner fee for new vehicles</label><input value="20" style="max-width:120px"></div>
+        <button class="btn">Save changes</button>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">Transfer price table</h3>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:10px">16 communities × 3 airports × 3 vehicle types. Prices are one-way.</p>
+        <table>
+          <tr><th>Community</th><th class="num">ECP</th><th class="num">VPS</th><th class="num">PNS</th></tr>
+          <tr><td>Rosemary Beach <small style="color:var(--muted)">East</small></td><td class="num">$85 / 140 / 195</td><td class="num">$160 / 260 / 320</td><td class="num">$330 / 540 / 650</td></tr>
+          <tr><td>Seaside <small style="color:var(--muted)">Central</small></td><td class="num">$120 / 195 / 265</td><td class="num">$195 / 315 / 385</td><td class="num">$365 / 595 / 725</td></tr>
+          <tr><td>Miramar Beach <small style="color:var(--muted)">Off 30A · defaults to VPS</small></td><td class="num">$165 / 265 / 355</td><td class="num">$130 / 210 / 275</td><td class="num">$390 / 635 / 820</td></tr>
+          <tr><td colspan="4" style="color:var(--muted);font-size:13px">… 13 more · 4 pax / 6 pax / 14 pax</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+  </main>
+</div>
+
+<aside id="drawer-trip" class="drawer">
+  <button class="btn quiet sm" data-close style="float:right">Close</button>
+  <h2>Trip #1048</h2>
+  <div class="sub">ECP → Rosemary Beach · Sep 3, 9:15 AM · <span class="pill">Completed</span></div>
+  <div class="kv" style="margin-top:14px">
+    <span>Guest</span><span>Sarah Whitfield · (404) 555-0133</span>
+    <span>Pickup</span><span>ECP Terminal, door 4</span>
+    <span>Drop-off</span><span>22 Rosemary Ave, Rosemary Beach</span>
+    <span>Passengers</span><span>3 · 4 bags · DL 1187</span>
+    <span>Driver</span><span>Marcus Reyes</span>
+    <span>Vehicle</span><span>Dana's Ford Transit (14 pax) · owner Dana Klein</span>
+    <span>Payment</span><span>Cash · reported $150</span>
+  </div>
+  <div class="kv">
+    <span>Customer charge</span><span class="num">$150.00</span>
+    <span>Driver trip earnings <small>(fixed $30)</small></span><span class="num">$30.00</span>
+    <span>Driver tip</span><span class="num">$15.00</span>
+    <span>Vehicle owner fee <small>(20%)</small></span><span class="num">$30.00</span>
+    <span>My30A Host amount</span><span class="num total">$90.00</span>
+  </div>
+  <div class="kv">
+    <span>Cash reconciliation</span><span></span>
+    <span>Driver keeps</span><span class="num">$45.00</span>
+    <span>Driver owes you</span><span class="num">$105.00</span>
+  </div>
+  <ul class="timeline">
+    <li><b>Assigned</b> · Sep 2, 6:40 PM · by Welson</li>
+    <li><b>Started</b> · Sep 3, 9:12 AM · by Marcus</li>
+    <li><b>Completed</b> · Sep 3, 9:58 AM · by Marcus · 46 min</li>
+  </ul>
+  <div class="actions" style="margin-top:18px"><button class="btn quiet">Flag</button><button class="btn danger">Refund</button></div>
+</aside>
+
+<div id="modal-trip" class="modal"><div class="card">
+  <h2>New transfer</h2>
+  <div class="row2"><div class="field"><label>Guest name</label><input placeholder="Sarah Whitfield"></div><div class="field"><label>Guest phone</label><input placeholder="(404) 555-0133"></div></div>
+  <div class="row2"><div class="field"><label>Community</label><select><option>Rosemary Beach</option><option>Seaside</option><option>Alys Beach</option><option>Miramar Beach</option></select></div><div class="field"><label>Airport</label><select><option>ECP · Panama City</option><option>VPS · Destin</option><option>PNS · Pensacola</option></select></div></div>
+  <div class="row2"><div class="field"><label>Direction</label><select><option>Airport → community</option><option>Community → airport</option></select></div><div class="field"><label>Vehicle type</label><select><option>Car · 4 pax</option><option>SUV · 6 pax</option><option>Van · 14 pax</option></select></div></div>
+  <div class="price-box"><span>Price from table<br><small>Rosemary Beach · ECP · 4 pax</small></span><b>$85</b><button class="btn quiet sm">Use custom price</button></div>
+  <div class="field"><label>Pickup address</label><input placeholder="ECP Terminal, door 4"></div>
+  <div class="field"><label>Drop-off address</label><input placeholder="22 Rosemary Ave"></div>
+  <div class="row2"><div class="field"><label>Date & time</label><input type="datetime-local"></div><div class="field"><label>Flight number</label><input placeholder="DL 1187"></div></div>
+  <div class="row2"><div class="field"><label>Passengers</label><input type="number" value="2"></div><div class="field"><label>Bags</label><input type="number" value="2"></div></div>
+  <div class="row2"><div class="field"><label>Driver</label><select><option>Marcus Reyes</option><option>Dana Klein</option><option>Welson (you)</option></select></div><div class="field"><label>Vehicle</label><select><option>Dana's Ford Transit · 14 pax</option><option>Toyota Camry · 4 pax</option></select></div></div>
+  <div class="field"><label>Payment</label><select><option>Card on file</option><option>Cash on the spot</option><option>Card on the spot</option></select></div>
+  <div class="field"><label>Notes for driver</label><textarea rows="2"></textarea></div>
+  <div class="actions"><button class="btn quiet" data-close>Cancel</button><button class="btn">Create and assign</button></div>
+</div></div>
+
+<div id="modal-order" class="modal"><div class="card">
+  <h2>New grocery order</h2>
+  <div class="row2"><div class="field"><label>Guest name</label><input></div><div class="field"><label>Guest phone</label><input></div></div>
+  <div class="field"><label>Delivery address</label><input placeholder="44 Seagrove Ct, Seagrove Beach"></div>
+  <div class="row2"><div class="field"><label>Package</label><select><option>Essentials · $149</option><option>Full pack · $229</option><option>Custom</option></select></div><div class="field"><label>Service fee</label><input value="149"></div></div>
+  <div class="field"><label>Items (one per line, "qty × item")</label><textarea rows="4" placeholder="2 × oat milk&#10;1 × dozen eggs"></textarea></div>
+  <div class="row2"><div class="field"><label>Delivery time</label><input type="datetime-local"></div><div class="field"><label>Shopper</label><select><option>Luis Morales</option></select></div></div>
+  <div class="field"><label>Payment</label><select><option>Card on file</option><option>Card on the spot</option></select></div>
+  <div class="actions"><button class="btn quiet" data-close>Cancel</button><button class="btn">Create and assign</button></div>
+</div></div>
+
+<div id="modal-user" class="modal"><div class="card">
+  <h2>Add person</h2>
+  <div class="row2"><div class="field"><label>Name</label><input></div><div class="field"><label>Phone</label><input></div></div>
+  <div class="field"><label>Email (their login)</label><input type="email"></div>
+  <div class="field"><label>Roles</label><div style="display:flex;gap:16px;font-size:14px"><label><input type="checkbox"> Driver</label><label><input type="checkbox"> Shopper</label><label><input type="checkbox"> Partner (vehicle owner)</label></div></div>
+  <div class="row2"><div class="field"><label>Compensation type</label><select><option>Fixed per trip</option><option>Percentage of trip</option><option>Per hour</option></select></div><div class="field"><label>Value</label><input placeholder="30"></div></div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">A temporary password is created and shown to you once. Share it with them; they can change it after signing in.</p>
+  <div class="actions"><button class="btn quiet" data-close>Cancel</button><button class="btn">Create login</button></div>
+</div></div>
+
+<div id="modal-comp" class="modal"><div class="card" style="width:440px">
+  <h2>Change rate · Marcus Reyes</h2>
+  <p style="font-size:14px;color:var(--muted);margin-bottom:12px">Current: fixed $30 per trip since Aug 1. Trips already completed keep the old rate.</p>
+  <div class="row2"><div class="field"><label>Type</label><select><option>Fixed per trip</option><option>Percentage of trip</option><option>Per hour</option></select></div><div class="field"><label>Value</label><input value="35"></div></div>
+  <div class="field"><label>Effective from</label><input type="date" value="2026-09-08"></div>
+  <div class="actions"><button class="btn quiet" data-close>Cancel</button><button class="btn">Save new rate</button></div>
+</div></div>
+
+<div id="modal-vehicle" class="modal"><div class="card" style="width:480px">
+  <h2>Add vehicle</h2>
+  <div class="row2"><div class="field"><label>Make</label><input placeholder="Ford"></div><div class="field"><label>Model</label><input placeholder="Transit"></div></div>
+  <div class="row2"><div class="field"><label>Year</label><input type="number" value="2021"></div><div class="field"><label>Plate</label><input></div></div>
+  <div class="row2"><div class="field"><label>Type</label><select><option>Car · 4 pax</option><option>SUV · 6 pax</option><option>Van · 14 pax</option></select></div><div class="field"><label>Owner</label><select><option>Welson (you)</option><option>Dana Klein</option></select></div></div>
+  <div class="field"><label>Owner fee %</label><input value="20" style="max-width:120px"></div>
+  <div class="actions"><button class="btn quiet" data-close>Cancel</button><button class="btn">Save vehicle</button></div>
+</div></div>
+
+<script>
+  const show = id => { document.querySelectorAll('.page').forEach(p => p.classList.toggle('show', p.id === id));
+    document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id)); };
+  window.addEventListener('hashchange', () => show(location.hash.slice(1) || 'dashboard'));
+  show(location.hash.slice(1) || 'dashboard');
+  document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => document.getElementById(el.dataset.open).classList.add('open')));
+  document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => el.closest('.modal,.drawer').classList.remove('open')));
+  document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+</script>
+</body>
+</html>

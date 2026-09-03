@@ -1,0 +1,272 @@
+.app[data-role="partner"] .avatar {
+  background: var(--owner-soft);
+  color: var(--owner);
+}
+
+.owner-summary {
+  background: var(--owner);
+  color: #fff;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.owner-summary .l {
+  font-size: 12px;
+  color: #d5e8f0;
+}
+
+.owner-summary .v {
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.owner-summary .r {
+  text-align: right;
+  font-size: 13px;
+  color: #d5e8f0;
+}
+
+.owner-summary .r b {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+}
+
+.mine {
+  background: var(--sea-soft);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.mine .l {
+  font-size: 12px;
+  color: var(--sea);
+}
+
+.mine .v {
+  font-weight: 600;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vehicle {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.vehicle .hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+
+.vehicle .name {
+  font-weight: 600;
+  min-width: 0;
+}
+
+.vehicle .name small {
+  display: block;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.vehicle .tot {
+  text-align: right;
+  font-size: 13px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.vehicle .tot b {
+  display: block;
+  font-size: 18px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.vehicle .trip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    't a'
+    's a';
+  gap: 2px 12px;
+  padding: 12px 16px;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  font-size: 14px;
+}
+
+.vehicle .trip:last-child {
+  border-bottom: 0;
+}
+
+.vehicle .trip .t {
+  grid-area: t;
+  font-weight: 500;
+}
+
+.vehicle .trip .s {
+  grid-area: s;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.vehicle .trip .a {
+  grid-area: a;
+  align-self: center;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.vehicle .trip .a b {
+  display: block;
+  font-size: 16px;
+}
+
+.vehicle .trip .a small {
+  color: var(--muted);
+}
+
+.note.sand {
+  background: var(--sand);
+  color: #7a5a1e;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.link {
+  color: var(--sea);
+  font-size: 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.link:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.notif {
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 12px;
+  align-items: start;
+  cursor: pointer;
+  color: inherit;
+}
+
+.notif .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--owner);
+  margin-top: 6px;
+}
+
+.notif.read .dot {
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.notif .m {
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.notif .m b {
+  font-weight: 600;
+}
+
+.notif .when {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.partner-aside {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .partner-hero,
+  .partner-payouts-mobile {
+    display: none;
+  }
+
+  .partner-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .partner-aside {
+    display: block;
+    position: sticky;
+    top: 16px;
+  }
+
+  .partner-aside .owner-summary:last-of-type,
+  .partner-aside .mine {
+    margin-bottom: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button.notif {
+    transition: box-shadow 0.15s, transform 0.1s;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .vehicle .trip:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  button.notif:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(22, 48, 43, 0.06);
+  }
+}

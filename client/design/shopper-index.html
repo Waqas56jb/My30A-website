@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopper · My30A Host</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#EEF5F2;--surface:#fff;--ink:#16302B;--muted:#5F7570;--line:#D9E6E1;--sea:#0F6E56;--sea-deep:#0A4F3E;--sea-soft:#DCF0E8;--sand:#F3E9D6;--coral:#C8472E;--tip-soft:#FBF0DA}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;color:var(--ink);background:var(--bg)}
+  button,input{font:inherit;color:inherit}
+  a{color:inherit;text-decoration:none}
+  .app{max-width:560px;margin:0 auto;min-height:100vh;padding-bottom:84px}
+  .top{position:sticky;top:0;background:var(--bg);padding:16px 18px 10px;z-index:5;display:flex;justify-content:space-between;align-items:center}
+  .top h1{font-size:22px;font-weight:600}.top .sub{font-size:13px;color:var(--muted)}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--sea-soft);color:var(--sea);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+  main{padding:0 18px}
+  .summary{background:var(--sea);color:#fff;border-radius:14px;padding:16px 18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
+  .summary .l{font-size:12px;color:#BFE4D6}.summary .v{font-size:20px;font-weight:600;margin-top:2px}
+  .summary .tips .v{color:#F6D98A}.summary .total{border-left:1px solid rgba(255,255,255,.25);padding-left:12px}
+  h2{font-size:15px;font-weight:600;margin:6px 0 10px;color:var(--muted)}
+
+  .order{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+  .order .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .order .time{font-size:20px;font-weight:600}.order .num{font-size:13px;color:var(--muted)}
+  .pill{display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:500;background:var(--sand);color:#7A5A1E}
+  .pill.live{background:var(--sea-soft);color:var(--sea)}.pill.done{background:#EEF1F0;color:var(--muted)}
+  .pkg{font-size:16px;font-weight:500;margin-bottom:4px}
+  .meta{font-size:13px;color:var(--muted);line-height:1.6}
+  .guest{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:10px;padding:10px 12px;margin:10px 0;font-size:14px}
+  .guest a{color:var(--sea);font-weight:500}
+
+  .steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:12px 0}
+  .step{height:6px;border-radius:3px;background:#E3EBE8}
+  .step.on{background:var(--sea)}
+  .steps-l{display:grid;grid-template-columns:1fr 1fr 1fr;font-size:12px;color:var(--muted);margin-top:-6px;margin-bottom:12px}
+  .steps-l span:nth-child(2){text-align:center}.steps-l span:nth-child(3){text-align:right}
+  .steps-l .on{color:var(--sea);font-weight:500}
+
+  details{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:#fff}
+  summary{padding:10px 12px;font-size:14px;cursor:pointer;color:var(--muted);list-style:none}
+  summary::-webkit-details-marker{display:none}
+  .items{padding:0 12px 10px;font-size:14px}
+  .items label{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+  .items input{width:18px;height:18px;accent-color:var(--sea)}
+  .items .q{color:var(--muted);min-width:34px}
+
+  .money{display:flex;gap:14px;font-size:14px;margin:8px 0 12px}
+  .money div{flex:1}.money .l{font-size:12px;color:var(--muted)}.money .v{font-weight:600;font-size:16px}
+  .money .tip .v{color:#9A6A1F}
+  .btn{width:100%;border:0;border-radius:12px;padding:14px;background:var(--sea);color:#fff;font-weight:500;font-size:16px;cursor:pointer;transition:background .15s,transform .1s}
+  .btn:hover{background:var(--sea-deep)}.btn:active{transform:scale(.99)}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .btn-row{display:flex;gap:10px}.btn-row .btn{flex:1}
+  .photos{display:flex;gap:8px;margin-top:8px}
+  .photos img,.photos .ph{width:64px;height:64px;border-radius:8px;object-fit:cover;background:#E3EBE8}
+
+  .sheet-bg{position:fixed;inset:0;background:rgba(22,48,43,.4);display:none;align-items:flex-end;justify-content:center;z-index:20}
+  .sheet-bg.open{display:flex}
+  .sheet{background:#fff;width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 18px 28px;max-height:92vh;overflow:auto}
+  .sheet h3{font-size:18px;margin-bottom:2px}.sheet .sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .field input[type=text],.field input[type=number]{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:18px}
+  .field input:focus{outline:none;border-color:var(--sea);box-shadow:0 0 0 3px var(--sea-soft)}
+  .upload{border:1.5px dashed var(--line);border-radius:12px;padding:14px;text-align:center;font-size:14px;color:var(--muted);cursor:pointer}
+  .upload.ok{border-style:solid;border-color:var(--sea);color:var(--sea);background:var(--sea-soft)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .note{font-size:13px;background:var(--tip-soft);color:#7A5A1E;border-radius:10px;padding:10px 12px;margin-bottom:14px}
+  .nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 max(10px,env(safe-area-inset-bottom));z-index:6}
+  .nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);padding:4px 18px}
+  .nav a.active{color:var(--sea);font-weight:500}
+  .nav i{width:22px;height:22px;border-radius:6px;background:currentColor;opacity:.85;display:block}
+  @media (prefers-reduced-motion:no-preference){.sheet-bg.open .sheet{animation:up .22s ease-out}}
+  @keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top"><div><h1>Today</h1><div class="sub">Thursday, Sep 3 · 3 orders</div></div><div class="avatar">LM</div></header>
+  <main>
+    <div class="summary">
+      <div><div class="l">Service earnings</div><div class="v">$113</div></div>
+      <div class="tips"><div class="l">Tips</div><div class="v">$30</div></div>
+      <div class="total"><div class="l">Total today</div><div class="v">$143</div></div>
+    </div>
+
+    <h2>In progress</h2>
+    <article class="order">
+      <div class="hd"><div><span class="time">4:30 PM</span> <span class="num">· Order #2032</span></div><span class="pill live">Shopping</span></div>
+      <div class="pkg">Essentials pack · 12 items</div>
+      <div class="meta">Deliver to <b>12 Rosemary Ave, Rosemary Beach</b></div>
+      <div class="guest"><span>Priya Nair</span><a href="tel:+1">Call (617) 555-0142</a></div>
+      <div class="steps"><span class="step on"></span><span class="step"></span><span class="step"></span></div>
+      <div class="steps-l"><span class="on">Shopping</span><span>On the way</span><span>Delivered</span></div>
+      <details open><summary>Shopping list · 3 of 12 checked</summary>
+        <div class="items">
+          <label><input type="checkbox" checked><span class="q">2 ×</span>Oat milk</label>
+          <label><input type="checkbox" checked><span class="q">1 ×</span>Dozen eggs</label>
+          <label><input type="checkbox" checked><span class="q">1 ×</span>Sourdough loaf</label>
+          <label><input type="checkbox"><span class="q">1 ×</span>Ground coffee</label>
+          <label><input type="checkbox"><span class="q">3 ×</span>Sparkling water</label>
+        </div></details>
+      <div class="money"><div><div class="l">Service earnings</div><div class="v">$44.70</div></div><div class="tip"><div class="l">Tip</div><div class="v">—</div></div></div>
+      <button class="btn">On the way</button>
+    </article>
+
+    <article class="order">
+      <div class="hd"><div><span class="time">6:00 PM</span> <span class="num">· Order #2034</span></div><span class="pill live">On the way</span></div>
+      <div class="pkg">Full pack · 21 items</div>
+      <div class="meta">Deliver to <b>8 Alys Beach Blvd, Alys Beach</b> · door code 4471</div>
+      <div class="steps"><span class="step on"></span><span class="step on"></span><span class="step"></span></div>
+      <div class="steps-l"><span>Shopping</span><span class="on">On the way</span><span>Delivered</span></div>
+      <div class="money"><div><div class="l">Service earnings</div><div class="v">$68.70</div></div><div class="tip"><div class="l">Tip</div><div class="v">—</div></div></div>
+      <button class="btn" data-open="sheet">Mark delivered</button>
+    </article>
+
+    <h2>Up next</h2>
+    <article class="order">
+      <div class="hd"><div><span class="time">Tomorrow 10:00 AM</span> <span class="num">· #2033</span></div><span class="pill">Assigned</span></div>
+      <div class="pkg">Full pack · 18 items</div>
+      <div class="meta">Deliver to 44 Seagrove Ct, Seagrove Beach</div>
+      <button class="btn ghost" style="margin-top:10px">Start shopping</button>
+    </article>
+
+    <h2>Done today</h2>
+    <article class="order" style="opacity:.85">
+      <div class="hd"><div><span class="time">11:20 AM</span> <span class="num">· #2031</span></div><span class="pill done">Delivered · 1h 05m</span></div>
+      <div class="pkg">Full pack · 44 Seagrove Ct</div>
+      <div class="money"><div><div class="l">Service earnings</div><div class="v">$68.70</div></div><div class="tip"><div class="l">Tip received</div><div class="v">$30</div></div><div><div class="l">Total</div><div class="v">$98.70</div></div></div>
+      <div class="photos"><span class="ph"></span><span class="ph"></span></div>
+    </article>
+  </main>
+  <nav class="nav"><a href="#" class="active"><i></i>Orders</a><a href="#"><i></i>Earnings</a></nav>
+</div>
+
+<div id="sheet" class="sheet-bg"><div class="sheet">
+  <h3>Mark delivered · #2034</h3>
+  <div class="sub">Full pack · 8 Alys Beach Blvd</div>
+  <div class="field"><label>Publix receipt total</label><input type="number" inputmode="decimal" placeholder="0.00" value="312.40"></div>
+  <div class="grid2">
+    <div class="field"><label>Receipt photo</label><div class="upload ok">✓ receipt.jpg</div></div>
+    <div class="field"><label>Kitchen photo</label><div class="upload">Take photo</div></div>
+  </div>
+  <div class="field"><label>Tip received (optional)</label><input type="number" inputmode="decimal" placeholder="0.00"></div>
+  <div class="note">Tips are 100% yours. Your service earnings are based on the package fee, not the receipt.</div>
+  <div class="btn-row"><button class="btn ghost" data-close>Not yet</button><button class="btn">Confirm delivered</button></div>
+</div></div>
+<script>
+  document.querySelectorAll('[data-open]').forEach(e=>e.onclick=()=>document.getElementById(e.dataset.open).classList.add('open'));
+  document.querySelectorAll('[data-close]').forEach(e=>e.onclick=()=>e.closest('.sheet-bg').classList.remove('open'));
+</script>
+</body>
+</html>

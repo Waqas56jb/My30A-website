@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partner · My30A Host</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#EEF5F2;--surface:#fff;--ink:#16302B;--muted:#5F7570;--line:#D9E6E1;--sea:#0F6E56;--sea-soft:#DCF0E8;--owner:#4C8DA8;--owner-soft:#E3EFF4;--sand:#F3E9D6;--coral:#C8472E}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;color:var(--ink);background:var(--bg)}
+  button,select{font:inherit;color:inherit}
+  a{color:inherit;text-decoration:none}
+  .app{max-width:560px;margin:0 auto;min-height:100vh;padding-bottom:84px}
+  .top{position:sticky;top:0;background:var(--bg);padding:16px 18px 10px;z-index:5;display:flex;justify-content:space-between;align-items:center}
+  .top h1{font-size:22px;font-weight:600}.top .sub{font-size:13px;color:var(--muted)}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--owner-soft);color:var(--owner);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+  .role-switch{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:20px;padding:3px;font-size:12px;margin-right:10px}
+  .role-switch span{padding:4px 10px;border-radius:16px}.role-switch .on{background:var(--sea);color:#fff}
+  main{padding:0 18px}
+  .page{display:none}.page.show{display:block}
+
+  .summary{background:var(--owner);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:16px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+  .summary .l{font-size:12px;color:#D5E8F0}.summary .v{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+  .summary .r{text-align:right;font-size:13px;color:#D5E8F0}
+  .summary .r b{display:block;color:#fff;font-size:16px}
+
+  .month{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px}
+  h2{font-size:15px;font-weight:600;color:var(--muted)}
+  .arrows button{border:1px solid var(--line);background:#fff;border-radius:8px;width:32px;height:32px;margin-left:6px;cursor:pointer}
+
+  .vehicle{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .vehicle .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .vehicle .name{font-weight:600}
+  .vehicle .name small{display:block;font-weight:400;font-size:13px;color:var(--muted)}
+  .vehicle .tot{text-align:right;font-size:13px;color:var(--muted)}
+  .vehicle .tot b{display:block;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .trip{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:14px}
+  .trip:last-child{border-bottom:0}
+  .trip .t{font-weight:500}.trip .s{color:var(--muted);font-size:13px}
+  .trip .a{grid-row:1/3;align-self:center;text-align:right;font-variant-numeric:tabular-nums}
+  .trip .a b{display:block;font-size:16px}.trip .a small{color:var(--muted)}
+  .note{font-size:13px;color:var(--muted);background:var(--sand);color:#7A5A1E;border-radius:10px;padding:10px 12px;margin:14px 0}
+
+  /* my own driving (only when partner also has driver role) */
+  .mine{background:var(--sea-soft);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .mine .l{font-size:12px;color:var(--sea)}.mine .v{font-weight:600;font-size:18px}
+
+  /* notifications */
+  .notif{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:grid;grid-template-columns:10px 1fr;gap:12px;align-items:start}
+  .notif .dot{width:10px;height:10px;border-radius:50%;background:var(--owner);margin-top:6px}
+  .notif.read .dot{background:transparent;border:1px solid var(--line)}
+  .notif .m{font-size:15px;line-height:1.45}
+  .notif .m b{font-weight:600}
+  .notif .when{font-size:12px;color:var(--muted);margin-top:4px}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .link{color:var(--sea);font-size:14px;background:none;border:0;cursor:pointer}
+  .empty{padding:40px 20px;text-align:center;color:var(--muted)}
+
+  .nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 max(10px,env(safe-area-inset-bottom));z-index:6}
+  .nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);padding:4px 18px;position:relative}
+  .nav a.active{color:var(--sea);font-weight:500}
+  .nav i{width:22px;height:22px;border-radius:6px;background:currentColor;opacity:.85;display:block}
+  .nav .badge{position:absolute;top:0;right:8px;background:var(--coral);color:#fff;font-size:11px;padding:1px 6px;border-radius:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div><h1>My vehicles</h1><div class="sub">September 2026 · 2 vehicles</div></div>
+    <div style="display:flex;align-items:center"><div class="role-switch"><span>Driver</span><span class="on">Partner</span></div><div class="avatar">DK</div></div>
+  </header>
+
+  <main>
+  <section id="vehicles" class="page show">
+    <div class="summary">
+      <div><div class="l">Vehicle fees this month</div><div class="v">$508.00</div></div>
+      <div class="r">15 trips<b>Paid so far $412</b></div>
+    </div>
+
+    <!-- only when this partner also drives -->
+    <div class="mine">
+      <div><div class="l">My own trips</div><div class="v">4</div></div>
+      <div><div class="l">Driving earnings</div><div class="v">$360</div></div>
+      <div><div class="l">My tips</div><div class="v">$95</div></div>
+    </div>
+
+    <div class="month"><h2>Trips using my vehicles</h2><div class="arrows"><button>‹</button><button>›</button></div></div>
+
+    <article class="vehicle">
+      <div class="hd"><div class="name">Ford Transit 2021 · Van 14 pax<small>Owner fee 20%</small></div><div class="tot">12 trips<b>$412.00</b></div></div>
+      <div class="trip"><span class="t">Thu, Sep 3 · Trip #1055</span><span class="s">ECP → Rosemary Beach</span><span class="a"><b>$30.00</b><small>of $150</small></span></div>
+      <div class="trip"><span class="t">Thu, Sep 3 · Trip #1050</span><span class="s">Seaside → VPS · you drove</span><span class="a"><b>$77.00</b><small>of $385</small></span></div>
+      <div class="trip"><span class="t">Wed, Sep 2 · Trip #1047</span><span class="s">Alys Beach → PNS</span><span class="a"><b>$67.00</b><small>of $335</small></span></div>
+      <div class="trip"><span class="t">Tue, Sep 1 · Trip #1041</span><span class="s">ECP → Seacrest Beach</span><span class="a"><b>$29.60</b><small>of $148</small></span></div>
+    </article>
+
+    <article class="vehicle">
+      <div class="hd"><div class="name">Chevy Suburban 2020 · SUV 6 pax<small>Owner fee 20%</small></div><div class="tot">3 trips<b>$96.00</b></div></div>
+      <div class="trip"><span class="t">Mon, Aug 31 · Trip #1038</span><span class="s">ECP → Alys Beach</span><span class="a"><b>$31.00</b><small>of $155</small></span></div>
+    </article>
+
+    <div class="note">Your fee is a percentage of the trip price, set by Welson per vehicle. Tips go to the driver and are not shown here.</div>
+
+    <div class="month"><h2>Payouts</h2></div>
+    <article class="vehicle">
+      <div class="trip"><span class="t">Paid · Sep 2 · Zelle</span><span class="s">8 trips · Aug 25 – Sep 1</span><span class="a"><b>$412.00</b></span></div>
+      <div class="trip"><span class="t">Pending</span><span class="s">3 trips · Sep 2 – Sep 3</span><span class="a"><b>$96.00</b></span></div>
+    </article>
+  </section>
+
+  <section id="notifications" class="page">
+    <div class="toolbar"><h2>Notifications</h2><button class="link">Mark all read</button></div>
+    <div class="notif"><span class="dot"></span><div><div class="m">Trip <b>#1055</b> completed · Your vehicle fee: <b>$30.00</b> (20%)</div><div class="when">Today, 2:58 PM</div></div></div>
+    <div class="notif"><span class="dot"></span><div><div class="m">Trip <b>#1050</b> completed · Your vehicle fee: <b>$77.00</b> (20%)</div><div class="when">Today, 11:40 AM</div></div></div>
+    <div class="notif read"><span class="dot"></span><div><div class="m">Trip <b>#1047</b> completed · Your vehicle fee: <b>$67.00</b> (20%)</div><div class="when">Yesterday, 5:52 PM</div></div></div>
+    <div class="notif read"><span class="dot"></span><div><div class="m">Payout of <b>$412.00</b> marked paid by Zelle</div><div class="when">Sep 2, 9:10 AM</div></div></div>
+  </section>
+  </main>
+
+  <nav class="nav">
+    <a href="#vehicles" class="active"><i></i>Vehicles</a>
+    <a href="#notifications"><i></i>Notifications<span class="badge">2</span></a>
+  </nav>
+</div>
+<script>
+  const show=id=>{document.querySelectorAll('.page').forEach(p=>p.classList.toggle('show',p.id===id));document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id))};
+  addEventListener('hashchange',()=>show(location.hash.slice(1)||'vehicles'));show(location.hash.slice(1)||'vehicles');
+</script>
+</body>
+</html>
