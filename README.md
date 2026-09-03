@@ -13,7 +13,15 @@ Back-office/operations system for My30A Host.
 
 Copy `.env.example` to `.env` in `server/`, `admin/`, and `client/` before the first run.
 
-Three terminals:
+Production deploy (three Vercel projects): see [DEPLOY.md](./DEPLOY.md).
+
+From the repo root (after `npm install` here and in `server/`, `admin/`, `client/`):
+
+```powershell
+npm run dev
+```
+
+That starts the API (`http://localhost:4000`), admin (`http://localhost:5174`), and client (`http://localhost:5173`). Or use three terminals:
 
 ```powershell
 cd server
@@ -84,6 +92,8 @@ That passes `--confirm`. The script prints a summary, then deletes. Do not run i
 | `SMTP_HOST` `SMTP_PORT` `SMTP_SECURE` | Outbound mail |
 | `SMTP_USER` `SMTP_PASSWORD` | SMTP auth |
 | `SMTP_FROM` `OFFICIAL_EMAIL` | From address |
+| `RATE_LIMIT_WINDOW_MS` | Rate-limit window in ms (default `900000`) |
+| `RATE_LIMIT_MAX` | Max requests per window (default `300`) |
 
 **`admin/.env` and `client/.env`**
 

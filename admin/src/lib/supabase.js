@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config.js'
 
 const PERSIST_KEY = 'my30a-persist-session'
 
@@ -49,15 +50,14 @@ const authStorage = {
   },
 }
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
-  {
-    auth: {
-      persistSession: true,
-      storage: authStorage,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  }
-)
+export const supabase =
+  SUPABASE_URL && SUPABASE_ANON_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          storage: authStorage,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      })
+    : null

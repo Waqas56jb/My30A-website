@@ -1,3 +1,4 @@
+import { API_URL } from './config.js'
 import { supabase } from './supabase.js'
 
 let accessToken = null
@@ -20,7 +21,7 @@ export async function api(path, options = {}) {
   const headers = { ...(options.headers || {}) }
 
   let token = accessToken
-  if (!token) {
+  if (!token && supabase) {
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -37,7 +38,7 @@ export async function api(path, options = {}) {
   }
 
   const { body, ...rest } = options
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
+  const response = await fetch(`${API_URL}${path}`, {
     ...rest,
     headers,
     body:

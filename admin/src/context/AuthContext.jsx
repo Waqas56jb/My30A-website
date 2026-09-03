@@ -23,6 +23,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let ignore = false
 
+    if (!supabase) {
+      setLoading(false)
+      return undefined
+    }
+
     async function applySession(nextSession) {
       if (!nextSession?.user) {
         setAccessToken(null)
@@ -79,9 +84,13 @@ export function AuthProvider({ children }) {
       session,
       profile,
       loading,
-      signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
+      signIn: (email, password) =>
+        supabase
+          ? supabase.auth.signInWithPassword({ email, password })
+          : Promise.resolve({ data: { session: null, user: null }, error: { message: 'App is not configured' } }),
       signOut: async () => {
         setAccessToken(null)
+        if (!supabase) return { error: null }
         return supabase.auth.signOut()
       },
     }),
