@@ -1,0 +1,695 @@
+/* Public marketing — hero (Figma 1920×1080) */
+
+.mkt {
+  --mkt-navy: #0a1628;
+  --mkt-sand: #c4a574;
+  --mkt-sand-deep: #b3915f;
+  --mkt-white: #ffffff;
+  --mkt-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --mkt-sans: 'DM Sans', 'IBM Plex Sans', system-ui, sans-serif;
+  min-height: 100%;
+  background: #000;
+  color: var(--mkt-white);
+  font-family: var(--mkt-sans);
+}
+
+.mkt-hero {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-height: 100svh;
+  height: 100svh;
+  max-height: 1080px;
+  overflow: hidden;
+  color: var(--mkt-white);
+}
+
+@media (min-height: 1080px) and (min-width: 1920px) {
+  .mkt-hero {
+    height: 1080px;
+    min-height: 1080px;
+  }
+}
+
+.mkt-hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #0a1628;
+}
+
+.mkt-hero-poster,
+.mkt-hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border: 0;
+}
+
+.mkt-hero-video {
+  z-index: 1;
+}
+
+.mkt-hero-video::-webkit-media-controls {
+  display: none !important;
+}
+
+.mkt-hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(10, 22, 40, 0.4), rgba(10, 22, 40, 0.4)),
+    linear-gradient(236.31deg, rgba(10, 22, 40, 0) 30%, rgba(10, 22, 40, 0.3) 96.48%);
+}
+
+.mkt-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  padding: 0 clamp(24px, 4.2vw, 72px);
+}
+
+.mkt-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 92px;
+  padding: 18px 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.mkt-brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.mkt-brand img {
+  display: block;
+  height: 58px;
+  width: auto;
+  max-width: min(300px, 46vw);
+  object-fit: contain;
+}
+
+.mkt-nav-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  gap: clamp(18px, 2.4vw, 40px);
+  margin-left: auto;
+}
+
+.mkt-nav-links a {
+  color: var(--mkt-white);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.mkt-nav-links a:hover {
+  opacity: 0.8;
+}
+
+.mkt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  text-decoration: none;
+  font-family: var(--mkt-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 11px 22px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mkt-btn-navy {
+  background: #06101c;
+  color: var(--mkt-white);
+}
+
+.mkt-btn-navy:hover {
+  background: #0d1c30;
+}
+
+.mkt-btn-sand {
+  background: var(--mkt-sand);
+  color: var(--mkt-white);
+}
+
+.mkt-btn-sand:hover {
+  background: var(--mkt-sand-deep);
+}
+
+.mkt-hero-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr;
+  align-items: end;
+  gap: clamp(24px, 5vw, 80px);
+  padding: 0 clamp(24px, 4.2vw, 72px) clamp(48px, 6.5vh, 80px);
+}
+
+.mkt-hero-title {
+  margin: 0;
+  font-family: var(--mkt-serif);
+  font-weight: 500;
+  font-size: clamp(42px, 5.6vw, 76px);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  max-width: 10.5ch;
+}
+
+.mkt-hero-aside {
+  max-width: 300px;
+  justify-self: end;
+  padding-bottom: 10px;
+}
+
+.mkt-hero-aside p {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+  max-width: 28ch;
+}
+
+@media (max-width: 1024px) {
+  .mkt-nav-inner {
+    flex-wrap: wrap;
+    min-height: 0;
+    gap: 14px;
+    padding: 16px 0 14px;
+  }
+
+  .mkt-nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: 18px;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mkt-btn-navy {
+    margin-left: auto;
+  }
+
+  .mkt-brand img {
+    height: 48px;
+  }
+
+  .mkt-hero-bottom {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    padding-bottom: 36px;
+  }
+
+  .mkt-hero-aside {
+    justify-self: start;
+    max-width: 340px;
+    padding-bottom: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .mkt-brand img {
+    height: 42px;
+    max-width: min(220px, 58vw);
+  }
+
+  .mkt-hero-title {
+    font-size: clamp(34px, 9vw, 46px);
+    max-width: 12ch;
+  }
+
+  .mkt-nav-links a {
+    font-size: 13px;
+  }
+
+  .mkt-hero-aside p {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-hero-video {
+    display: none;
+  }
+}
+
+/* —— Section 2: Figma exact sizes ——
+   img 1/3/5: 450×560, top +60
+   img 2/4:   450×680
+   gap: 30px
+   image1 left: -92.32px
+*/
+
+.mkt-stay {
+  --stay-w: 450px;
+  --stay-h-short: 560px;
+  --stay-h-tall: 680px;
+  --stay-gap: 30px;
+  --stay-stagger: 60px;
+  --stay-row: calc(5 * var(--stay-w) + 4 * var(--stay-gap));
+  --stay-bleed: -92px;
+  background: #ffffff;
+  color: rgba(10, 22, 40, 1);
+  padding: 100px 0 120px;
+  overflow: hidden;
+}
+
+.mkt-stay-intro {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: start;
+  max-width: 1440px;
+  margin: 0 auto 72px;
+  padding: 0 80px;
+}
+
+.mkt-stay-copy {
+  margin: 0;
+  box-sizing: border-box;
+  width: 362.61370849609375px;
+  max-width: 100%;
+  height: 84px;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 16px;
+  line-height: 28px;
+  letter-spacing: 0;
+  color: rgba(26, 23, 20, 0.7);
+}
+
+.mkt-stay-title {
+  margin: 0;
+  justify-self: end;
+  text-align: left;
+  box-sizing: border-box;
+  width: 770px;
+  max-width: 100%;
+  height: 266px;
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 112px;
+  line-height: 133px;
+  letter-spacing: 0;
+  color: rgba(10, 22, 40, 1);
+}
+
+.mkt-stay-gallery {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: var(--stay-gap);
+  width: var(--stay-row);
+  height: var(--stay-h-tall);
+  margin-left: var(--stay-bleed);
+}
+
+.mkt-stay-shot {
+  margin: 0;
+  flex: 0 0 var(--stay-w);
+  width: var(--stay-w);
+  border-radius: 0;
+  overflow: hidden;
+  background: #e8eef3;
+}
+
+.mkt-stay-shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.mkt-stay-shot:nth-child(odd) {
+  height: var(--stay-h-short);
+  margin-top: var(--stay-stagger);
+}
+
+.mkt-stay-shot:nth-child(even) {
+  height: var(--stay-h-tall);
+  margin-top: 0;
+}
+
+@media (max-width: 1600px) {
+  .mkt-stay {
+    --stay-scale: 0.78;
+    --stay-w: calc(450px * var(--stay-scale));
+    --stay-h-short: calc(560px * var(--stay-scale));
+    --stay-h-tall: calc(680px * var(--stay-scale));
+    --stay-gap: calc(30px * var(--stay-scale));
+    --stay-stagger: calc(60px * var(--stay-scale));
+    --stay-bleed: calc(-92px * var(--stay-scale));
+  }
+
+  .mkt-stay-title {
+    font-size: clamp(56px, 5.5vw, 96px);
+    line-height: 1.18;
+    height: auto;
+    width: min(770px, 100%);
+  }
+
+  .mkt-stay-intro {
+    padding: 0 48px;
+    margin-bottom: 56px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .mkt-stay {
+    --stay-scale: 0.55;
+    padding: 72px 0 88px;
+  }
+
+  .mkt-stay-intro {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 0 32px;
+    margin-bottom: 48px;
+  }
+
+  .mkt-stay-title {
+    justify-self: start;
+    font-size: clamp(40px, 8vw, 56px);
+    line-height: 1.15;
+    height: auto;
+    width: 100%;
+  }
+
+  .mkt-stay-copy {
+    width: min(362.61px, 100%);
+    height: auto;
+    min-height: 84px;
+  }
+}
+
+@media (max-width: 720px) {
+  .mkt-stay {
+    --stay-w: 220px;
+    --stay-h-short: 274px;
+    --stay-h-tall: 332px;
+    --stay-gap: 14px;
+    --stay-stagger: 28px;
+    --stay-bleed: 0px;
+    --stay-row: max-content;
+    padding: 56px 0 72px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mkt-stay-intro {
+    padding: 0 20px;
+  }
+
+  .mkt-stay-title {
+    font-size: 36px;
+    line-height: 1.15;
+  }
+
+  .mkt-stay-gallery {
+    margin-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+/* —— Section 3: Meet Vitoria —— */
+/* Image 713.24 / 1208.89×912.86
+   Rect9 white plate 324.36 / 547.38×589.17 (right edge 871.74) — covers image under text
+   Copy left 160; max width stops before card right so nothing spills onto the photo */
+
+.mkt-vitoria {
+  background: #ffffff;
+  color: rgba(10, 22, 40, 1);
+  padding: 60px 0 100px;
+  overflow: hidden;
+}
+
+.mkt-vitoria-inner {
+  position: relative;
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  height: 912.85986328125px;
+}
+
+.mkt-vitoria-media {
+  position: absolute;
+  top: 0;
+  left: 713.24px;
+  z-index: 1;
+  margin: 0;
+  width: 1208.8890380859375px;
+  height: 912.85986328125px;
+  overflow: hidden;
+  background: #d9e2ec;
+}
+
+.mkt-vitoria-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.mkt-vitoria-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 120px;
+  height: 5px;
+  background: #3b8fd4;
+  pointer-events: none;
+}
+
+/* Rect 9 — white overlap plate only */
+.mkt-vitoria-card {
+  position: absolute;
+  z-index: 2;
+  top: 33.13px;
+  left: 324.36px;
+  width: 547.3802490234375px;
+  height: 589.1697998046875px;
+  background: rgba(255, 255, 255, 1);
+  pointer-events: none;
+}
+
+/* Text sits on page white + plate; capped so it never crosses plate’s right edge (871.74) */
+.mkt-vitoria-copy {
+  position: absolute;
+  z-index: 3;
+  top: 68.81px;
+  left: 160px;
+  width: 680px; /* 160+680=840 < 871.74 */
+  max-width: calc(871.74px - 160px);
+  box-sizing: border-box;
+}
+
+.mkt-vitoria-title {
+  margin: 0 0 20px;
+  width: 100%;
+  max-width: 573px;
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  font-size: 75px;
+  line-height: 144%;
+  letter-spacing: -0.02em;
+  color: rgba(10, 22, 40, 1);
+}
+
+.mkt-vitoria-name,
+.mkt-vitoria-tag {
+  display: block;
+}
+
+.mkt-vitoria-name {
+  font-weight: 700;
+}
+
+.mkt-vitoria-tag {
+  font-weight: 500;
+}
+
+.mkt-vitoria-lead {
+  margin: 0 0 24px;
+  width: 100%;
+  max-width: 597.61px;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 32px;
+  letter-spacing: 0;
+  color: rgba(10, 22, 40, 1);
+}
+
+.mkt-vitoria-body {
+  margin: 0 0 20px;
+  width: 100%;
+  max-width: 618.51px;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 28px;
+  letter-spacing: 0;
+  color: rgba(26, 23, 20, 0.7);
+}
+
+.mkt-vitoria-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 150px;
+  height: 50px;
+  padding: 14px 20px;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(201, 169, 110, 1);
+  color: #ffffff;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.mkt-vitoria-btn:hover {
+  background: rgba(186, 154, 95, 1);
+}
+
+@media (max-width: 1600px) {
+  .mkt-vitoria-inner {
+    height: auto;
+    aspect-ratio: 1920 / 912.86;
+  }
+
+  .mkt-vitoria-media {
+    left: 37.147%;
+    width: 62.963%;
+    height: 100%;
+  }
+
+  .mkt-vitoria-card {
+    top: 3.63%;
+    left: 16.894%;
+    width: 28.51%;
+    height: 64.53%;
+  }
+
+  .mkt-vitoria-copy {
+    top: 7.54%;
+    left: 8.333%;
+    width: 35.4%; /* stays left of plate right ~45.4% */
+    max-width: none;
+  }
+
+  .mkt-vitoria-title {
+    max-width: 100%;
+    font-size: clamp(42px, 3.9vw, 64px);
+  }
+
+  .mkt-vitoria-lead,
+  .mkt-vitoria-body {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .mkt-vitoria {
+    padding: 48px 0 72px;
+  }
+
+  .mkt-vitoria-inner {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    aspect-ratio: auto;
+    padding: 0 24px;
+  }
+
+  .mkt-vitoria-media {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1209 / 913;
+    order: 1;
+  }
+
+  .mkt-vitoria-accent {
+    width: 100px;
+  }
+
+  .mkt-vitoria-card {
+    display: none;
+  }
+
+  .mkt-vitoria-copy {
+    position: relative;
+    top: auto;
+    left: auto;
+    order: 2;
+    margin: -80px 0 0;
+    width: calc(100% - 32px);
+    max-width: 560px;
+    padding: 32px 28px 36px;
+    background: #ffffff;
+  }
+
+  .mkt-vitoria-title {
+    font-size: clamp(36px, 7vw, 48px);
+  }
+}
+
+@media (max-width: 640px) {
+  .mkt-vitoria-copy {
+    margin-top: -48px;
+    width: 100%;
+    padding: 24px 20px 28px;
+  }
+
+  .mkt-vitoria-title {
+    font-size: 34px;
+  }
+
+  .mkt-vitoria-lead {
+    font-size: 16px;
+    line-height: 28px;
+  }
+}

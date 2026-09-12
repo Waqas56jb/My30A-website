@@ -4,6 +4,7 @@ import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 import Login from './pages/Login.jsx'
+import Home from './pages/marketing/Home.jsx'
 import Trips from './pages/driver/Trips.jsx'
 import Earnings from './pages/driver/Earnings.jsx'
 import Vehicles from './pages/partner/Vehicles.jsx'
@@ -92,10 +93,6 @@ function ClientShell() {
           }
         />
         <Route
-          path="/"
-          element={<Navigate to={activeRole ? `/${activeRole}` : '/driver'} replace />}
-        />
-        <Route
           path="*"
           element={<Navigate to={activeRole ? `/${activeRole}` : '/driver'} replace />}
         />
@@ -107,6 +104,7 @@ function ClientShell() {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"

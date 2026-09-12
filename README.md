@@ -13,15 +13,7 @@ Back-office/operations system for My30A Host.
 
 Copy `.env.example` to `.env` in `server/`, `admin/`, and `client/` before the first run.
 
-Production deploy (three Vercel projects): see [DEPLOY.md](./DEPLOY.md).
-
-From the repo root (after `npm install` here and in `server/`, `admin/`, `client/`):
-
-```powershell
-npm run dev
-```
-
-That starts the API (`http://localhost:4000`), admin (`http://localhost:5174`), and client (`http://localhost:5173`). Or use three terminals:
+Three terminals:
 
 ```powershell
 cd server
@@ -119,3 +111,25 @@ That passes `--confirm`. The script prints a summary, then deletes. Do not run i
 - `GET /api/payouts/owed` — unpaid summaries (pending+paid items excluded) + `pending_total`; `POST /api/payouts` generate; `POST /:id/mark-paid`
 - `GET /api/earnings/mine` — driver/shopper totals; `/vehicle-owner` partner; `/admin/summary`
 - `GET /api/notifications/mine` — own notifications; `PATCH /:id/read`, `POST /read-all`
+
+## Deploy
+
+Three Vercel projects. Root directory for each project is the matching folder (`server`, `admin`, `client`).
+
+| App | Root | URL |
+|---|---|---|
+| API | `server` | https://my30-a-website-server.vercel.app |
+| Admin | `admin` | https://my30-a-website-admin.vercel.app |
+| Client | `client` | https://my30-a-website-client.vercel.app |
+
+Health: https://my30-a-website-server.vercel.app/api/health
+
+After push, Redeploy all three. API secrets go in the Vercel dashboard (not git). Admin/client production URLs are in `admin/.env.production` and `client/.env.production`.
+
+**Vercel API env:** `NODE_ENV=production`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_POOLER_URL`, `CLIENT_URL=https://my30-a-website-client.vercel.app,https://my30-a-website-admin.vercel.app`, `CLIENT_APP_URL=https://my30-a-website-client.vercel.app`, `ADMIN_APP_URL=https://my30-a-website-admin.vercel.app`, SMTP + `RATE_LIMIT_*` as needed.
+
+**Vercel admin/client env:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL=https://my30-a-website-server.vercel.app` (or rely on `.env.production`). If the Vercel UI has empty `VITE_*` values, delete them — they override the file.
+
+**Supabase Auth → URL configuration:** Site URL `https://my30-a-website-client.vercel.app`. Redirect URLs: `https://my30-a-website-admin.vercel.app/**`, `https://my30-a-website-client.vercel.app/**`, plus localhost `5173` and `5174` for local work.
+
+Migrate once from `server/` (`npm run migrate`). Do not run migrations on boot.
