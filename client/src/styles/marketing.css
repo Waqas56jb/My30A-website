@@ -444,11 +444,10 @@
 
 /* —— Section 3: Meet Vitoria (Figma inspects) ——
    Image: 1208.89×912.86 @ left 713.24 / top 2377.34
-   Rect 9 card: 547.38×589.17 @ left 324.36 / top 2410.47
-     → relative top 33.13; overlaps image by ~158px
+   Rect 9 card: overlaps image left; copy starts nearer left margin (~160)
    Title: Cormorant 75 / 144% / 700+500 / rgba(10,22,40)
-   Lead: Inter 500 18/32 / width 397.81 / rgba(10,33,40)
-   Body: Inter 400 16/28 / width ~418 / rgba(26,23,20,0.7)
+   Lead: Inter 500 18/32 / rgba(10,33,40)
+   Body: Inter 400 16/28 / rgba(10,22,40) — readable, not faint
    Button: 150×50 / pad 14 20 / rgba(201,169,110)
 */
 
@@ -501,30 +500,33 @@
   pointer-events: none;
 }
 
-/* Rect 9 — ALL text lives inside this white card */
+/* White card — shifted left to cut empty margin; still overlaps image */
 .mkt-vitoria-card {
   position: absolute;
   z-index: 3;
   container-type: inline-size;
   container-name: vcard;
   box-sizing: border-box;
-  top: 3.63%; /* 33.13 / 912.86 */
-  left: 16.894%; /* 324.36 / 1920 */
-  width: 28.51%; /* 547.38 / 1920 */
-  height: 64.53%; /* 589.17 / 912.86 */
-  padding: 7.3% 7.3% 7.3%; /* ~40px @ 547 */
+  top: 3.63%;
+  left: 8.333%; /* ~160 / 1920 — was 16.9%, too much empty left */
+  width: 32.5%; /* wider so right edge still overlaps image */
+  max-width: 580px;
+  height: auto;
+  min-height: 64.53%;
+  max-height: 78%;
+  padding: 40px 40px 36px;
   background: rgba(255, 255, 255, 1);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .mkt-vitoria-title {
-  margin: 0 0 0.35em;
+  margin: 0 0 20px;
   max-width: 100%;
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-size: min(75px, 13.7cqw); /* 75 @ card ≈547 */
-  line-height: 144%;
+  font-size: clamp(44px, 12cqw, 75px);
+  line-height: 1.2;
   letter-spacing: 0;
   color: rgba(10, 22, 40, 1);
 }
@@ -543,30 +545,30 @@
 }
 
 .mkt-vitoria-lead {
-  margin: 0 0 1em;
+  margin: 0 0 16px;
   width: 100%;
-  max-width: 397.81px;
+  max-width: 420px;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 500;
-  font-size: min(18px, 3.29cqw);
-  line-height: 1.78;
+  font-size: clamp(16px, 3.2cqw, 18px);
+  line-height: 1.7;
   letter-spacing: 0;
-  color: rgba(10, 33, 40, 1);
+  color: rgba(10, 22, 40, 0.92);
 }
 
 .mkt-vitoria-body {
-  margin: 0 0 1.1em;
+  margin: 0 0 24px;
   width: 100%;
-  max-width: 418.51px;
-  flex: 1;
+  max-width: 440px;
+  flex: 0 1 auto;
   min-height: 0;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 400;
-  font-size: min(16px, 2.92cqw);
-  line-height: 1.75;
+  font-size: clamp(15px, 2.9cqw, 16px);
+  line-height: 1.7;
   letter-spacing: 0;
-  color: rgba(26, 23, 20, 0.7);
-  overflow: hidden;
+  color: rgba(10, 22, 40, 0.78);
+  overflow: visible;
 }
 
 .mkt-vitoria-btn {
@@ -576,8 +578,9 @@
   align-self: flex-start;
   flex-shrink: 0;
   box-sizing: border-box;
-  width: min(150px, 27.4cqw);
-  height: min(50px, 9.14cqw);
+  width: 150px;
+  height: 50px;
+  margin-top: auto;
   padding: 14px 20px;
   gap: 10px;
   border: 0;
@@ -586,7 +589,7 @@
   color: #ffffff;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 500;
-  font-size: min(14px, 2.56cqw);
+  font-size: 14px;
   line-height: 1;
   letter-spacing: 0;
   text-decoration: none;
@@ -644,17 +647,19 @@
   }
 
   .mkt-vitoria-lead {
-    font-size: 16px;
+    font-size: 17px;
     line-height: 28px;
     max-width: 100%;
+    color: rgba(10, 22, 40, 0.92);
   }
 
   .mkt-vitoria-body {
-    font-size: 15px;
-    line-height: 26px;
+    font-size: 16px;
+    line-height: 27px;
     max-width: 100%;
     flex: none;
     overflow: visible;
+    color: rgba(10, 22, 40, 0.78);
   }
 
   .mkt-vitoria-btn {
@@ -1455,7 +1460,8 @@
   z-index: 1;
   background: #ffffff;
   color: rgba(10, 22, 40, 1);
-  padding: 240px 0 120px;
+  /* bottom room so inset CTA can overlap white → dark footer */
+  padding: 240px 0 280px;
 }
 
 .mkt-ask-inner {
@@ -1565,42 +1571,61 @@
   color: rgba(25, 23, 20, 0.65);
 }
 
-/* —— Footer: CTA + links + copyright bar —— */
+/* —— Footer: inset CTA (Rect 10886) + links + copyright ——
+   CTA: 1324.25×457.84 @ left 313 / rgba(2,44,84) — overlaps white + dark
+   Title: Cormorant 700 80px / 100%
+   Tag: Cormorant 700 65px / 100%
+   Button: 144×50 / pad 14 20 / rgba(201,169,110)
+   Footer bg: rgba(0,7,15) · brand col @ left 160
+*/
 
 .mkt-footer {
-  background: #00050d;
+  position: relative;
+  z-index: 2;
+  background: rgba(0, 7, 15, 1);
   color: #ffffff;
 }
 
+/* Inset navy plate — not full-bleed */
 .mkt-brand-cta {
-  background: rgba(10, 22, 40, 1);
+  position: relative;
+  z-index: 3;
+  box-sizing: border-box;
+  width: min(1324.25px, calc(100% - 64px));
+  min-height: 457.84px;
+  margin: -229px auto 0; /* ~half hangs into ask white above */
+  padding: 72px 48px 80px;
+  background: rgba(2, 44, 84, 1);
   color: #ffffff;
-  padding: 96px 24px 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
 .mkt-brand-cta-inner {
-  max-width: 720px;
+  max-width: 947px;
   margin: 0 auto;
 }
 
 .mkt-brand-cta-name {
-  margin: 0 0 18px;
+  margin: 0 0 12px;
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-weight: 500;
-  font-size: clamp(42px, 5vw, 64px);
-  line-height: 1.15;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  font-size: 80px;
+  line-height: 1;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  color: rgba(255, 255, 255, 1);
 }
 
 .mkt-brand-cta-tag {
-  margin: 0 0 36px;
+  margin: 0 0 40px;
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-weight: 400;
-  font-size: clamp(22px, 2.4vw, 32px);
-  line-height: 1.35;
-  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+  font-size: 65px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
 }
 
 .mkt-brand-cta-btn {
@@ -1608,15 +1633,19 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  width: 144px;
   min-width: 144px;
   height: 50px;
   padding: 14px 20px;
+  gap: 10px;
+  border: 0;
   border-radius: 0;
   background: rgba(201, 169, 110, 1);
   color: #ffffff;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 500;
   font-size: 14px;
+  line-height: 1;
   text-decoration: none;
   transition: background 0.2s ease;
 }
@@ -1626,19 +1655,19 @@
 }
 
 .mkt-footer-main {
-  background: #00050d;
-  padding: 72px 0 64px;
+  background: rgba(0, 7, 15, 1);
+  padding: 88px 0 72px;
 }
 
 .mkt-footer-inner {
   display: grid;
-  grid-template-columns: minmax(280px, 1.4fr) repeat(3, minmax(140px, 0.7fr));
-  gap: 48px 40px;
+  grid-template-columns: minmax(280px, 362px) repeat(3, minmax(120px, 1fr));
+  gap: 48px 64px;
   align-items: start;
   width: 100%;
-  max-width: 1440px;
+  max-width: 1920px;
   margin: 0 auto;
-  padding: 0 80px;
+  padding: 0 160px;
   box-sizing: border-box;
 }
 
@@ -1664,7 +1693,7 @@
   font-weight: 400;
   font-size: 15px;
   line-height: 26px;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 1);
 }
 
 .mkt-footer-social {
@@ -1695,7 +1724,7 @@
   font-weight: 600;
   font-size: 28px;
   line-height: 1.2;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 1);
 }
 
 .mkt-footer-links {
@@ -1717,7 +1746,7 @@
   font-weight: 400;
   font-size: 15px;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 1);
   text-decoration: none;
   transition: color 0.2s ease;
 }
@@ -1734,7 +1763,7 @@
   font-weight: 400;
   font-size: 15px;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 1);
   text-decoration: none;
 }
 
@@ -1755,7 +1784,7 @@
 }
 
 .mkt-footer-bar {
-  background: #0c2a4a;
+  background: rgba(2, 44, 84, 1);
   padding: 18px 0;
 }
 
@@ -1765,15 +1794,15 @@
   justify-content: space-between;
   gap: 16px;
   width: 100%;
-  max-width: 1440px;
+  max-width: 1920px;
   margin: 0 auto;
-  padding: 0 80px;
+  padding: 0 160px;
   box-sizing: border-box;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 400;
   font-size: 13px;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .mkt-footer-bar-inner p {
@@ -1805,6 +1834,7 @@
 
   .mkt-ask {
     padding-top: 200px;
+    padding-bottom: 240px;
   }
 
   .mkt-ask-inner {
@@ -1825,17 +1855,46 @@
     padding-right: 80px;
   }
 
+  .mkt-brand-cta {
+    min-height: 400px;
+    margin-top: -200px;
+  }
+
+  .mkt-brand-cta-name {
+    font-size: clamp(48px, 5vw, 72px);
+  }
+
+  .mkt-brand-cta-tag {
+    font-size: clamp(32px, 4vw, 56px);
+  }
+
   .mkt-footer-inner {
-    padding: 0 48px;
+    padding: 0 80px;
     gap: 40px 32px;
   }
 
   .mkt-footer-bar-inner {
-    padding: 0 48px;
+    padding: 0 80px;
   }
 }
 
 @media (max-width: 1100px) {
+  .mkt-brand-cta {
+    width: calc(100% - 48px);
+    min-height: 0;
+    margin-top: -160px;
+    padding: 56px 32px 64px;
+  }
+
+  .mkt-brand-cta-name {
+    font-size: clamp(40px, 7vw, 56px);
+  }
+
+  .mkt-brand-cta-tag {
+    font-size: clamp(24px, 4.5vw, 40px);
+    margin-bottom: 32px;
+  }
+
   .mkt-footer-inner {
     grid-template-columns: 1fr 1fr;
     padding: 0 40px;
@@ -1873,7 +1932,7 @@
   }
 
   .mkt-ask {
-    padding: 56px 0 72px;
+    padding: 56px 0 180px;
   }
 
   .mkt-ask-inner {
@@ -1900,7 +1959,19 @@
   }
 
   .mkt-brand-cta {
-    padding: 72px 24px 80px;
+    width: calc(100% - 32px);
+    min-height: 0;
+    margin-top: -120px;
+    padding: 48px 24px 56px;
+  }
+
+  .mkt-brand-cta-name {
+    font-size: clamp(36px, 8vw, 48px);
+  }
+
+  .mkt-brand-cta-tag {
+    font-size: clamp(22px, 5vw, 32px);
+    margin-bottom: 28px;
   }
 
   .mkt-footer-main {
