@@ -5,12 +5,18 @@ import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 import Login from './pages/Login.jsx'
 import Home from './pages/marketing/Home.jsx'
+import Splash from './pages/app/Splash.jsx'
+import Signup from './pages/app/Signup.jsx'
+import AppLogin from './pages/app/AppLogin.jsx'
+import AppHome from './pages/app/AppHome.jsx'
 import Trips from './pages/driver/Trips.jsx'
 import Earnings from './pages/driver/Earnings.jsx'
 import Vehicles from './pages/partner/Vehicles.jsx'
 import Notifications from './pages/partner/Notifications.jsx'
 import Orders from './pages/shopper/Orders.jsx'
 import ShopperEarnings from './pages/shopper/Earnings.jsx'
+import './styles/app-guest.css'
+import './styles/app-home.css'
 
 const PANEL_ROLES = ['driver', 'partner', 'shopper']
 
@@ -105,6 +111,10 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/app" element={<Splash />} />
+      <Route path="/app/signup" element={<Signup />} />
+      <Route path="/app/login" element={<AppLogin />} />
+      <Route path="/app/home" element={<AppHome />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"

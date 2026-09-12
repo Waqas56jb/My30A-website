@@ -1,0 +1,538 @@
+/* Home screen — Figma 440×1317, content column 400 @ left 20 */
+
+.app-home {
+  --home-ink: #0a1628;
+  --home-muted: #434343;
+  --home-faint: #8a8a8a;
+  --home-line: #eeeeee;
+  --home-bg: #f6feff;
+  --home-nav-h: 74px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--home-bg);
+  color: var(--home-ink);
+  font-family: var(--app-body);
+}
+
+.app-home button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.app-home-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-bottom: calc(var(--home-nav-h) + 40px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-home-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* —— Hero (Rectangle 4623: 440×270, radius 0 0 20 20) —— */
+
+.app-home-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-height: 270px;
+  padding: max(calc(env(safe-area-inset-top, 0px) + 32px), 60px) 20px 24px;
+  background: url('/homecover.png') center / cover no-repeat, #f6feff;
+  border-radius: 0 0 20px 20px;
+}
+
+.app-home-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  height: 40px;
+}
+
+.app-home-logo {
+  display: block;
+  width: 77.76px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.app-home-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  padding: 0;
+  border: 1px solid #ffffff;
+  border-radius: 23px;
+  background: #ffffff;
+  box-shadow: 4px 4px 50px rgba(0, 0, 0, 0.1);
+  color: var(--home-ink);
+}
+
+.app-home-bell-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 5.4px;
+  height: 5.4px;
+  border-radius: 50%;
+  background: #fe0000;
+}
+
+.app-home-greet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.app-home-greet-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-home-title {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 100%;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+  color: var(--home-ink);
+}
+
+.app-home-title span {
+  font-weight: 700;
+}
+
+.app-home-sub {
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  color: var(--home-ink);
+}
+
+.app-home-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #ffffff;
+  font-family: var(--app-body);
+  font-size: 14px;
+  line-height: 100%;
+  color: var(--home-ink);
+}
+
+/* —— Body (Frame 1597885918: left 20, top 302 = hero 270 + 32) —— */
+
+.app-home-body {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 32px 20px 0;
+}
+
+.app-home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-home-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-home-h2 {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 100%;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+  color: var(--home-ink);
+}
+
+.app-home-seeall {
+  font-family: var(--app-title);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: -0.01em;
+  color: var(--home-faint);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* —— Active orders —— */
+
+.app-home-orders {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-home-order {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--home-line);
+  border-radius: 16px;
+  text-align: left;
+}
+
+.app-home-order-grocery {
+  background: #ebf5fa;
+}
+
+.app-home-order-transfer {
+  background: #f9faeb;
+}
+
+.app-home-order-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  color: var(--home-ink);
+}
+
+.app-home-order-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-home-order-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--home-line);
+  border-radius: 143px;
+  background: #ffffff;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.app-home-order-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-home-order-text small {
+  font-family: var(--app-title);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  color: var(--home-muted);
+}
+
+.app-home-order-text strong {
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 120%;
+  color: var(--home-ink);
+}
+
+.app-home-order-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--app-body);
+  font-size: 12px;
+  line-height: 140%;
+  color: var(--home-muted);
+}
+
+.app-home-order-meta svg {
+  flex-shrink: 0;
+  color: var(--home-ink);
+}
+
+/* —— Ask Vitoria banner (Frame 1597885881: 400×132, radius 16) —— */
+
+.app-home-vitoria {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  background: linear-gradient(0deg, #0c4355 -18.94%, #1a85bb 100%);
+  overflow: hidden;
+}
+
+.app-home-vitoria img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* —— Explore chips (Frame 1597885901: row, gap 12, overflows to the right) —— */
+
+.app-home-explore {
+  display: flex;
+  gap: 12px;
+  margin: 0 -20px;
+  padding: 0 20px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.app-home-explore::-webkit-scrollbar {
+  display: none;
+}
+
+.app-home-explore-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+  height: 50px;
+  padding: 10px 14px;
+  border: 1px solid var(--home-line);
+  border-radius: 10px;
+  background: #ffffff;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 100%;
+  text-transform: capitalize;
+  color: var(--home-muted);
+  white-space: nowrap;
+}
+
+.app-home-explore-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  border-radius: 143px;
+}
+
+.app-home-explore-icon-sea {
+  background: #c6ebff;
+  color: #005d92;
+}
+
+.app-home-explore-icon-sand {
+  background: #fff1db;
+  color: #f49300;
+}
+
+.app-home-explore-icon-leaf {
+  background: #e8ffeb;
+  color: #1e864e;
+}
+
+/* —— Vitoria's picks (Frame 1597885904: 400×98, padding 8, radius 8) —— */
+
+.app-home-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-home-pick {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--home-line);
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.app-home-pick-img {
+  display: block;
+  flex-shrink: 0;
+  width: 100px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #cccccc;
+}
+
+.app-home-pick-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: stretch;
+  flex: 1;
+  min-width: 0;
+  min-height: 80px;
+  gap: 12px;
+}
+
+.app-home-pick-title {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 100%;
+  text-transform: capitalize;
+  color: var(--home-ink);
+}
+
+.app-home-pick-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-home-pick-place {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--app-body);
+  font-size: 12px;
+  line-height: 100%;
+  color: var(--home-muted);
+}
+
+.app-home-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.app-home-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  color: #fbd00e;
+}
+
+.app-home-rating-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--app-title);
+  font-size: 8px;
+  line-height: 100%;
+}
+
+.app-home-rating-num b {
+  font-weight: 600;
+  color: var(--home-ink);
+}
+
+.app-home-rating-num small {
+  font-size: 8px;
+  font-weight: 400;
+  color: var(--home-muted);
+}
+
+/* —— Bottom nav —— */
+
+.app-home-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr 1fr 84px 1fr 1fr;
+  align-items: end;
+  height: calc(var(--home-nav-h) + env(safe-area-inset-bottom, 0px));
+  padding: 0 8px env(safe-area-inset-bottom, 0px);
+  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -6px 30px rgba(10, 22, 40, 0.08);
+}
+
+.app-home-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--home-nav-h);
+  font-family: var(--app-title);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  color: var(--home-faint);
+  text-decoration: none;
+}
+
+.app-home-nav-item.is-active {
+  font-weight: 600;
+  color: var(--home-ink);
+}
+
+.app-home-nav-item.is-active svg {
+  color: #1f5f9b;
+  fill: rgba(31, 95, 155, 0.15);
+}
+
+.app-home-nav-fab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 84px;
+  height: 84px;
+  margin-bottom: calc(var(--home-nav-h) - 54px);
+  padding: 0;
+  border: 4px solid var(--home-bg);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #1a5c8f 0%, #0b3a63 100%);
+  box-shadow: 0 8px 20px rgba(10, 22, 40, 0.25);
+  color: #ffffff;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 100%;
+}
+
+@media (max-width: 380px) {
+  .app-home-hero,
+  .app-home-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .app-home-explore {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+
+  .app-home-title {
+    font-size: 27px;
+  }
+}

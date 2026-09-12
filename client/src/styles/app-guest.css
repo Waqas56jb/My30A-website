@@ -1,0 +1,678 @@
+/* Guest mobile app shell — native phone viewport (Figma 440×956) */
+
+.app-guest {
+  --app-navy: rgba(12, 50, 85, 1);
+  --app-orange-1: rgba(254, 174, 53, 1);
+  --app-orange-2: rgba(255, 200, 118, 1);
+  --app-white: #ffffff;
+  --app-title: 'Urbanist', system-ui, sans-serif;
+  --app-body: 'Satoshi', 'Inter', system-ui, sans-serif;
+  --app-phone-w: 390px;
+  --app-phone-r: 40px;
+
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(30, 90, 140, 0.35) 0%, transparent 55%),
+    linear-gradient(165deg, #071422 0%, #01060d 45%, #000000 100%);
+  color: var(--app-white);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.app-guest *,
+.app-guest *::before,
+.app-guest *::after {
+  box-sizing: border-box;
+}
+
+/* Device frame — rounded phone like a native app sheet */
+.app-phone {
+  position: relative;
+  width: min(100%, var(--app-phone-w));
+  height: min(844px, calc(100dvh - 40px));
+  max-height: calc(100svh - 40px);
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: var(--app-phone-r);
+  background: var(--app-navy);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 24px 64px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+.app-phone > * {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
+/* —— Splash ——
+   Logo: 299.77×154.2 @ top 182
+   Copy: left 20 / width 400
+   Title: Urbanist 700 44 / 120% / -1.5%
+   Body: Satoshi 400 16 / 150% / -1% / 80% white
+   CTA: fill / ~51 / radius 143 / gradient FEAE35→FFC876
+*/
+
+.app-splash {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.app-splash-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: url('/backgroundappimage.png') center top / cover no-repeat;
+}
+
+.app-splash-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 50, 85, 0.25) 0%,
+    rgba(12, 50, 85, 0) 36%,
+    rgba(12, 50, 85, 0.25) 60%,
+    rgba(12, 50, 85, 0.88) 86%,
+    rgba(12, 50, 85, 1) 100%
+  );
+}
+
+.app-splash-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding:
+    max(152px, calc(env(safe-area-inset-top) + 100px))
+    20px
+    max(28px, calc(env(safe-area-inset-bottom) + 16px));
+}
+
+.app-splash-logo-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.app-splash-logo {
+  display: block;
+  width: min(299.77px, 78%);
+  height: auto;
+  object-fit: contain;
+}
+
+.app-splash-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 16px 0 8px;
+}
+
+.app-splash-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.app-splash-title {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 120%;
+  letter-spacing: -0.015em;
+  color: rgba(255, 255, 255, 1);
+}
+
+.app-splash-body {
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 150%;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.app-splash-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 51px;
+  padding: 16px 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 143px;
+  background: linear-gradient(90deg, rgba(254, 174, 53, 1) 0%, rgba(255, 200, 118, 1) 100%);
+  color: rgba(12, 50, 85, 1);
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.app-splash-cta:active {
+  filter: brightness(0.96);
+  transform: scale(0.99);
+}
+
+@media (max-width: 390px) {
+  .app-splash-inner {
+    padding-top: max(120px, calc(env(safe-area-inset-top) + 88px));
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .app-splash-title {
+    font-size: 36px;
+  }
+
+  .app-splash-body {
+    font-size: 15px;
+  }
+
+  .app-splash-footer {
+    gap: 36px;
+  }
+}
+
+@media (max-height: 760px) {
+  .app-splash-inner {
+    padding-top: max(88px, calc(env(safe-area-inset-top) + 56px));
+  }
+
+  .app-splash-logo {
+    width: min(240px, 70%);
+  }
+
+  .app-splash-footer {
+    gap: 28px;
+  }
+
+  .app-splash-title {
+    font-size: 34px;
+  }
+}
+
+/* Real phones — full-bleed native app (no fake bezel) */
+@media (max-width: 520px) {
+  .app-guest {
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    background: #01060d;
+  }
+
+  .app-phone {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    min-height: 100dvh;
+    min-height: 100svh;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .app-signup-top {
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+
+  .app-signup-card {
+    margin-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+
+/* —— Sign Up — one-screen fit (no page scroll) —— */
+
+.app-signup {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-login {
+  background: #0a1628;
+}
+
+.app-signup-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: url('/backgroundappimage.png') center top / cover no-repeat;
+}
+
+.app-signup-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 50, 85, 0.2) 0%,
+    rgba(12, 50, 85, 0.45) 30%,
+    rgba(12, 50, 85, 0.85) 55%,
+    rgba(12, 50, 85, 0.98) 100%
+  );
+}
+
+.app-signup-top {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: clamp(10px, calc(7.38dvh - 34.26px), 28px) 20px clamp(8px, calc(8.2dvh - 41.18px), 28px);
+}
+
+.app-signup-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(10, 22, 40, 0.55);
+  color: #ffffff;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.app-signup-logo {
+  display: block;
+  width: min(132px, 36vw);
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.app-signup-top-spacer {
+  width: 40px;
+  height: 40px;
+}
+
+.app-signup-card {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: clamp(16px, calc(6.56dvh - 23.34px), 32px) 20px clamp(6px, calc(0.82dvh + 1.08px), 8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 32px 32px 0 0;
+  background: rgba(10, 22, 40, 0.5);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.app-signup-card::-webkit-scrollbar {
+  display: none;
+}
+
+.app-signup-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.app-signup-title {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 500;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.app-signup-title span {
+  font-weight: 700;
+}
+
+.app-signup-lead {
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 140%;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.8);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.app-signup-fields {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, calc(3.69dvh - 14.13px), 17px);
+  flex-shrink: 0;
+  margin-top: clamp(14px, calc(10.65dvh - 49.93px), 40px);
+}
+
+.app-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: clamp(8px, calc(2.46dvh - 6.75px), 14px) 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 143px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.app-field-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+.app-field-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.app-field input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #ffffff;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.app-field input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.app-field-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+}
+
+.app-signup-forgot {
+  display: flex;
+  justify-content: flex-end;
+  margin: clamp(10px, calc(9.02dvh - 44.1px), 32px) 0 0;
+  flex-shrink: 0;
+}
+
+.app-signup-forgot a {
+  color: #ffffff;
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.app-signup-agree {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: clamp(10px, calc(9.02dvh - 44.1px), 32px) 0 0;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.app-signup-agree input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.app-signup-agree a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.app-signup-continue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+  margin-top: clamp(8px, calc(4.92dvh - 21.51px), 20px);
+  padding: clamp(8px, calc(2.87dvh - 9.21px), 15px) 8px;
+  border: 1.5px solid transparent;
+  border-radius: 143px;
+  background:
+    linear-gradient(rgba(12, 50, 85, 1), rgba(12, 50, 85, 1)) padding-box,
+    linear-gradient(90deg, rgba(254, 174, 53, 1) 0%, rgba(255, 200, 118, 1) 100%) padding-box,
+    linear-gradient(90deg, rgba(0, 0, 0, 1) 0%, rgba(255, 255, 255, 1) 100%) border-box;
+  background:
+    linear-gradient(90deg, rgba(254, 174, 53, 1) 0%, rgba(255, 200, 118, 1) 100%) padding-box,
+    linear-gradient(90deg, rgba(0, 0, 0, 1) 0%, rgba(255, 255, 255, 1) 100%) border-box;
+  color: rgba(12, 50, 85, 1);
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+
+.app-signup-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: clamp(8px, calc(9.84dvh - 51.02px), 32px);
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-signup-or::before,
+.app-signup-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.app-signup-or span {
+  flex-shrink: 0;
+}
+
+.app-signup-social {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  margin-top: clamp(8px, calc(9.84dvh - 51.02px), 32px);
+  flex-shrink: 0;
+}
+
+.app-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: clamp(8px, calc(2.46dvh - 6.75px), 14px) clamp(14px, 6vw, 30px);
+  border-radius: 103px;
+  border: 1px solid transparent;
+  color: #ffffff;
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.app-social svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.app-social-apple {
+  background:
+    linear-gradient(180deg, rgba(60, 60, 60, 1) 0%, rgba(25, 23, 25, 1) 100%) padding-box,
+    linear-gradient(180deg, rgba(25, 23, 25, 1) 0%, rgba(103, 103, 103, 1) 100%) border-box;
+}
+
+.app-social-google {
+  background:
+    linear-gradient(180deg, rgba(254, 104, 87, 1) 0%, rgba(255, 51, 28, 1) 100%) padding-box,
+    linear-gradient(180deg, rgba(255, 57, 34, 1) 0%, rgba(254, 104, 87, 1) 100%) border-box;
+}
+
+.app-signup-footer {
+  margin: clamp(8px, calc(13.11dvh - 70.69px), 40px) 0 0;
+  padding: 0;
+  text-align: center;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.app-signup-footer a {
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 380px) {
+  .app-signup-card {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .app-signup-title {
+    font-size: 24px;
+  }
+
+  .app-signup-lead {
+    font-size: 12px;
+  }
+
+  .app-social {
+    font-size: 11px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (max-height: 720px) {
+  .app-signup-logo {
+    width: min(112px, 32vw);
+  }
+
+  .app-signup-title {
+    font-size: 22px;
+  }
+}
+
+@media (max-height: 560px) {
+  .app-signup-head {
+    gap: 2px;
+  }
+
+  .app-signup-lead {
+    display: none;
+  }
+}

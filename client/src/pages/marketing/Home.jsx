@@ -90,7 +90,7 @@ export default function Home() {
                 </a>
               ))}
             </nav>
-            <Link className="mkt-btn mkt-btn-navy" to="/login">
+            <Link className="mkt-btn mkt-btn-navy" to="/app">
               Get Started
             </Link>
           </div>
@@ -311,8 +311,8 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="mkt-footer">
-        <section className="mkt-brand-cta" id="get-started">
+      <section className="mkt-cta-wrap" id="get-started">
+        <div className="mkt-brand-cta">
           <div className="mkt-brand-cta-inner">
             <p className="mkt-brand-cta-name">MY30A HOST</p>
             <p className="mkt-brand-cta-tag">The effortless way to experience 30A.</p>
@@ -320,8 +320,10 @@ export default function Home() {
               Explore 30A
             </Link>
           </div>
-        </section>
+        </div>
+      </section>
 
+      <footer className="mkt-footer">
         <div className="mkt-footer-main">
           <div className="mkt-footer-inner">
             <div className="mkt-footer-brand">
