@@ -611,20 +611,25 @@
 
 @media (max-width: 1024px) {
   .mkt-vitoria {
-    padding: 48px 0 72px;
+    padding: 40px 0 64px;
+    overflow: visible;
   }
 
   .mkt-vitoria-inner {
     display: flex;
     flex-direction: column;
     aspect-ratio: auto;
-    padding: 0 24px;
+    min-height: 0;
+    height: auto;
+    padding: 0 20px;
   }
 
   .mkt-vitoria-media {
     position: relative;
     top: auto;
     left: auto;
+    right: auto;
+    bottom: auto;
     width: 100%;
     height: auto;
     aspect-ratio: 1209 / 913;
@@ -632,37 +637,41 @@
   }
 
   .mkt-vitoria-accent {
-    width: 100px;
+    width: 80px;
   }
 
   .mkt-vitoria-card {
     position: relative;
     top: auto;
     left: auto;
+    right: auto;
+    bottom: auto;
     order: 2;
-    margin: -80px 0 0;
-    width: calc(100% - 32px);
-    max-width: 547px;
+    margin: -56px auto 0;
+    width: 100%;
+    max-width: 100%;
     height: auto;
     min-height: 0;
-    padding: 32px 28px 36px;
+    max-height: none;
+    padding: 28px 22px 32px;
     overflow: visible;
   }
 
   .mkt-vitoria-title {
-    font-size: clamp(36px, 7vw, 52px);
+    font-size: clamp(32px, 7vw, 48px);
+    line-height: 1.2;
   }
 
   .mkt-vitoria-lead {
-    font-size: 17px;
-    line-height: 28px;
+    font-size: 16px;
+    line-height: 26px;
     max-width: 100%;
     color: rgba(10, 22, 40, 0.92);
   }
 
   .mkt-vitoria-body {
-    font-size: 16px;
-    line-height: 27px;
+    font-size: 15px;
+    line-height: 26px;
     max-width: 100%;
     flex: none;
     overflow: visible;
@@ -672,19 +681,29 @@
   .mkt-vitoria-btn {
     width: 150px;
     height: 50px;
+    margin-top: 8px;
     font-size: 14px;
   }
 }
 
 @media (max-width: 640px) {
+  .mkt-vitoria {
+    padding: 32px 0 48px;
+  }
+
+  .mkt-vitoria-inner {
+    padding: 0 16px;
+  }
+
   .mkt-vitoria-card {
-    margin-top: -48px;
+    margin-top: -40px;
     width: 100%;
-    padding: 24px 20px 28px;
+    padding: 22px 18px 26px;
   }
 
   .mkt-vitoria-title {
-    font-size: 34px;
+    font-size: clamp(28px, 8vw, 34px);
+    margin-bottom: 14px;
   }
 }
 
@@ -856,24 +875,31 @@
 
 @media (max-width: 1024px) {
   .mkt-arrive {
-    padding: 72px 0 96px;
+    padding: 56px 0 72px;
+    overflow: visible;
   }
 
   .mkt-arrive-head {
-    margin-bottom: 48px;
+    margin-bottom: 32px;
+    padding: 0 20px;
   }
 
   .mkt-arrive-stage {
     display: flex;
     flex-direction: column;
+    aspect-ratio: auto;
     min-height: 0;
-    padding: 0 24px;
+    height: auto;
+    margin-bottom: 48px;
+    padding: 0 20px;
   }
 
   .mkt-arrive-media {
     position: relative;
     top: auto;
     left: auto;
+    right: auto;
+    bottom: auto;
     width: 100%;
     height: auto;
     aspect-ratio: 1128 / 824;
@@ -883,21 +909,25 @@
     position: relative;
     top: auto;
     left: auto;
-    margin: -72px 0 0 auto;
-    width: calc(100% - 24px);
-    max-width: 547px;
+    right: auto;
+    bottom: auto;
+    margin: -48px 0 0;
+    width: 100%;
+    max-width: 100%;
     min-height: 0;
-    padding: 36px 28px 40px;
+    padding: 28px 22px 32px;
   }
 
   .mkt-arrive-card-title {
-    font-size: 28px;
+    font-size: clamp(24px, 5vw, 28px);
+    max-width: none;
   }
 
   .mkt-arrive-card-lead,
   .mkt-arrive-card-price {
     font-size: 16px;
-    line-height: 28px;
+    line-height: 26px;
+    max-width: none;
   }
 
   .mkt-arrive-card-body {
@@ -906,21 +936,35 @@
   }
 
   .mkt-arrive-card-btn {
-    min-width: 195px;
-    height: 50px;
+    min-width: 160px;
+    height: 48px;
     font-size: 14px;
   }
 }
 
 @media (max-width: 640px) {
+  .mkt-arrive {
+    padding: 40px 0 56px;
+  }
+
+  .mkt-arrive-stage {
+    padding: 0 16px;
+    margin-bottom: 40px;
+  }
+
   .mkt-arrive-card {
-    margin-top: -48px;
+    margin-top: -36px;
     width: 100%;
-    padding: 28px 20px 32px;
+    padding: 24px 18px 28px;
   }
 
   .mkt-arrive-title {
-    font-size: 36px;
+    font-size: clamp(30px, 8vw, 36px);
+  }
+
+  .mkt-arrive-sub {
+    font-size: 15px;
+    line-height: 24px;
   }
 }
 
@@ -1070,14 +1114,18 @@
     display: flex;
     flex-direction: column;
     aspect-ratio: auto;
-    margin-top: 72px;
-    padding: 0 24px;
+    min-height: 0;
+    height: auto;
+    margin-top: 48px;
+    padding: 0 20px;
   }
 
   .mkt-transfer-media {
     position: relative;
     top: auto;
     left: auto;
+    right: auto;
+    bottom: auto;
     width: 100%;
     height: auto;
     aspect-ratio: 1128 / 629;
@@ -1092,23 +1140,25 @@
     position: relative;
     top: auto;
     left: auto;
+    right: auto;
+    bottom: auto;
     order: 2;
-    margin: -72px auto 0 0;
-    width: calc(100% - 24px);
-    max-width: 553px;
+    margin: -48px 0 0;
+    width: 100%;
+    max-width: 100%;
     height: auto;
-    padding: 36px 28px 40px;
+    padding: 28px 22px 32px;
     overflow: visible;
   }
 
   .mkt-transfer-card-title {
-    font-size: 36px;
+    font-size: clamp(28px, 6vw, 36px);
   }
 
   .mkt-transfer-card-lead,
   .mkt-transfer-card-price {
     font-size: 16px;
-    line-height: 28px;
+    line-height: 26px;
   }
 
   .mkt-transfer-card-body {
@@ -1118,21 +1168,26 @@
   }
 
   .mkt-transfer-card-btn {
-    min-width: 184px;
-    height: 50px;
+    min-width: 160px;
+    height: 48px;
     font-size: 14px;
   }
 }
 
 @media (max-width: 640px) {
+  .mkt-transfer-stage {
+    margin-top: 32px;
+    padding: 0 16px;
+  }
+
   .mkt-transfer-card {
-    margin-top: -48px;
+    margin-top: -36px;
     width: 100%;
-    padding: 28px 20px 32px;
+    padding: 24px 18px 28px;
   }
 
   .mkt-transfer-card-title {
-    font-size: 32px;
+    font-size: clamp(26px, 7vw, 32px);
   }
 }
 
@@ -1301,51 +1356,65 @@
 
 @media (max-width: 1024px) {
   .mkt-need {
-    padding: 72px 0 88px;
+    padding: 56px 0 64px;
+    overflow: visible;
   }
 
   .mkt-need-inner {
     flex-direction: column;
     align-items: stretch;
-    padding: 0 0 0 24px;
+    padding: 0 0 0 16px;
     min-height: 0;
-    gap: 40px;
+    gap: 28px;
   }
 
   .mkt-need-copy {
     flex: none;
+    flex-basis: auto;
     max-width: 100%;
-    padding-right: 24px;
+    padding-right: 16px;
   }
 
   .mkt-need-title {
-    font-size: clamp(36px, 7vw, 52px);
+    font-size: clamp(32px, 7vw, 48px);
     line-height: 1.2;
   }
 
   .mkt-need-body {
     max-width: 100%;
+    font-size: 15px;
+    line-height: 26px;
   }
 
   .mkt-need-cards {
     overflow-x: auto;
     scrollbar-width: thin;
-    padding-right: 24px;
+    padding-right: 16px;
     -webkit-overflow-scrolling: touch;
   }
 
   .mkt-need-card {
-    flex-basis: 300px;
-    width: 300px;
-    height: 351px;
+    flex-basis: 260px;
+    width: 260px;
+    height: 304px;
+    flex-shrink: 0;
   }
 }
 
 @media (max-width: 640px) {
+  .mkt-need {
+    padding: 40px 0 48px;
+  }
+
+  .mkt-need-inner {
+    padding-left: 16px;
+    gap: 24px;
+  }
+
   .mkt-need-card {
-    flex-basis: 260px;
-    width: 260px;
-    height: 304px;
+    flex-basis: 240px;
+    width: 240px;
+    height: 280px;
   }
 }
 
@@ -1825,7 +1894,7 @@
   text-decoration: underline;
 }
 
-@media (max-width: 1600px) {
+@media (max-width: 1600px) and (min-width: 1025px) {
   .mkt-coastal-card {
     left: 40%;
     bottom: -160px;
@@ -1913,25 +1982,37 @@
 }
 
 @media (max-width: 1024px) {
+  .mkt-coastal {
+    overflow: visible;
+  }
+
+  .mkt-coastal-stage {
+    overflow: visible;
+  }
+
   .mkt-coastal-media {
+    position: relative;
     aspect-ratio: 16 / 10;
-    min-height: 320px;
+    min-height: 220px;
+    max-height: 420px;
   }
 
   .mkt-coastal-card {
     position: relative;
     left: auto;
+    right: auto;
+    top: auto;
     bottom: auto;
-    width: calc(100% - 48px);
+    width: calc(100% - 40px);
     max-width: none;
-    margin: -72px 24px 0;
-    padding: 36px 32px 40px;
+    margin: -48px auto 0;
+    padding: 28px 22px 32px;
   }
 
   .mkt-coastal-title {
-    font-size: clamp(32px, 6vw, 44px);
+    font-size: clamp(28px, 6vw, 40px);
     line-height: 1.25;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
   }
 
   .mkt-coastal-title-lead {
@@ -1939,13 +2020,13 @@
   }
 
   .mkt-ask {
-    padding: 56px 0 180px;
+    padding: 48px 0 160px;
   }
 
   .mkt-ask-inner {
     grid-template-columns: 1fr;
-    gap: 48px;
-    padding: 0 24px;
+    gap: 40px;
+    padding: 0 20px;
   }
 
   .mkt-ask-copy {
@@ -1953,7 +2034,8 @@
   }
 
   .mkt-ask-title {
-    font-size: clamp(36px, 7vw, 52px);
+    font-size: clamp(32px, 7vw, 48px);
+    margin-bottom: 24px;
   }
 
   .mkt-ask-list {
@@ -1962,22 +2044,22 @@
   }
 
   .mkt-ask-q {
-    font-size: 24px;
+    font-size: clamp(20px, 4.5vw, 24px);
   }
 
   .mkt-brand-cta {
     width: calc(100% - 32px);
     min-height: 0;
-    margin-top: -120px;
+    margin-top: -100px;
     padding: 48px 24px 56px;
   }
 
   .mkt-brand-cta-name {
-    font-size: clamp(36px, 8vw, 48px);
+    font-size: clamp(32px, 8vw, 48px);
   }
 
   .mkt-brand-cta-tag {
-    font-size: clamp(22px, 5vw, 32px);
+    font-size: clamp(20px, 5vw, 32px);
     margin-bottom: 28px;
   }
 
@@ -1988,13 +2070,13 @@
   .mkt-footer-inner {
     grid-template-columns: 1fr;
     gap: 40px;
-    padding: 0 24px;
+    padding: 0 20px;
   }
 
   .mkt-footer-bar-inner {
     flex-direction: column;
     align-items: flex-start;
-    padding: 0 24px;
+    padding: 0 20px;
     gap: 8px;
   }
 }
@@ -2002,20 +2084,29 @@
 @media (max-width: 640px) {
   .mkt-coastal-media {
     aspect-ratio: 4 / 3;
-    min-height: 260px;
-    max-height: none;
+    min-height: 200px;
+    max-height: 320px;
   }
 
   .mkt-coastal-card {
     width: calc(100% - 32px);
-    margin: -48px 16px 0;
-    padding: 28px 24px 32px;
+    margin: -36px auto 0;
+    padding: 24px 18px 28px;
   }
 
   .mkt-coastal-title {
-    font-size: 30px;
-    line-height: 1.3;
-    margin-bottom: 24px;
+    font-size: clamp(26px, 7.5vw, 32px);
+    line-height: 1.25;
+    margin-bottom: 18px;
+  }
+
+  .mkt-ask {
+    padding: 36px 0 140px;
+  }
+
+  .mkt-ask-inner {
+    padding: 0 16px;
+    gap: 32px;
   }
 }
 
@@ -2044,8 +2135,8 @@
   padding-bottom: max(18px, env(safe-area-inset-bottom));
 }
 
-/* MacBook / laptop 1280–1440: keep coastal title on 2 lines without overflow */
-@media (max-width: 1440px) {
+/* MacBook / laptop only — do NOT apply under 1025px (breaks mobile stack) */
+@media (max-width: 1440px) and (min-width: 1025px) {
   .mkt-coastal-card {
     left: 40%;
     width: min(860px, 56%);
@@ -2073,7 +2164,7 @@
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1280px) and (min-width: 1025px) {
   .mkt-coastal-title-lead {
     white-space: normal;
   }
@@ -2103,16 +2194,6 @@
   .mkt-hero-bottom {
     position: relative;
     margin-top: min(42vh, 420px);
-  }
-
-  .mkt-vitoria-inner {
-    aspect-ratio: auto;
-    min-height: 0;
-  }
-
-  .mkt-arrive-stage,
-  .mkt-transfer-stage {
-    aspect-ratio: auto;
   }
 
   .mkt-brand-cta {
@@ -2152,13 +2233,6 @@
 
   .mkt-stay-title {
     font-size: clamp(32px, 8.5vw, 40px);
-  }
-
-  .mkt-vitoria,
-  .mkt-arrive,
-  .mkt-need {
-    padding-left: 0;
-    padding-right: 0;
   }
 
   .mkt-ask {
