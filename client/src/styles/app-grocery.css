@@ -1,0 +1,722 @@
+/* Order Groceries flow (Figma 440 wide) */
+
+.app-groc {
+  --xfer-footer-h: 236px;
+}
+
+.app-groc-tall {
+  --xfer-footer-h: 270px;
+}
+
+.app-groc-tip {
+  --xfer-footer-h: 250px;
+}
+
+.app-groc-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.app-xfer-h.is-20 {
+  font-size: 20px;
+  line-height: 120%;
+}
+
+.app-xfer-section.is-gap-8 {
+  gap: 8px;
+}
+
+.app-groc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Package card (Frame 2147227332: 100px, padding 14 12, radius 12) */
+.app-groc-pkg {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-height: 100px;
+  padding: 14px 12px;
+  border: 1px solid var(--xfer-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  text-align: left;
+  color: var(--xfer-ink);
+}
+
+.app-groc-pkg.is-on {
+  border-color: transparent;
+  background: rgba(255, 247, 234, 0.95);
+}
+
+.app-groc-pkg-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.app-groc-pkg-l {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-groc-bag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.app-groc-pkg-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.app-groc-pkg-text strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 100%;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+  color: var(--xfer-ink);
+}
+
+.app-groc-pkg-text small {
+  font-family: var(--app-body);
+  font-size: 12px;
+  line-height: 120%;
+  color: var(--xfer-muted);
+}
+
+.app-groc-pkg-price {
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 120%;
+  color: var(--xfer-ink);
+}
+
+.app-groc-pkg-price b {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.app-xfer-cb.is-lg {
+  width: 24px;
+  height: 24px;
+  border-color: #000000;
+  border-radius: 5px;
+}
+
+.app-xfer-cb.is-lg.is-on {
+  border-color: transparent;
+}
+
+/* Stocking option card */
+.app-groc-opt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 96px;
+  padding: 20px 16px;
+  border: 1px solid var(--xfer-line);
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: left;
+  color: var(--xfer-ink);
+}
+
+.app-groc-opt.is-on {
+  border-color: transparent;
+  background: #fff7ea;
+}
+
+.app-groc-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-groc-opt-text strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 110%;
+  letter-spacing: -0.01em;
+  color: var(--xfer-ink);
+}
+
+.app-groc-opt-text small {
+  font-family: var(--app-body);
+  font-size: 14px;
+  line-height: 120%;
+  color: var(--xfer-muted);
+}
+
+/* Add-on row (Frame 2147230471: 71px, padding 16, radius 12) */
+.app-groc-addon {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 71px;
+  padding: 16px;
+  border: 1px solid var(--xfer-line);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.app-groc-addon-l {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-groc-addon-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 5px;
+  border-radius: 6px;
+}
+
+.app-groc-addon-ico.is-green {
+  border-radius: 4px;
+  background: #dfffe2;
+  color: #006a12;
+}
+
+.app-groc-addon-ico.is-blue {
+  background: #eaf2f7;
+  color: var(--xfer-blue);
+}
+
+.app-groc-addon-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-groc-addon-text strong {
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 120%;
+  color: var(--xfer-ink);
+}
+
+.app-groc-addon-text small {
+  font-family: var(--app-body);
+  font-size: 12px;
+  line-height: 120%;
+  color: #535353;
+}
+
+.app-groc-addon-r {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.app-groc-addon-r b {
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 120%;
+  color: var(--xfer-ink);
+}
+
+/* Toggle (Frame 2147230655: 44×24, radius 24, 16px knob) */
+.app-groc-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: #efefef;
+  transition: background 0.15s ease;
+}
+
+.app-groc-toggle i {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #feae35 0%, #ffc876 100%);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.app-groc-toggle.is-on {
+  background: linear-gradient(180deg, #ffc876 0%, #feae35 100%);
+}
+
+.app-groc-toggle.is-on i {
+  transform: translateX(20px);
+  background: #ffffff;
+}
+
+/* Info boxes */
+.app-groc-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--xfer-line);
+  border-radius: 12px;
+  background: #f1f1f1;
+  font-family: var(--app-body);
+  font-size: 12px;
+  line-height: 142%;
+  color: #0c3255;
+}
+
+.app-groc-info > svg {
+  flex-shrink: 0;
+  color: #0c3255;
+}
+
+.app-groc-info.is-lg {
+  gap: 10px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 130%;
+}
+
+.app-groc-info.is-done span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-groc-info.is-done strong {
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--xfer-ink);
+}
+
+.app-groc-info.is-done small {
+  font-size: 13px;
+  color: var(--xfer-muted);
+}
+
+/* Footer pieces */
+.app-groc-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-groc-price {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2px;
+}
+
+.app-groc-price span {
+  font-family: var(--app-body);
+  font-size: 16px;
+  line-height: 130%;
+  letter-spacing: -0.01em;
+  color: #535353;
+}
+
+.app-groc-price strong {
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 130%;
+  letter-spacing: -0.01em;
+  color: var(--xfer-ink);
+}
+
+.app-groc-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-groc-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-groc-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-groc-kv.is-right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.app-groc-kv small {
+  font-family: var(--app-body);
+  font-size: 10px;
+  line-height: 110%;
+  letter-spacing: -0.01em;
+  color: var(--xfer-faint);
+}
+
+.app-groc-kv strong {
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 110%;
+  letter-spacing: -0.01em;
+  color: #212d3d;
+}
+
+.app-groc-hr {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #cccccc;
+}
+
+/* —— Step 3: send your list —— */
+
+.app-groc-way {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--xfer-line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--xfer-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-groc-way-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #feae35 0%, #ffc876 100%);
+  color: #ffffff;
+}
+
+.app-groc-way-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.app-groc-way-text strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 110%;
+  letter-spacing: -0.01em;
+}
+
+.app-groc-way-text em {
+  font-family: var(--app-body);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 130%;
+  color: var(--xfer-muted);
+}
+
+.app-groc-way-text em b {
+  font-weight: 700;
+  color: var(--xfer-muted);
+}
+
+.app-groc-howto {
+  gap: 12px;
+  padding: 20px;
+}
+
+.app-groc-howto h3 {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 120%;
+  letter-spacing: -0.01em;
+  color: var(--xfer-ink);
+}
+
+.app-xfer-policy.is-lg {
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.app-xfer-policy.is-lg li {
+  font-size: 15px;
+  line-height: 130%;
+}
+
+.app-xfer-policy.is-lg li::before {
+  top: 7px;
+}
+
+.app-xfer-policy li b {
+  font-weight: 700;
+  color: var(--xfer-ink);
+}
+
+/* —— Tracker —— */
+
+.app-groc-ride-pkg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-groc-ride-pkg .app-groc-pkg-text strong {
+  font-size: 18px;
+}
+
+.app-groc-ride-pkg .app-groc-pkg-text small {
+  font-size: 13px;
+}
+
+.app-xfer-ride-art.is-groc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 84px;
+  line-height: 1;
+  background:
+    linear-gradient(90deg, #ffffff 0%, rgba(255, 255, 255, 0) 30%),
+    linear-gradient(135deg, #fff9ea 0%, #e7f3ea 55%, #fff2d6 100%);
+}
+
+.app-groc-track .app-xfer-ride-body {
+  padding-right: 36%;
+}
+
+.app-groc-track .is-pending .app-xfer-tl-mark {
+  top: 14px;
+  bottom: auto;
+}
+
+.app-groc-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(10, 22, 40, 0.06);
+}
+
+.app-groc-sub-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.app-groc-sub-msg p {
+  margin: 0;
+  font-family: var(--app-body);
+  font-size: 14px;
+  line-height: 135%;
+  color: var(--xfer-ink);
+}
+
+.app-groc-avatar {
+  display: block;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff url('/victoria.png') -8px -1px / 134px auto no-repeat;
+}
+
+.app-groc-avatar.is-lg {
+  width: 48px;
+  height: 48px;
+  background-size: 202px auto;
+  background-position: -12px -2px;
+}
+
+.app-groc-sub-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.app-groc-sub-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #efefef;
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--xfer-ink);
+}
+
+.app-groc-sub-actions .is-ok {
+  color: var(--xfer-green);
+}
+
+.app-groc-sub-actions .is-no {
+  color: #e5341a;
+}
+
+.app-groc-sub-done {
+  margin: 0;
+  font-family: var(--app-body);
+  font-size: 14px;
+  color: var(--xfer-green);
+}
+
+.app-groc-sub-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdecec;
+  font-family: var(--app-body);
+  font-size: 13px;
+  line-height: 130%;
+  color: #d93025;
+}
+
+.app-groc-sub-warn > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.app-groc-msgs {
+  gap: 12px;
+}
+
+.app-groc-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.app-groc-msg p {
+  margin: 0;
+  font-family: var(--app-body);
+  font-size: 15px;
+  line-height: 135%;
+  color: var(--xfer-ink);
+}
+
+.app-groc-msg-time {
+  align-self: flex-end;
+  font-family: var(--app-body);
+  font-size: 12px;
+  color: var(--xfer-faint);
+}
+
+/* —— Kitchen ready / tip —— */
+
+.app-groc-sum {
+  gap: 16px;
+  padding: 20px;
+}
+
+.app-groc-sum h3 {
+  margin: 0 0 4px;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 120%;
+  color: var(--xfer-ink);
+}
+
+.app-groc-sum-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-groc-sum-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-groc-sum-row strong {
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 120%;
+  color: var(--xfer-ink);
+}
+
+.app-groc-sum-row small {
+  font-family: var(--app-body);
+  font-size: 13px;
+  line-height: 120%;
+  color: var(--xfer-muted);
+}
+
+.app-groc-sum-row b {
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--xfer-ink);
+}
+
+.app-groc-sum-row.is-total {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--xfer-line);
+}
+
+.app-groc-sum-row.is-total strong,
+.app-groc-sum-row.is-total b {
+  font-weight: 700;
+}
+
+.app-groc-sum .app-groc-info {
+  margin-top: 4px;
+}
+
+@media (max-width: 380px) {
+  .app-groc-way-text strong {
+    font-size: 16px;
+  }
+}

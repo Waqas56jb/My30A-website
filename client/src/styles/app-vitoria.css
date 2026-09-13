@@ -1,0 +1,318 @@
+/* Vitoria chat — Figma 440×956 */
+
+.app-vitoria {
+  background: #ffffff;
+}
+
+/* Ellipse 128: 481×288, rgba(83,235,255,.3), blur */
+.app-vitoria-glow {
+  position: absolute;
+  left: 50%;
+  bottom: -100px;
+  z-index: 0;
+  width: 481px;
+  height: 288px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(83, 235, 255, 0.3);
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+/* Rectangle 4624: 440×185 @ top -28, radius 0 0 20 20 */
+.app-vitoria-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: max(calc(env(safe-area-inset-top, 0px) + 20px), 48px) 20px 36px;
+  background:
+    linear-gradient(114.95deg, #ffffff 30.39%, rgba(255, 255, 255, 0.2) 81.58%),
+    url('/image2.png') center 38% / cover no-repeat;
+  border-radius: 0 0 20px 20px;
+}
+
+.app-vitoria-who {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-vitoria-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin-left: -6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0a1628;
+}
+
+.app-vitoria-avatar {
+  display: block;
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  border: 1px solid #eeeeee;
+  border-radius: 64px;
+  background: #ffffff url('/victoria.png') -12px -2px / 210px auto no-repeat;
+}
+
+.app-vitoria-avatar.is-dark {
+  background-color: #0a1628;
+}
+
+.app-vitoria-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 3px;
+}
+
+.app-vitoria-name h1 {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 100%;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+  color: #0a1628;
+}
+
+.app-vitoria-name p {
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  color: #2d2d2d;
+}
+
+.app-home-bell-soft {
+  background: #f9f9f9;
+  border-color: #eeeeee;
+}
+
+/* —— Thread / empty state —— */
+
+.app-vitoria-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 40px 20px 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.app-vitoria-body::-webkit-scrollbar {
+  display: none;
+}
+
+.app-vitoria-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.app-vitoria-empty img {
+  display: block;
+  width: 209px;
+  max-width: 100%;
+  height: auto;
+}
+
+.app-vitoria-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Frame 2147228431: avatar + bubbles, align-items flex-end, gap 12 */
+.app-vitoria-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.app-vitoria-group.is-user {
+  justify-content: flex-end;
+}
+
+.app-vitoria-bubbles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-vitoria-group.is-user .app-vitoria-bubbles {
+  align-items: flex-end;
+}
+
+.app-vitoria-bubble {
+  margin: 0;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #daf8ff;
+  font-family: 'Inter', var(--app-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 127%;
+  letter-spacing: -0.03em;
+  color: #0a1628;
+}
+
+.app-vitoria-group.is-user .app-vitoria-bubble {
+  background: #0a1628;
+  color: #ffffff;
+}
+
+/* —— Dock: chips + input (Frame 2147227326, gap 12) —— */
+
+.app-vitoria-dock {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 0 20px max(30px, env(safe-area-inset-bottom, 0px));
+}
+
+.app-vitoria-chips {
+  display: flex;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 0 20px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.app-vitoria-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.app-vitoria-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 24px;
+  padding: 6px 10px;
+  border: 1px solid #eeeeee;
+  border-radius: 143px;
+  background: #e9e9e9;
+  font-family: var(--app-body);
+  font-weight: 300;
+  font-size: 10px;
+  line-height: 100%;
+  color: #0a1628;
+  white-space: nowrap;
+}
+
+/* Frame 2147227321: 400×50, padding 8 8 8 16, radius 32 */
+.app-vitoria-input {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  height: 50px;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid #eeeeee;
+  border-radius: 32px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(16, 16, 16, 0.05);
+}
+
+.app-vitoria-input-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  color: #0a1628;
+  cursor: text;
+}
+
+.app-vitoria-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.01em;
+  color: #0a1628;
+}
+
+.app-vitoria-input input::placeholder {
+  color: #8a8a8a;
+}
+
+.app-vitoria-input-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-vitoria-attach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0a1628;
+}
+
+.app-vitoria-mic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 40px;
+  background: linear-gradient(180deg, #1a6ebb -8.82%, #0c4355 135.29%);
+  box-shadow: 0 4px 20px rgba(96, 96, 96, 0.25);
+  color: #ffffff;
+}
+
+@media (max-width: 380px) {
+  .app-vitoria-head,
+  .app-vitoria-body,
+  .app-vitoria-dock {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .app-vitoria-chips {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+}

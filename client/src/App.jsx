@@ -9,6 +9,21 @@ import Splash from './pages/app/Splash.jsx'
 import Signup from './pages/app/Signup.jsx'
 import AppLogin from './pages/app/AppLogin.jsx'
 import AppHome from './pages/app/AppHome.jsx'
+import AppServices from './pages/app/AppServices.jsx'
+import AppVitoria from './pages/app/AppVitoria.jsx'
+import TransferBook from './pages/app/transfer/TransferBook.jsx'
+import TransferReview from './pages/app/transfer/TransferReview.jsx'
+import TransferPending from './pages/app/transfer/TransferPending.jsx'
+import TransferPayment from './pages/app/transfer/TransferPayment.jsx'
+import TransferTrack from './pages/app/transfer/TransferTrack.jsx'
+import TransferTip from './pages/app/transfer/TransferTip.jsx'
+import GroceryPackage from './pages/app/grocery/GroceryPackage.jsx'
+import GroceryStocking from './pages/app/grocery/GroceryStocking.jsx'
+import GroceryList from './pages/app/grocery/GroceryList.jsx'
+import GroceryPending from './pages/app/grocery/GroceryPending.jsx'
+import GroceryPayment from './pages/app/grocery/GroceryPayment.jsx'
+import GroceryTrack from './pages/app/grocery/GroceryTrack.jsx'
+import GroceryTip from './pages/app/grocery/GroceryTip.jsx'
 import Trips from './pages/driver/Trips.jsx'
 import Earnings from './pages/driver/Earnings.jsx'
 import Vehicles from './pages/partner/Vehicles.jsx'
@@ -17,6 +32,9 @@ import Orders from './pages/shopper/Orders.jsx'
 import ShopperEarnings from './pages/shopper/Earnings.jsx'
 import './styles/app-guest.css'
 import './styles/app-home.css'
+import './styles/app-vitoria.css'
+import './styles/app-transfer.css'
+import './styles/app-grocery.css'
 
 const PANEL_ROLES = ['driver', 'partner', 'shopper']
 
@@ -115,6 +133,21 @@ function AppRoutes() {
       <Route path="/app/signup" element={<Signup />} />
       <Route path="/app/login" element={<AppLogin />} />
       <Route path="/app/home" element={<AppHome />} />
+      <Route path="/app/services" element={<AppServices />} />
+      <Route path="/app/vitoria" element={<AppVitoria />} />
+      <Route path="/app/transfer" element={<TransferBook />} />
+      <Route path="/app/transfer/review" element={<TransferReview />} />
+      <Route path="/app/transfer/pending" element={<TransferPending />} />
+      <Route path="/app/transfer/payment" element={<TransferPayment />} />
+      <Route path="/app/transfer/track" element={<TransferTrack />} />
+      <Route path="/app/transfer/tip" element={<TransferTip />} />
+      <Route path="/app/grocery" element={<GroceryPackage />} />
+      <Route path="/app/grocery/stocking" element={<GroceryStocking />} />
+      <Route path="/app/grocery/list" element={<GroceryList />} />
+      <Route path="/app/grocery/pending" element={<GroceryPending />} />
+      <Route path="/app/grocery/payment" element={<GroceryPayment />} />
+      <Route path="/app/grocery/track" element={<GroceryTrack />} />
+      <Route path="/app/grocery/tip" element={<GroceryTip />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"

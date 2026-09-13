@@ -1,4 +1,4 @@
-/* Home screen — Figma 440×1317, content column 400 @ left 20 */
+/* Home / tab screens — Figma 440 wide, content column 400 @ left 20 */
 
 .app-home {
   --home-ink: #0a1628;
@@ -6,7 +6,7 @@
   --home-faint: #8a8a8a;
   --home-line: #eeeeee;
   --home-bg: #f6feff;
-  --home-nav-h: 74px;
+  --home-nav-h: 80px;
 
   position: relative;
   display: flex;
@@ -19,7 +19,7 @@
   font-family: var(--app-body);
 }
 
-.app-home button {
+.app-home :where(button) {
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -71,6 +71,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 35px;
   height: 35px;
   padding: 0;
@@ -456,7 +457,157 @@
   color: var(--home-muted);
 }
 
-/* —— Bottom nav —— */
+/* —— Services screen (Figma 440×956) —— */
+
+.app-services-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: max(calc(env(safe-area-inset-top, 0px) + 27px), 56px) 20px 0;
+}
+
+.app-services-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 35px;
+  height: 35px;
+  margin-left: -7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--home-ink);
+}
+
+.app-services-title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 100%;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-transform: capitalize;
+  color: var(--home-ink);
+}
+
+.app-services-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 32px 20px 0;
+}
+
+.app-services-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app-service {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 190px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+}
+
+.app-service-grocery {
+  background:
+    linear-gradient(221.5deg, rgba(235, 245, 250, 0.3) -13.8%, #ebf5fa 75.01%),
+    url('/image3.png') center / cover no-repeat;
+}
+
+.app-service-transfer {
+  background:
+    linear-gradient(221.5deg, rgba(249, 250, 235, 0.3) -13.8%, #f9faeb 75.01%),
+    url('/image4.png') center / cover no-repeat;
+}
+
+.app-service-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.app-service-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 143px;
+  background: #ffffff;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.app-service-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-service-text h3 {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 100%;
+  color: var(--home-ink);
+}
+
+.app-service-text p {
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 120%;
+  color: var(--home-muted);
+}
+
+.app-service-price {
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: -0.01em;
+  color: var(--home-muted);
+}
+
+.app-service-price b {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--home-ink);
+}
+
+.app-service-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 34px;
+  padding: 10px 0;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff;
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 100%;
+  color: var(--home-ink);
+}
+
+/* —— Bottom nav (Frame 1597885911: 440×80, padding 12 20 30, radius 24) —— */
 
 .app-home-nav {
   position: absolute;
@@ -465,13 +616,14 @@
   bottom: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: 1fr 1fr 84px 1fr 1fr;
-  align-items: end;
-  height: calc(var(--home-nav-h) + env(safe-area-inset-bottom, 0px));
-  padding: 0 8px env(safe-area-inset-bottom, 0px);
-  border-radius: 20px 20px 0 0;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px max(30px, env(safe-area-inset-bottom, 0px));
+  border: 1px solid var(--home-line);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
   background: #ffffff;
-  box-shadow: 0 -6px 30px rgba(10, 22, 40, 0.08);
 }
 
 .app-home-nav-item {
@@ -480,49 +632,67 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: var(--home-nav-h);
+  height: 37px;
   font-family: var(--app-title);
   font-weight: 400;
-  font-size: 12px;
-  line-height: 100%;
+  font-size: 11px;
+  line-height: 13px;
+  text-align: center;
   color: var(--home-faint);
   text-decoration: none;
 }
 
-.app-home-nav-item.is-active {
-  font-weight: 600;
-  color: var(--home-ink);
+.app-home-nav-item svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  fill-opacity: 0.4;
 }
 
-.app-home-nav-item.is-active svg {
-  color: #1f5f9b;
-  fill: rgba(31, 95, 155, 0.15);
+.app-home-nav-item.is-plain svg {
+  fill: none;
+}
+
+.app-home-nav-item.is-active {
+  font-weight: 600;
+  color: #0c3255;
 }
 
 .app-home-nav-fab {
+  position: absolute;
+  left: 50%;
+  top: -25px;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: 84px;
-  height: 84px;
-  margin-bottom: calc(var(--home-nav-h) - 54px);
-  padding: 0;
-  border: 4px solid var(--home-bg);
-  border-radius: 50%;
-  background: linear-gradient(180deg, #1a5c8f 0%, #0b3a63 100%);
-  box-shadow: 0 8px 20px rgba(10, 22, 40, 0.25);
+  width: 58px;
+  height: 58px;
+  padding: 12px 0;
+  border: 0;
+  border-radius: 40px;
+  background: linear-gradient(180deg, #0c4355 0%, #1a6ebb 100%);
+  box-shadow: 0 4px 20px rgba(96, 96, 96, 0.25);
   color: #ffffff;
   font-family: var(--app-title);
   font-weight: 600;
-  font-size: 12px;
-  line-height: 100%;
+  font-size: 10px;
+  line-height: 12px;
+  text-decoration: none;
+}
+
+.app-home-nav-fab svg {
+  width: 18px;
+  height: 18px;
 }
 
 @media (max-width: 380px) {
   .app-home-hero,
-  .app-home-body {
+  .app-home-body,
+  .app-services-top,
+  .app-services-body {
     padding-left: 16px;
     padding-right: 16px;
   }
@@ -534,5 +704,10 @@
 
   .app-home-title {
     font-size: 27px;
+  }
+
+  .app-home-nav {
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }

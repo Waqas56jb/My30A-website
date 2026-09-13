@@ -3,17 +3,13 @@ import {
   Bell,
   ChevronRight,
   Clock,
-  Compass,
-  Home,
-  LayoutGrid,
   MapPin,
   Mountain,
-  Sparkles,
   Star,
   Umbrella,
-  User,
   UtensilsCrossed,
 } from 'lucide-react'
+import BottomNav from './BottomNav.jsx'
 
 const ORDERS = [
   {
@@ -23,6 +19,7 @@ const ORDERS = [
     kind: 'Grocery Orders',
     status: 'Shopping at Publix',
     meta: 'Estimated delivery today, 4:00 - 5:00 PM',
+    to: '/app/grocery/track',
   },
   {
     key: 'transfer',
@@ -31,6 +28,7 @@ const ORDERS = [
     kind: 'Airport Transfer',
     status: 'Confirmed',
     meta: 'Oct 18, 3:30 PM · ECP Airport',
+    to: '/app/transfer/track',
   },
 ]
 
@@ -59,6 +57,39 @@ function Rating() {
         <b>5.0</b> <small>(258)</small>
       </span>
     </div>
+  )
+}
+
+function OrderCard({ order }) {
+  const body = (
+    <>
+      <div className="app-home-order-head">
+        <div className="app-home-order-main">
+          <span className="app-home-order-icon" aria-hidden="true">
+            {order.icon}
+          </span>
+          <span className="app-home-order-text">
+            <small>{order.kind}</small>
+            <strong>{order.status}</strong>
+          </span>
+        </div>
+        <ChevronRight size={20} strokeWidth={1.5} aria-hidden="true" />
+      </div>
+      <div className="app-home-order-meta">
+        <Clock size={14} strokeWidth={1.5} aria-hidden="true" />
+        <span>{order.meta}</span>
+      </div>
+    </>
+  )
+  const cls = `app-home-order app-home-order-${order.tone}`
+  return order.to ? (
+    <Link to={order.to} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" className={cls}>
+      {body}
+    </button>
   )
 }
 
@@ -102,35 +133,14 @@ export default function AppHome() {
                 <h2 className="app-home-h2">Your Active Orders</h2>
                 <div className="app-home-orders">
                   {ORDERS.map((o) => (
-                    <button
-                      key={o.key}
-                      type="button"
-                      className={`app-home-order app-home-order-${o.tone}`}
-                    >
-                      <div className="app-home-order-head">
-                        <div className="app-home-order-main">
-                          <span className="app-home-order-icon" aria-hidden="true">
-                            {o.icon}
-                          </span>
-                          <span className="app-home-order-text">
-                            <small>{o.kind}</small>
-                            <strong>{o.status}</strong>
-                          </span>
-                        </div>
-                        <ChevronRight size={20} strokeWidth={1.5} aria-hidden="true" />
-                      </div>
-                      <div className="app-home-order-meta">
-                        <Clock size={14} strokeWidth={1.5} aria-hidden="true" />
-                        <span>{o.meta}</span>
-                      </div>
-                    </button>
+                    <OrderCard key={o.key} order={o} />
                   ))}
                 </div>
               </section>
 
-              <button type="button" className="app-home-vitoria" aria-label="Ask Vitoria">
+              <Link to="/app/vitoria" className="app-home-vitoria" aria-label="Ask Vitoria">
                 <img src="/victoria.png" alt="" width={400} height={132} />
-              </button>
+              </Link>
 
               <section className="app-home-section">
                 <div className="app-home-section-head">
@@ -185,28 +195,7 @@ export default function AppHome() {
             </main>
           </div>
 
-          <nav className="app-home-nav" aria-label="Primary">
-            <Link to="/app/home" className="app-home-nav-item is-active" aria-current="page">
-              <Home size={22} strokeWidth={1.8} aria-hidden="true" />
-              <span>Home</span>
-            </Link>
-            <a href="#services" className="app-home-nav-item">
-              <LayoutGrid size={22} strokeWidth={1.8} aria-hidden="true" />
-              <span>Services</span>
-            </a>
-            <button type="button" className="app-home-nav-fab" aria-label="Vitoria">
-              <Sparkles size={22} strokeWidth={1.8} aria-hidden="true" />
-              <span>Vitoria</span>
-            </button>
-            <a href="#profile" className="app-home-nav-item">
-              <User size={22} strokeWidth={1.8} aria-hidden="true" />
-              <span>Profile</span>
-            </a>
-            <a href="#explore" className="app-home-nav-item">
-              <Compass size={22} strokeWidth={1.8} aria-hidden="true" />
-              <span>Explore</span>
-            </a>
-          </nav>
+          <BottomNav active="home" />
         </div>
       </div>
     </div>
