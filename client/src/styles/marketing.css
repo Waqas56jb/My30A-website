@@ -2475,6 +2475,49 @@
   }
 }
 
+/* "Your stay" gallery — swipeable strip on tablets, landscape phones and phones.
+   The gallery itself scrolls (with snap points); the section and its intro stay put. */
+@media (max-width: 1100px) {
+  .mkt-stay {
+    overflow: hidden;
+  }
+
+  .mkt-stay-gallery {
+    --stay-bleed: 0px;
+    width: auto;
+    height: auto;
+    margin-left: 0;
+    padding: 0 32px 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 32px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .mkt-stay-gallery::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mkt-stay-shot {
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .mkt-stay {
+    overflow: hidden;
+  }
+
+  .mkt-stay-gallery {
+    margin-left: 0;
+    padding: 0 20px 6px;
+    scroll-padding-left: 20px;
+  }
+}
+
 /* Large desktop / iMac */
 @media (min-width: 1920px) {
   .mkt-footer-inner,
