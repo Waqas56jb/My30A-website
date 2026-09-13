@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { errorText, guest, rememberedName } from '../../lib/guestApi.js'
 import {
   IconArrowLeft,
   IconMail,
@@ -10,18 +12,42 @@ import {
   IconGoogle,
 } from './AuthIcons.jsx'
 
-const LOREM =
-  'Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem'
+const LEAD =
+  'Log in to see your stay, track your airport transfer and grocery orders, and chat with Vitoria.'
 
 export default function AppLogin() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { session, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const name = rememberedName() || 'Guest'
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
-    navigate('/app/home')
+    setError('')
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password.')
+      return
+    }
+    setBusy(true)
+    try {
+      await guest.login({ email: email.trim(), password })
+      // AuthContext picks up the new session asynchronously (onAuthStateChange); the
+      // redirect below fires once it does, matching the staff Login.jsx pattern.
+    } catch (err) {
+      setError(err?.status === 401 ? 'Invalid email or password.' : errorText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!loading && session) {
+    const from = location.state?.from
+    return <Navigate to={from && from.startsWith('/app/') ? from : '/app/home'} replace />
   }
 
   return (
@@ -52,9 +78,9 @@ export default function AppLogin() {
           <form className="app-signup-card" onSubmit={onSubmit}>
             <div className="app-signup-head">
               <h1 className="app-signup-title">
-                Welcome Back, <span>Alex</span>
+                Welcome Back, <span>{name}</span>
               </h1>
-              <p className="app-signup-lead">{LOREM}</p>
+              <p className="app-signup-lead">{LEAD}</p>
             </div>
 
             <div className="app-signup-fields">
@@ -96,11 +122,17 @@ export default function AppLogin() {
             </div>
 
             <div className="app-signup-forgot">
-              <a href="#forgot">Forgot Password?</a>
+              <a href="mailto:my30ahost@gmail.com?subject=Password%20reset">Forgot Password?</a>
             </div>
 
-            <button type="submit" className="app-signup-continue">
-              Log in
+            {error ? (
+              <p className="app-form-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+
+            <button type="submit" className="app-signup-continue" disabled={busy}>
+              {busy ? 'Logging in…' : 'Log in'}
             </button>
 
             <div className="app-signup-or" role="separator">

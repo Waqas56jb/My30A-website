@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Check, Clock, Info, Mail, Upload } from 'lucide-react'
+import { errorText, guest } from '../../../lib/guestApi.js'
 import { Cta, TransferShell } from '../transfer/TransferShell.jsx'
-import { Picker, fmtDate, fmtTime } from '../transfer/TransferBook.jsx'
+import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
 import { SummaryFooter, useGrocery } from './GroceryShared.jsx'
 
 const STEPS = [
@@ -19,12 +20,47 @@ const STEPS = [
 export default function GroceryList() {
   const navigate = useNavigate()
   const incoming = useGrocery()
-  const [date, setDate] = useState('2026-09-18')
-  const [time, setTime] = useState('17:50')
+  const [date, setDate] = useState(tomorrow())
+  const [time, setTime] = useState('16:00')
   const [agree, setAgree] = useState(true)
   const [file, setFile] = useState(null)
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
-  const grocery = { ...incoming, date: fmtDate(date), time: fmtTime(time) }
+  const grocery = { ...incoming, date: fmtDate(date), time: fmtTime(time), deliveryAt: toIso(date, time) }
+
+  const submit = async () => {
+    setError('')
+    if (!agree) {
+      setError('Please agree to the cancellation policy to continue.')
+      return
+    }
+    setBusy(true)
+    try {
+      let order = await guest.createGrocery({
+        package: grocery.pkg,
+        stocking: grocery.stocking,
+        addons: Object.keys(grocery.addons || {}).filter((key) => grocery.addons[key]),
+        delivery_time: grocery.deliveryAt,
+        items: [],
+        notes: notes.trim() || undefined,
+      })
+      if (file) {
+        try {
+          order = await guest.uploadList(order.id, file)
+        } catch (err) {
+          // The order exists; the screenshot can be re-sent by email.
+          setError(`Order created, but the screenshot upload failed: ${errorText(err)}`)
+        }
+      }
+      navigate('/app/grocery/pending', { replace: true, state: { grocery, order } })
+    } catch (err) {
+      setError(errorText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <TransferShell
@@ -35,8 +71,9 @@ export default function GroceryList() {
       footer={
         <>
           <SummaryFooter grocery={grocery} />
-          <Cta onClick={() => navigate('/app/grocery/pending', { state: { grocery } })}>
-            Continue to Proceed
+          {error ? <p className="app-inline-error">{error}</p> : null}
+          <Cta onClick={submit} disabled={busy}>
+            {busy ? 'Sending…' : 'Continue to Proceed'}
           </Cta>
           <p className="app-xfer-warn">
             <Info size={16} strokeWidth={1.5} aria-hidden="true" />
@@ -100,6 +137,7 @@ export default function GroceryList() {
               icon={Calendar}
               type="date"
               value={date}
+              min={tomorrow()}
               display={fmtDate(date)}
               onChange={setDate}
             />
@@ -111,6 +149,15 @@ export default function GroceryList() {
               onChange={setTime}
             />
           </div>
+          <label className="app-xfer-box" style={{ marginTop: 10 }}>
+            <Info size={16} strokeWidth={1.5} aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="Special instructions (gate code, allergies…)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </label>
           <button
             type="button"
             className="app-xfer-agree"

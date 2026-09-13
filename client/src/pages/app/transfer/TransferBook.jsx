@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Calendar,
@@ -17,10 +17,11 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { Cta, TransferShell, pad } from './TransferShell.jsx'
+import { guest } from '../../../lib/guestApi.js'
+import { Cta, TransferShell, VEHICLE_TYPES, pad } from './TransferShell.jsx'
 
 const AIRPORTS = ['ECP', 'VPS', 'PNS']
-const COMMUNITIES = [
+const FALLBACK_COMMUNITIES = [
   'Rosemary Beach',
   'Alys Beach',
   'Seaside',
@@ -30,24 +31,7 @@ const COMMUNITIES = [
   'Inlet Beach',
   'Miramar Beach',
 ]
-const VEHICLES = ['4 Passenger Vehicle', '6 Passenger Vehicle', '14 Passenger Vehicle']
-const SUGGESTIONS = [
-  {
-    main: '21 N Barrett Square,',
-    sub: 'Rosemary Beach, FL',
-    full: '21 N Barrett Square, Rosemary Beach, FL 32461',
-  },
-  {
-    main: 'Lorem ipsum dolor sit amet consectetur adipiscing elit.',
-    sub: 'Rosemary Beach, FL',
-    full: 'Lorem ipsum dolor sit amet, Rosemary Beach, FL',
-  },
-  {
-    main: '21 N Barrett Square, Rosemary Beach, FL 32461',
-    sub: 'Rosemary Beach, FL',
-    full: '21 N Barrett Square, Rosemary Beach, FL 32461',
-  },
-]
+const VEHICLES = Object.keys(VEHICLE_TYPES)
 
 export const fmtDate = (iso) =>
   new Date(`${iso}T00:00`).toLocaleDateString('en-US', {
@@ -61,6 +45,14 @@ export const fmtTime = (hm) => {
   const suffix = h >= 12 ? 'PM' : 'AM'
   return `${h % 12 || 12}:${pad(m)} ${suffix}`
 }
+
+export const tomorrow = () => {
+  const d = new Date(Date.now() + 86400 * 1000)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// Local date + time → ISO string in the device's timezone (the guest's).
+export const toIso = (date, time) => new Date(`${date}T${time}:00`).toISOString()
 
 function CheckBox({ on }) {
   return (
@@ -111,7 +103,7 @@ function Dropdown({ icon: Icon, placeholder, value, options, onChange }) {
   )
 }
 
-export function Picker({ icon: Icon, type, value, display, onChange }) {
+export function Picker({ icon: Icon, type, value, display, onChange, min }) {
   const ref = useRef(null)
   const open = () => {
     const el = ref.current
@@ -135,6 +127,7 @@ export function Picker({ icon: Icon, type, value, display, onChange }) {
         className="app-xfer-native"
         type={type}
         value={value}
+        min={min}
         onChange={(e) => e.target.value && onChange(e.target.value)}
         aria-label={type === 'date' ? 'Date' : 'Time'}
       />
@@ -167,30 +160,81 @@ export default function TransferBook() {
   const navigate = useNavigate()
   const [tripType, setTripType] = useState('arrival')
   const [airport, setAirport] = useState('ECP')
+  const [communities, setCommunities] = useState(FALLBACK_COMMUNITIES)
   const [community, setCommunity] = useState('')
-  const [address, setAddress] = useState(SUGGESTIONS[0].full)
-  const [showSugg, setShowSugg] = useState(true)
-  const [date, setDate] = useState('2026-09-18')
+  const [address, setAddress] = useState('')
+  const [savedAddress, setSavedAddress] = useState('')
+  const [showSugg, setShowSugg] = useState(false)
+  const [date, setDate] = useState(tomorrow())
   const [time, setTime] = useState('17:50')
   const [passengers, setPassengers] = useState(2)
   const [bags, setBags] = useState(2)
-  const [flight, setFlight] = useState('WN 0987')
+  const [flight, setFlight] = useState('')
   const [vehicle, setVehicle] = useState('')
+  const [error, setError] = useState('')
+
+  // Prefill from the guest's stay and load the live community list.
+  useEffect(() => {
+    let ignore = false
+    guest
+      .communities()
+      .then((rows) => {
+        if (!ignore && rows?.length) setCommunities(rows.map((c) => c.name))
+      })
+      .catch(() => {})
+    guest
+      .booking()
+      .then((b) => {
+        if (ignore || !b) return
+        if (b.community_name) setCommunity(b.community_name)
+        if (b.default_airport) setAirport(b.default_airport)
+        if (b.property_address) {
+          setAddress(b.property_address)
+          setSavedAddress(b.property_address)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const suggestions = [
+    savedAddress
+      ? { main: savedAddress, sub: `${community || 'Your stay'} · saved address`, full: savedAddress }
+      : null,
+    address && address !== savedAddress
+      ? { main: address, sub: `${community || '30A'}, FL`, full: address }
+      : null,
+  ].filter(Boolean)
 
   const onContinue = () => {
+    setError('')
+    if (!address.trim()) {
+      setError('Please enter your 30A property address.')
+      return
+    }
+    if (!flight.trim() && tripType === 'arrival') {
+      setError('Flight number is required so your driver can track your flight.')
+      return
+    }
+    const vehicleLabel = vehicle || '4 Passenger Vehicle'
     navigate('/app/transfer/review', {
       state: {
         booking: {
           tripType,
           airport,
-          community: community || 'Rosemary Beach',
-          address,
+          community: community || communities[0] || 'Rosemary Beach',
+          address: address.trim(),
           date: fmtDate(date),
           time: fmtTime(time),
+          scheduledAt: toIso(date, time),
           passengers,
           bags,
-          flight,
-          vehicle: vehicle || '4 Passenger Vehicle',
+          flight: flight.trim(),
+          vehicle: vehicleLabel,
+          vehicleType: VEHICLE_TYPES[vehicleLabel] || '4pax',
+          holiday: false,
         },
       },
     })
@@ -222,7 +266,7 @@ export default function TransferBook() {
         icon={Home}
         placeholder="select your community"
         value={community}
-        options={COMMUNITIES}
+        options={communities}
         onChange={setCommunity}
       />
     </section>
@@ -261,13 +305,13 @@ export default function TransferBook() {
             <X size={14} strokeWidth={1.5} aria-hidden="true" />
           </button>
         </label>
-        {showSugg ? (
+        {showSugg && suggestions.length ? (
           <div className="app-xfer-sugg">
-            {SUGGESTIONS.map((s, i) => (
+            {suggestions.map((s, i) => (
               <button
                 key={i}
                 type="button"
-                className={`app-xfer-sugg-item${i === 0 ? ' is-on' : ''}`}
+                className={`app-xfer-sugg-item${s.full === address ? ' is-on' : ''}`}
                 onClick={() => {
                   setAddress(s.full)
                   setShowSugg(false)
@@ -297,8 +341,9 @@ export default function TransferBook() {
         <>
           <div className="app-xfer-note">
             <TreePalm size={24} strokeWidth={1.5} className="is-green" aria-hidden="true" />
-            <span>Your property is in {community || 'Rosemary Beach'}</span>
+            <span>Your property is in {community || communities[0] || 'Rosemary Beach'}</span>
           </div>
+          {error ? <p className="app-inline-error">{error}</p> : null}
           <Cta onClick={onContinue}>Continue</Cta>
         </>
       }
@@ -337,6 +382,7 @@ export default function TransferBook() {
               icon={Calendar}
               type="date"
               value={date}
+              min={tomorrow()}
               display={fmtDate(date)}
               onChange={setDate}
             />

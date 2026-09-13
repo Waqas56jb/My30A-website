@@ -7,7 +7,7 @@ import {
   calculateCashReconciliation,
 } from '../services/earnings.js'
 import { notify } from '../services/notifications.js'
-import { capturePaymentIntent, refundPaymentIntent } from '../lib/stripe.js'
+import { capturePaymentIntent, refundPaymentIntent, releasePaymentHold } from '../lib/stripe.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -17,6 +17,7 @@ const TRANSFER_SELECT = `
   *,
   driver:profiles!driver_id (id, name, email, roles, is_active),
   vehicle_owner:profiles!vehicle_owner_id (id, name, email, roles),
+  guest:profiles!guest_id (id, name, email, phone),
   vehicle:vehicles!vehicle_id (id, make, model, year, plate, vehicle_type, owner_id, owner_fee_percent),
   community:communities!community_id (id, name)
 `
@@ -96,6 +97,17 @@ function adminView(transfer, extra = {}) {
     driver_name: transfer.driver?.name || null,
     vehicle_label: vehicleLabel(transfer.vehicle),
     community_name: transfer.community?.name || null,
+    base_price: money(transfer.base_price),
+    addons: transfer.addons || [],
+    is_guest_request: Boolean(transfer.guest_id),
+    guest_account: transfer.guest
+      ? {
+          id: transfer.guest.id,
+          name: transfer.guest.name,
+          email: transfer.guest.email,
+          phone: transfer.guest.phone,
+        }
+      : null,
     ...extra,
   }
 }
@@ -187,6 +199,11 @@ async function notifyAdmins({ message, transfer_id, email }) {
   for (const admin of admins || []) {
     await notify({ user_id: admin.id, message, transfer_id, email })
   }
+}
+
+async function notifyGuest(transfer, message) {
+  if (!transfer?.guest_id) return
+  await notify({ user_id: transfer.guest_id, transfer_id: transfer.id, message })
 }
 
 function canDrive(roles) {
@@ -381,6 +398,73 @@ router.get('/', requireRole('admin'), async (req, res, next) => {
   }
 })
 
+// Admin confirms a guest request (or re-assigns) by choosing the driver and vehicle.
+router.post('/:id/assign', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    if (!['requested', 'assigned'].includes(transfer.status)) {
+      return res.status(400).json({ error: 'Trip can only be assigned while requested or assigned' })
+    }
+
+    const body = req.body || {}
+    if (!body.driver_id || !body.vehicle_id) {
+      return res.status(400).json({ error: 'driver_id and vehicle_id are required' })
+    }
+
+    const driver = await getDriver(body.driver_id)
+    if (!driver || !driver.is_active || !canDrive(driver.roles)) {
+      return res.status(400).json({ error: 'driver must be an active driver, partner, or admin' })
+    }
+    const vehicle = await getVehicle(body.vehicle_id)
+    if (!vehicle) return res.status(400).json({ error: 'vehicle not found' })
+    if (vehicle.vehicle_type !== transfer.vehicle_type) {
+      return res.status(400).json({ error: 'vehicle_type must match the vehicle' })
+    }
+
+    const updates = {
+      driver_id: body.driver_id,
+      vehicle_id: body.vehicle_id,
+      vehicle_owner_id: vehicle.owner_id,
+      status: 'assigned',
+    }
+    if (body.custom_price !== undefined && body.custom_price !== null && body.custom_price !== '') {
+      const customer_charge = money(body.custom_price)
+      if (!Number.isFinite(customer_charge)) {
+        return res.status(400).json({ error: 'custom_price must be a number' })
+      }
+      updates.customer_charge = customer_charge
+      updates.cash_expected = customer_charge
+      updates.is_custom_price = true
+    }
+    if (body.payment_method !== undefined) updates.payment_method = body.payment_method
+    if (body.notes !== undefined) updates.notes = body.notes
+
+    const { data, error: updateError } = await supabase
+      .from('transfers')
+      .update(updates)
+      .eq('id', transfer.id)
+      .select(TRANSFER_SELECT)
+      .single()
+    if (updateError) return res.status(400).json({ error: updateError.message })
+
+    await logStatus(transfer.id, 'assigned', req.user.id)
+    await notify({
+      user_id: data.driver_id,
+      transfer_id: data.id,
+      message: `New trip #${data.trip_number} assigned · ${formatWhen(data.scheduled_at)} · ${data.pickup_address} → ${data.dropoff_address}`,
+    })
+    await notifyGuest(
+      data,
+      `Your airport transfer #${data.trip_number} is confirmed · ${formatWhen(data.scheduled_at)} · Driver ${driver.name} · ${vehicleLabel(vehicle)}`
+    )
+
+    res.json(adminView(data))
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.post('/:id/start', requireRole('driver', 'partner', 'admin'), async (req, res, next) => {
   try {
     const { transfer, error } = await loadTransfer(req.params.id)
@@ -400,6 +484,10 @@ router.post('/:id/start', requireRole('driver', 'partner', 'admin'), async (req,
 
     if (updateError) return res.status(400).json({ error: updateError.message })
     await logStatus(transfer.id, 'started', req.user.id)
+    await notifyGuest(
+      data,
+      `Your driver ${data.driver?.name || ''} is on the way · Trip #${data.trip_number}`.replace('  ', ' ')
+    )
     res.json(driverView(data))
   } catch (error) {
     next(error)
@@ -474,7 +562,14 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
     }
 
     if (payment_method === 'card_on_file') {
-      const capture = await capturePaymentIntent(transfer.stripe_payment_intent_id)
+      let capture
+      try {
+        capture = await capturePaymentIntent(transfer.stripe_payment_intent_id)
+      } catch (stripeError) {
+        return res.status(400).json({
+          error: `Card was not authorized (${stripeError.message}). Ask the guest to complete payment in the app before finishing this trip.`,
+        })
+      }
       if (capture?.skipped) {
         updates.payment_status = 'pending'
         updates.notes = appendNote(
@@ -517,11 +612,16 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
 
     if (updateError) return res.status(400).json({ error: updateError.message })
     await logStatus(transfer.id, 'completed', req.user.id)
+    await notifyGuest(
+      data,
+      `Trip #${data.trip_number} completed · Total $${money(data.customer_charge)}. Thank you for riding with My30A Host!`
+    )
 
     const ownerRoles = owner.roles || []
     const ownerIsPartner = ownerRoles.includes('partner')
     const driverIsOwner = driver.id === owner.id
     const ownerIsAdmin = ownerRoles.includes('admin')
+    const driverIsAdmin = (driver.roles || []).includes('admin')
     const tripNo = data.trip_number
 
     if (ownerIsPartner && !driverIsOwner) {
@@ -593,14 +693,20 @@ router.post('/:id/cancel', requireRole('admin'), async (req, res, next) => {
   try {
     const { transfer, error } = await loadTransfer(req.params.id)
     if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
-    if (!['assigned', 'started'].includes(transfer.status)) {
-      return res.status(400).json({ error: 'Trip can only be cancelled if assigned or started' })
+    if (!['requested', 'assigned', 'started'].includes(transfer.status)) {
+      return res.status(400).json({ error: 'Trip can only be cancelled if requested, assigned or started' })
     }
 
     const updates = { status: 'cancelled' }
     if (transfer.status === 'started') {
       updates.is_flagged = true
       updates.flag_reason = 'CANCELLED_AFTER_START'
+    }
+
+    if (transfer.stripe_payment_intent_id) {
+      await releasePaymentHold(transfer.stripe_payment_intent_id).catch((err) =>
+        console.log('Stripe release skipped:', err.message)
+      )
     }
 
     const { data, error: updateError } = await supabase
@@ -612,6 +718,7 @@ router.post('/:id/cancel', requireRole('admin'), async (req, res, next) => {
 
     if (updateError) return res.status(400).json({ error: updateError.message })
     await logStatus(transfer.id, 'cancelled', req.user.id)
+    await notifyGuest(data, `Your airport transfer #${data.trip_number} was cancelled by My30A Host.`)
     res.json(adminView(data))
   } catch (error) {
     next(error)
@@ -689,8 +796,8 @@ router.patch('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const { transfer, error } = await loadTransfer(req.params.id)
     if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
-    if (transfer.status !== 'assigned') {
-      return res.status(400).json({ error: 'Trip can only be edited while assigned' })
+    if (!['requested', 'assigned'].includes(transfer.status)) {
+      return res.status(400).json({ error: 'Trip can only be edited while requested or assigned' })
     }
 
     const body = req.body || {}

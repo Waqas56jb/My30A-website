@@ -1659,3 +1659,16 @@ th.num {
     padding-top: 32px;
   }
 }
+
+/* Guest-app request assignment (Transfers / Grocery drawers) */
+.assign-box {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 12px;
+  background: var(--warn-bg, #fff7ed);
+}
+.assign-box > b {
+  display: block;
+  margin-bottom: 10px;
+}

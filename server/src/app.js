@@ -16,6 +16,9 @@ import earningsRouter from './routes/earnings.js'
 import notificationsRouter from './routes/notifications.js'
 import dashboardRouter from './routes/dashboard.js'
 import authRouter from './routes/auth.js'
+import guestRouter from './routes/guest.js'
+import contentRouter from './routes/content.js'
+import paymentsRouter from './routes/payments.js'
 import { ensureBucket } from './lib/storage.js'
 
 const app = express()
@@ -59,6 +62,11 @@ app.use(
   })
 )
 app.use(compression())
+
+// Mounted BEFORE express.json() with a raw body parser: Stripe signature verification needs the
+// exact raw bytes it signed, not a re-serialized JSON object.
+app.use('/api/payments', express.raw({ type: 'application/json' }), paymentsRouter)
+
 app.use(
   cors({
     origin(origin, callback) {
@@ -108,6 +116,8 @@ app.use('/api/payouts', payoutsRouter)
 app.use('/api/earnings', earningsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/dashboard', dashboardRouter)
+app.use('/api/guest', guestRouter)
+app.use('/api/content', contentRouter)
 
 ensureBucket().catch((error) => {
   console.log('Storage bucket setup skipped:', error.message)

@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Info } from 'lucide-react'
 import { Cta, TransferShell } from '../transfer/TransferShell.jsx'
-import { ADDONS, PACKAGES, grandTotal } from './GroceryShared.jsx'
+import { ADDONS, PACKAGES, addonIcon, grandTotal, useCatalog } from './GroceryShared.jsx'
 
 export default function GroceryPackage() {
   const navigate = useNavigate()
+  const catalog = useCatalog()
   const [pkg, setPkg] = useState('full')
   const [addons, setAddons] = useState({ rush: false, holiday: false })
-  const total = grandTotal({ pkg, addons, stocking: 'bags' })
+  const packages = catalog?.packages || PACKAGES
+  const addonRows = catalog?.addons || ADDONS
+  const total = grandTotal({ pkg, addons, stocking: 'bags', catalog })
 
   return (
     <TransferShell
@@ -32,7 +35,7 @@ export default function GroceryPackage() {
           </div>
           <Cta
             onClick={() =>
-              navigate('/app/grocery/stocking', { state: { grocery: { pkg, addons } } })
+              navigate('/app/grocery/stocking', { state: { grocery: { pkg, addons, catalog } } })
             }
           >
             Continue
@@ -47,7 +50,7 @@ export default function GroceryPackage() {
             <p className="app-xfer-hint-addr">Select the grocery package that fits your stay.</p>
           </div>
           <div className="app-groc-list">
-            {PACKAGES.map((p) => (
+            {packages.map((p) => (
               <button
                 key={p.key}
                 type="button"
@@ -79,32 +82,36 @@ export default function GroceryPackage() {
 
         <section className="app-xfer-section is-gap-8">
           <h2 className="app-xfer-h">Add-Ons</h2>
-          {ADDONS.map(({ key, name, sub, price, tone, Icon }) => (
-            <div key={key} className="app-groc-addon">
-              <span className="app-groc-addon-l">
-                <span className={`app-groc-addon-ico is-${tone}`} aria-hidden="true">
-                  <Icon size={14} strokeWidth={1.5} />
+          {addonRows.map((addon) => {
+            const Icon = addonIcon(addon)
+            const { key, name, sub, price, tone } = addon
+            return (
+              <div key={key} className="app-groc-addon">
+                <span className="app-groc-addon-l">
+                  <span className={`app-groc-addon-ico is-${tone}`} aria-hidden="true">
+                    <Icon size={14} strokeWidth={1.5} />
+                  </span>
+                  <span className="app-groc-addon-text">
+                    <strong>{name}</strong>
+                    <small>{sub}</small>
+                  </span>
                 </span>
-                <span className="app-groc-addon-text">
-                  <strong>{name}</strong>
-                  <small>{sub}</small>
+                <span className="app-groc-addon-r">
+                  <b>+${price}</b>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={Boolean(addons[key])}
+                    aria-label={`${name} add-on`}
+                    className={`app-groc-toggle${addons[key] ? ' is-on' : ''}`}
+                    onClick={() => setAddons((a) => ({ ...a, [key]: !a[key] }))}
+                  >
+                    <i />
+                  </button>
                 </span>
-              </span>
-              <span className="app-groc-addon-r">
-                <b>+${price}</b>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={addons[key]}
-                  aria-label={`${name} add-on`}
-                  className={`app-groc-toggle${addons[key] ? ' is-on' : ''}`}
-                  onClick={() => setAddons((a) => ({ ...a, [key]: !a[key] }))}
-                >
-                  <i />
-                </button>
-              </span>
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </section>
       </div>
     </TransferShell>

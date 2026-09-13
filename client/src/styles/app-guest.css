@@ -632,3 +632,37 @@
     width: min(220px, 60%);
   }
 }
+
+/* ---- live-data states (forms, loading, errors) ---- */
+.app-form-error {
+  margin: 8px 0 0;
+  color: #ffb4b4;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+.app-inline-error {
+  margin: 4px 0;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.app-empty {
+  padding: 28px 16px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+.app-guest :where(button, a)[disabled],
+.app-guest :where(button, a)[aria-disabled='true'] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.app-vitoria-bubble.is-thinking {
+  opacity: 0.7;
+  font-style: italic;
+}
+.app-exp-heart.is-on {
+  color: #e0245e;
+}

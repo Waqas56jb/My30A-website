@@ -19,6 +19,7 @@ import {
   flagLabel,
   formatDateTime,
   paymentLabel,
+  paymentStatusPill,
   statusLabel,
   statusPill,
   usd,
@@ -64,6 +65,44 @@ function parseItems(text) {
 
 function settled(order) {
   return order.status === 'delivered' || order.status === 'refunded'
+}
+
+function AssignOrder({ order, shoppers, working, onAssign }) {
+  const [shopperId, setShopperId] = useState('')
+  const path = `/api/grocery/${order.id}/assign`
+  return (
+    <form
+      className="assign-box"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (shopperId) onAssign({ shopper_id: shopperId })
+      }}
+    >
+      <b>Guest request · confirm shopper</b>
+      <div className="row2">
+        <div className="field">
+          <label>Shopper</label>
+          <select value={shopperId} onChange={(event) => setShopperId(event.target.value)} required>
+            <option value="">Select shopper</option>
+            {shoppers.map((shopper) => (
+              <option key={shopper.id} value={shopper.id}>
+                {shopper.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label>Service fee</label>
+          <input value={usd(order.service_fee)} readOnly />
+        </div>
+      </div>
+      <div className="actions">
+        <Button type="submit" className="btn" pending={working === path}>
+          Confirm &amp; assign
+        </Button>
+      </div>
+    </form>
+  )
 }
 
 export default function Grocery() {
@@ -193,6 +232,7 @@ export default function Grocery() {
       <div className="filters">
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">All statuses</option>
+          <option value="requested">Requested (guest app)</option>
           <option value="assigned">Assigned</option>
           <option value="shopping">Shopping</option>
           <option value="on_the_way">On the way</option>
@@ -338,14 +378,52 @@ export default function Grocery() {
             <div className="kv" style={{ marginTop: 14 }}>
               <span>Guest</span>
               <span>
-                {order.guest_name} · {order.guest_phone}
+                {order.guest_name} · {order.guest_phone || '—'}
               </span>
+              {order.is_guest_request ? (
+                <>
+                  <span>Guest app</span>
+                  <span>
+                    {order.guest_account?.email || '—'}
+                    {order.stocking ? ` · ${order.stocking}` : ''}
+                    {order.addons?.length
+                      ? ` · add-ons: ${order.addons.map((addon) => addon.name).join(', ')}`
+                      : ''}
+                    {order.list_file_signed_url ? (
+                      <>
+                        {' · '}
+                        <a href={order.list_file_signed_url} target="_blank" rel="noreferrer">
+                          Publix list screenshot
+                        </a>
+                      </>
+                    ) : null}
+                  </span>
+                </>
+              ) : null}
               <span>Delivery</span>
               <span>{order.delivery_address}</span>
               <span>Shopper</span>
               <span>{order.shopper_name || order.shopper?.name || '—'}</span>
               <span>Payment</span>
-              <span>{paymentLabel(order.payment_method)}</span>
+              <span>
+                {paymentLabel(order.payment_method)}
+                {order.payment_status ? (
+                  <>
+                    {' '}
+                    <Pill {...paymentStatusPill(order.payment_status)}>{statusLabel(order.payment_status)}</Pill>
+                  </>
+                ) : null}
+              </span>
+              {order.grocery_payment_status && order.grocery_payment_status !== 'pending' ? (
+                <>
+                  <span>Publix total charge</span>
+                  <span>
+                    <Pill {...paymentStatusPill(order.grocery_payment_status)}>
+                      {statusLabel(order.grocery_payment_status)}
+                    </Pill>
+                  </span>
+                </>
+              ) : null}
               <span>Items</span>
               <span>
                 {(order.items || [])
@@ -386,6 +464,16 @@ export default function Grocery() {
                 </li>
               ))}
             </ul>
+            {order.status === 'requested' ? (
+              <AssignOrder
+                order={order}
+                shoppers={shoppers}
+                working={working}
+                onAssign={(body) =>
+                  act(`/api/grocery/${order.id}/assign`, body, `Order #${order.order_number} assigned`)
+                }
+              />
+            ) : null}
             <div className="actions" style={{ marginTop: 18 }}>
               {order.is_flagged ? (
                 <Button
@@ -406,7 +494,7 @@ export default function Grocery() {
                   Flag
                 </Button>
               )}
-              {['assigned', 'shopping', 'on_the_way'].includes(order.status) ? (
+              {['requested', 'assigned', 'shopping', 'on_the_way'].includes(order.status) ? (
                 <Button
                   className="btn quiet"
                   pending={working === `/api/grocery/${order.id}/cancel`}

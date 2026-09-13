@@ -9,6 +9,10 @@ if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('Warning: STRIPE_SECRET_KEY is not set; Stripe capture/refund will be skipped')
 }
 
+if (!process.env.OPENAI_API_KEY) {
+  console.warn('Warning: OPENAI_API_KEY is not set; Vitoria will use built-in replies')
+}
+
 if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
   console.warn(
     'Warning: SMTP is not fully configured (SMTP_HOST, SMTP_USER, SMTP_PASSWORD); emails will be skipped'

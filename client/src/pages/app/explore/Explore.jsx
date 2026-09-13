@@ -1,8 +1,21 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
-import { BackButton, CATEGORIES, ExploreShell } from './ExploreShared.jsx'
+import { guest, useGuestQuery } from '../../../lib/guestApi.js'
+import { BackButton, CATEGORIES, ExploreShell, iconFor } from './ExploreShared.jsx'
 
 export default function Explore() {
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const { data } = useGuestQuery(guest.explore, [])
+  const categories = data?.categories || CATEGORIES
+
+  const onSearch = (e) => {
+    e.preventDefault()
+    const clean = q.trim()
+    navigate(clean ? `/app/explore/guide?q=${encodeURIComponent(clean)}` : '/app/explore/guide')
+  }
+
   return (
     <ExploreShell>
       <header className="app-xfer-head">
@@ -17,20 +30,30 @@ export default function Explore() {
           <p>discover dining, beaches, activities, and local essentials</p>
         </div>
 
-        <label className="app-exp-search">
-          <Search size={18} strokeWidth={1.5} aria-hidden="true" />
-          <input type="search" placeholder="Search places, restaurants, or things to do" />
-        </label>
+        <form onSubmit={onSearch}>
+          <label className="app-exp-search">
+            <Search size={18} strokeWidth={1.5} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Search places, restaurants, or things to do"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </label>
+        </form>
 
         <div className="app-exp-grid">
-          {CATEGORIES.map(({ key, label, tone, Icon, to }) => (
-            <Link key={key} to={to} className="app-exp-cat">
-              <span className={`app-exp-cat-ico is-${tone}`} aria-hidden="true">
-                <Icon size={20} strokeWidth={1.5} />
-              </span>
-              <span>{label}</span>
-            </Link>
-          ))}
+          {categories.map(({ key, label, tone, icon, to }) => {
+            const Icon = iconFor(icon)
+            return (
+              <Link key={key} to={to} className="app-exp-cat">
+                <span className={`app-exp-cat-ico is-${tone}`} aria-hidden="true">
+                  <Icon size={20} strokeWidth={1.5} />
+                </span>
+                <span>{label}</span>
+              </Link>
+            )
+          })}
         </div>
       </div>
     </ExploreShell>

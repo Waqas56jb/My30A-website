@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Calendar,
   Car,
@@ -14,6 +15,7 @@ import {
   Plane,
   Users,
 } from 'lucide-react'
+import { errorText, guest } from '../../../lib/guestApi.js'
 import {
   Cta,
   DetailRow,
@@ -32,9 +34,64 @@ const POLICY = [
 ]
 
 export default function TransferReview() {
+  const navigate = useNavigate()
   const booking = useBooking()
   const [agree, setAgree] = useState(true)
   const [policyOpen, setPolicyOpen] = useState(true)
+  const [holiday, setHoliday] = useState(Boolean(booking.holiday))
+  const [quote, setQuote] = useState(null)
+  const [quoteError, setQuoteError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const quoteBody = {
+    trip_type: booking.tripType,
+    airport: booking.airport,
+    community: booking.community,
+    vehicle_type: booking.vehicleType,
+    holiday,
+  }
+
+  useEffect(() => {
+    let ignore = false
+    setQuote(null)
+    setQuoteError('')
+    guest
+      .transferQuote(quoteBody)
+      .then((q) => !ignore && setQuote(q))
+      .catch((err) => !ignore && setQuoteError(errorText(err)))
+    return () => {
+      ignore = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking.tripType, booking.airport, booking.community, booking.vehicleType, holiday])
+
+  const submit = async () => {
+    setError('')
+    if (!agree) {
+      setError('Please agree to the cancellation policy to continue.')
+      return
+    }
+    setBusy(true)
+    try {
+      const transfer = await guest.createTransfer({
+        ...quoteBody,
+        address: booking.address,
+        scheduled_at: booking.scheduledAt || new Date(Date.now() + 86400 * 1000).toISOString(),
+        passengers: booking.passengers,
+        bags: booking.bags,
+        flight_number: booking.flight || undefined,
+      })
+      navigate('/app/transfer/pending', {
+        replace: true,
+        state: { booking: { ...booking, holiday }, transfer },
+      })
+    } catch (err) {
+      setError(errorText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const [street, ...rest] = booking.address.split(', ')
   const addressValue = rest.length ? (
@@ -60,8 +117,9 @@ export default function TransferReview() {
               confirms availability.
             </span>
           </div>
-          <Cta to="/app/transfer/pending" state={{ booking }}>
-            Submit Request
+          {error ? <p className="app-inline-error">{error}</p> : null}
+          <Cta onClick={submit} disabled={busy || Boolean(quoteError)}>
+            {busy ? 'Submitting…' : 'Submit Request'}
           </Cta>
         </>
       }
@@ -89,11 +147,26 @@ export default function TransferReview() {
             <DetailRow icon={Car} label="Vehicle" value={booking.vehicle} />
             <DetailRow icon={Users} label="Passengers" value={pad(booking.passengers)} />
             <DetailRow icon={Luggage} label="Bags" value={pad(booking.bags)} />
-            <DetailRow icon={Plane} label="Flight number" value={booking.flight} />
+            <DetailRow icon={Plane} label="Flight number" value={booking.flight || '—'} />
           </div>
         </section>
 
-        <PriceCard />
+        <PriceCard quote={quote} loading={!quote && !quoteError} />
+        {quoteError ? <p className="app-inline-error">{quoteError}</p> : null}
+
+        {quote?.available_addons?.length ? (
+          <button
+            type="button"
+            className="app-xfer-agree"
+            aria-pressed={holiday}
+            onClick={() => setHoliday((h) => !h)}
+          >
+            <span className={`app-xfer-cb${holiday ? ' is-on' : ''}`} aria-hidden="true">
+              {holiday ? <Check size={12} strokeWidth={3} /> : null}
+            </span>
+            Add {quote.available_addons[0].name} (+${quote.available_addons[0].price}) — holiday / peak date
+          </button>
+        ) : null}
 
         <section className="app-xfer-card">
           <button

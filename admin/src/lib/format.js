@@ -129,6 +129,7 @@ export function chicagoDateTimeToIso(local) {
 
 export function statusLabel(status) {
   const labels = {
+    requested: 'Requested',
     assigned: 'Assigned',
     started: 'Started',
     completed: 'Completed',
@@ -137,8 +138,19 @@ export function statusLabel(status) {
     shopping: 'Shopping',
     on_the_way: 'On the way',
     delivered: 'Delivered',
+    pending: 'Pending',
+    authorized: 'Authorized',
+    captured: 'Captured',
+    failed: 'Failed',
   }
   return labels[status] || status || '—'
+}
+
+export function paymentStatusPill(status) {
+  if (status === 'authorized') return { sand: true }
+  if (status === 'failed') return { warn: true }
+  if (status === 'refunded' || status === 'pending') return { neutral: true }
+  return {} // 'captured' — default (unadorned) pill reads as the successful terminal state
 }
 
 export function paymentLabel(method) {
@@ -246,6 +258,7 @@ export function compensationLabel(agreement, roles = [], { includeSince = true }
 }
 
 export function statusPill(status) {
+  if (status === 'requested') return { warn: true }
   if (status === 'assigned') return { sand: true }
   if (status === 'refunded' || status === 'cancelled' || status === 'inactive') return { neutral: true }
   return {}

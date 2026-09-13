@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { CalendarDays, ExternalLink, MapPin } from 'lucide-react'
+import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import {
   Actions,
   DetailHero,
@@ -8,19 +10,50 @@ import {
   Pill,
   RatingPill,
   TitleRow,
-  VENDORS,
 } from './ExploreShared.jsx'
 
-const SERVICES = ['Sunrise bonfire', 'chair setup', 'S’mores add-on', 'Family friendly']
+export function useSavedToggle(vendor) {
+  const [saved, setSaved] = useState(false)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    setSaved(Boolean(vendor?.saved))
+  }, [vendor?.id, vendor?.saved])
+
+  const toggle = async () => {
+    if (!vendor || busy) return
+    setBusy(true)
+    try {
+      if (saved) await guest.unsave(vendor.id)
+      else await guest.save(vendor.id)
+      setSaved(!saved)
+    } catch {
+      /* keep previous state */
+    } finally {
+      setBusy(false)
+    }
+  }
+  return { saved, busy, toggle }
+}
 
 export default function VendorDetail() {
   const { id } = useParams()
-  const vendor = VENDORS.find((v) => v.id === id) || VENDORS[0]
+  const { data: vendor, loading, error } = useGuestQuery(() => guest.vendor(id), [id])
+  const { saved, busy, toggle } = useSavedToggle(vendor)
+
+  if (loading || error || !vendor) {
+    return (
+      <ExploreShell className="app-exp-detail">
+        <DetailHero image="/image6.png" back="/app/explore/guide">
+          <p className="app-empty">{error ? (error.status === 404 ? 'Place not found.' : errorText(error)) : 'Loading…'}</p>
+        </DetailHero>
+      </ExploreShell>
+    )
+  }
 
   return (
     <ExploreShell className="app-exp-detail">
-      <DetailHero image={vendor.image} back="/app/explore/vendors/beach-bonfires">
-        <TitleRow title={vendor.name} />
+      <DetailHero image={vendor.image} back={vendor.back || '/app/explore/guide'}>
+        <TitleRow title={vendor.name} saved={saved} onToggle={toggle} busy={busy} />
         <div className="app-exp-pills">
           <Pill icon={MapPin} white>
             {vendor.place}
@@ -38,32 +71,36 @@ export default function VendorDetail() {
           </em>
         </div>
 
-        <section className="app-exp-block">
-          <h3 className="app-exp-h3">About</h3>
-          <p className="app-exp-desc">
-            We handle everything - from setup to cleanup - so you can relax and enjoy quality time
-            with the people who matter most. Perfect for families, couples, and groups celebrating
-            life on 30A.
-          </p>
-        </section>
+        {vendor.about ? (
+          <section className="app-exp-block">
+            <h3 className="app-exp-h3">About</h3>
+            <p className="app-exp-desc">{vendor.about}</p>
+          </section>
+        ) : null}
 
-        <section className="app-exp-block">
-          <h3 className="app-exp-h3">Services</h3>
-          <div className="app-exp-chips">
-            {SERVICES.map((s) => (
-              <span key={s} className="app-exp-chip">
-                {s}
-              </span>
-            ))}
-          </div>
-        </section>
+        {vendor.services?.length ? (
+          <section className="app-exp-block">
+            <h3 className="app-exp-h3">Services</h3>
+            <div className="app-exp-chips">
+              {vendor.services.map((s) => (
+                <span key={s} className="app-exp-chip">
+                  {s}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
         <hr className="app-exp-hr" />
 
-        <MapCard />
+        <MapCard
+          name={vendor.map?.name || vendor.community || vendor.place}
+          line1={vendor.map?.line1 || '30A, FL'}
+          line2={vendor.map?.line2 || vendor.place}
+        />
 
         <Actions
-          primary={{ label: 'Book With Partner', Icon: CalendarDays, href: '#book' }}
-          secondary={{ label: 'Visit Website', Icon: ExternalLink, href: '#website' }}
+          primary={{ label: 'Book With Partner', Icon: CalendarDays, href: vendor.booking_url || vendor.website_url || '#book' }}
+          secondary={{ label: 'Visit Website', Icon: ExternalLink, href: vendor.website_url || '#website' }}
         />
       </DetailHero>
     </ExploreShell>

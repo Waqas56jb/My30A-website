@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import GuestRoute from './components/GuestRoute.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 import Login from './pages/Login.jsx'
 import Home from './pages/marketing/Home.jsx'
@@ -12,6 +13,7 @@ import AppHome from './pages/app/AppHome.jsx'
 import AppServices from './pages/app/AppServices.jsx'
 import AppVitoria from './pages/app/AppVitoria.jsx'
 import AppProfile from './pages/app/AppProfile.jsx'
+import SavedPlaces from './pages/app/SavedPlaces.jsx'
 import TransferBook from './pages/app/transfer/TransferBook.jsx'
 import TransferReview from './pages/app/transfer/TransferReview.jsx'
 import TransferPending from './pages/app/transfer/TransferPending.jsx'
@@ -60,6 +62,10 @@ function ClientShell() {
 
   const roles = profile?.roles || []
   const hasPanelRole = PANEL_ROLES.some((role) => roles.includes(role))
+
+  if (!hasPanelRole && roles.includes('guest')) {
+    return <Navigate to="/app/home" replace />
+  }
 
   if (!hasPanelRole) {
     return (
@@ -134,6 +140,34 @@ function ClientShell() {
   )
 }
 
+const GUEST_ROUTES = [
+  ['/app/home', AppHome],
+  ['/app/services', AppServices],
+  ['/app/vitoria', AppVitoria],
+  ['/app/profile', AppProfile],
+  ['/app/profile/saved', SavedPlaces],
+  ['/app/explore', Explore],
+  ['/app/explore/guide', LocalGuide],
+  ['/app/explore/vendors/:slug', VendorList],
+  ['/app/explore/vendor/:id', VendorDetail],
+  ['/app/explore/restaurant/:id', RestaurantDetail],
+  ['/app/explore/beach/:id', BeachDetail],
+  ['/app/explore/info', PublicInfo],
+  ['/app/transfer', TransferBook],
+  ['/app/transfer/review', TransferReview],
+  ['/app/transfer/pending', TransferPending],
+  ['/app/transfer/payment', TransferPayment],
+  ['/app/transfer/track', TransferTrack],
+  ['/app/transfer/tip', TransferTip],
+  ['/app/grocery', GroceryPackage],
+  ['/app/grocery/stocking', GroceryStocking],
+  ['/app/grocery/list', GroceryList],
+  ['/app/grocery/pending', GroceryPending],
+  ['/app/grocery/payment', GroceryPayment],
+  ['/app/grocery/track', GroceryTrack],
+  ['/app/grocery/tip', GroceryTip],
+]
+
 function AppRoutes() {
   return (
     <Routes>
@@ -141,30 +175,17 @@ function AppRoutes() {
       <Route path="/app" element={<Splash />} />
       <Route path="/app/signup" element={<Signup />} />
       <Route path="/app/login" element={<AppLogin />} />
-      <Route path="/app/home" element={<AppHome />} />
-      <Route path="/app/services" element={<AppServices />} />
-      <Route path="/app/vitoria" element={<AppVitoria />} />
-      <Route path="/app/profile" element={<AppProfile />} />
-      <Route path="/app/explore" element={<Explore />} />
-      <Route path="/app/explore/guide" element={<LocalGuide />} />
-      <Route path="/app/explore/vendors/:slug" element={<VendorList />} />
-      <Route path="/app/explore/vendor/:id" element={<VendorDetail />} />
-      <Route path="/app/explore/restaurant/:id" element={<RestaurantDetail />} />
-      <Route path="/app/explore/beach/:id" element={<BeachDetail />} />
-      <Route path="/app/explore/info" element={<PublicInfo />} />
-      <Route path="/app/transfer" element={<TransferBook />} />
-      <Route path="/app/transfer/review" element={<TransferReview />} />
-      <Route path="/app/transfer/pending" element={<TransferPending />} />
-      <Route path="/app/transfer/payment" element={<TransferPayment />} />
-      <Route path="/app/transfer/track" element={<TransferTrack />} />
-      <Route path="/app/transfer/tip" element={<TransferTip />} />
-      <Route path="/app/grocery" element={<GroceryPackage />} />
-      <Route path="/app/grocery/stocking" element={<GroceryStocking />} />
-      <Route path="/app/grocery/list" element={<GroceryList />} />
-      <Route path="/app/grocery/pending" element={<GroceryPending />} />
-      <Route path="/app/grocery/payment" element={<GroceryPayment />} />
-      <Route path="/app/grocery/track" element={<GroceryTrack />} />
-      <Route path="/app/grocery/tip" element={<GroceryTip />} />
+      {GUEST_ROUTES.map(([path, Page]) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <GuestRoute>
+              <Page />
+            </GuestRoute>
+          }
+        />
+      ))}
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"

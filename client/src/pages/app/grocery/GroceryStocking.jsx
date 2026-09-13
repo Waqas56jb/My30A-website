@@ -7,7 +7,8 @@ import { STOCKING, SummaryFooter, useGrocery } from './GroceryShared.jsx'
 export default function GroceryStocking() {
   const navigate = useNavigate()
   const incoming = useGrocery()
-  const [stocking, setStocking] = useState('full')
+  const options = incoming.catalog?.stocking || STOCKING
+  const [stocking, setStocking] = useState(incoming.stocking || 'full-kitchen')
   const grocery = { ...incoming, stocking }
 
   return (
@@ -32,7 +33,7 @@ export default function GroceryStocking() {
             <p>Choose how you’d like everything delivered and stocked.</p>
           </div>
           <div className="app-groc-list">
-            {STOCKING.map((s) => (
+            {options.map((s) => (
               <button
                 key={s.key}
                 type="button"

@@ -4,7 +4,12 @@ import { supabase } from '../lib/supabase.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { calculateGrocerySplit } from '../services/earnings.js'
 import { notify } from '../services/notifications.js'
-import { capturePaymentIntent, refundPaymentIntent } from '../lib/stripe.js'
+import {
+  capturePaymentIntent,
+  chargeSavedCard,
+  refundPaymentIntent,
+  releasePaymentHold,
+} from '../lib/stripe.js'
 import { getSignedUrl, uploadFile } from '../lib/storage.js'
 
 const router = Router()
@@ -12,7 +17,8 @@ router.use(requireAuth)
 
 const ORDER_SELECT = `
   *,
-  shopper:profiles!shopper_id (id, name, email, roles, is_active)
+  shopper:profiles!shopper_id (id, name, email, roles, is_active),
+  guest:profiles!guest_id (id, name, email, phone, stripe_customer_id)
 `
 
 const upload = multer({
@@ -95,6 +101,7 @@ async function withSignedUrls(order) {
     ...order,
     receipt_signed_url: await getSignedUrl(order.receipt_url),
     kitchen_signed_url: await getSignedUrl(order.kitchen_photo_url),
+    list_file_signed_url: await getSignedUrl(order.list_file_url),
   }
 }
 
@@ -108,6 +115,11 @@ function adminView(order, extra = {}) {
     tip_amount: money(order.tip_amount),
     my30ahost_amount: money(order.my30ahost_amount),
     shopper_name: order.shopper?.name || null,
+    addons: order.addons || [],
+    is_guest_request: Boolean(order.guest_id),
+    guest_account: order.guest
+      ? { id: order.guest.id, name: order.guest.name, email: order.guest.email, phone: order.guest.phone }
+      : null,
     ...extra,
   }
 }
@@ -166,6 +178,11 @@ async function notifyAdmins({ message, grocery_order_id }) {
   for (const admin of admins || []) {
     await notify({ user_id: admin.id, message, grocery_order_id, email: false })
   }
+}
+
+async function notifyGuest(order, message) {
+  if (!order?.guest_id) return
+  await notify({ user_id: order.guest_id, grocery_order_id: order.id, message })
 }
 
 router.get('/mine', requireRole('shopper'), async (req, res, next) => {
@@ -303,6 +320,59 @@ router.get('/', requireRole('admin'), async (req, res, next) => {
   }
 })
 
+// Admin confirms a guest request (or re-assigns) by choosing the shopper.
+router.post('/:id/assign', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { order, error } = await loadOrder(req.params.id)
+    if (error || !order) return res.status(404).json({ error: 'Order not found' })
+    if (!['requested', 'assigned'].includes(order.status)) {
+      return res.status(400).json({ error: 'Order can only be assigned while requested or assigned' })
+    }
+
+    const body = req.body || {}
+    if (!body.shopper_id) return res.status(400).json({ error: 'shopper_id is required' })
+    const shopper = await getShopper(body.shopper_id)
+    if (!shopper || !shopper.is_active || !(shopper.roles || []).includes('shopper')) {
+      return res.status(400).json({ error: 'shopper must be an active shopper' })
+    }
+
+    const updates = { shopper_id: body.shopper_id, status: 'assigned' }
+    if (body.service_fee !== undefined) {
+      const service_fee = money(body.service_fee)
+      if (!Number.isFinite(service_fee) || service_fee < 0) {
+        return res.status(400).json({ error: 'service_fee must be a number >= 0' })
+      }
+      updates.service_fee = service_fee
+      updates.customer_charge = service_fee
+    }
+    if (body.payment_method !== undefined) updates.payment_method = body.payment_method
+    if (body.notes !== undefined) updates.notes = body.notes
+
+    const { data, error: updateError } = await supabase
+      .from('grocery_orders')
+      .update(updates)
+      .eq('id', order.id)
+      .select(ORDER_SELECT)
+      .single()
+    if (updateError) return res.status(400).json({ error: updateError.message })
+
+    await logStatus(order.id, 'assigned', req.user.id)
+    await notify({
+      user_id: data.shopper_id,
+      grocery_order_id: data.id,
+      message: `New grocery order #${data.order_number} · ${formatWhen(data.delivery_time)} · ${data.package} · ${data.delivery_address}`,
+    })
+    await notifyGuest(
+      data,
+      `Your grocery order #${data.order_number} is confirmed · ${data.package} · Delivery ${formatWhen(data.delivery_time)} · $${money(data.service_fee)} + Publix`
+    )
+
+    res.json(adminView(await withSignedUrls(data)))
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.post('/:id/shopping', requireRole('shopper'), async (req, res, next) => {
   try {
     const { order, error } = await loadOrder(req.params.id)
@@ -321,6 +391,7 @@ router.post('/:id/shopping', requireRole('shopper'), async (req, res, next) => {
 
     if (updateError) return res.status(400).json({ error: updateError.message })
     await logStatus(order.id, 'shopping', req.user.id)
+    await notifyGuest(data, `Order #${data.order_number} · ${data.shopper?.name || 'Your shopper'} is shopping at Publix now.`)
     res.json(shopperView(data))
   } catch (error) {
     next(error)
@@ -345,6 +416,7 @@ router.post('/:id/on-the-way', requireRole('shopper'), async (req, res, next) =>
 
     if (updateError) return res.status(400).json({ error: updateError.message })
     await logStatus(order.id, 'on_the_way', req.user.id)
+    await notifyGuest(data, `Order #${data.order_number} · your groceries are on the way to ${data.delivery_address}.`)
     res.json(shopperView(data))
   } catch (error) {
     next(error)
@@ -423,10 +495,20 @@ router.post(
       }
 
       if (payment_method === 'card_on_file') {
-        const capture = await capturePaymentIntent(order.stripe_payment_intent_id)
+        let capture
+        try {
+          capture = await capturePaymentIntent(order.stripe_payment_intent_id)
+        } catch (stripeError) {
+          return res.status(400).json({
+            error: `Card was not authorized (${stripeError.message}). Ask the guest to complete payment in the app before delivering.`,
+          })
+        }
         if (capture?.skipped) {
           updates.payment_status = 'pending'
-          updates.notes = appendNote(order.notes, `Stripe capture skipped: ${capture.reason}`)
+          updates.notes = appendNote(
+            order.notes,
+            `Stripe capture skipped: ${capture.reason}`
+          )
         } else {
           updates.payment_status = 'captured'
         }
@@ -434,6 +516,26 @@ router.post(
         updates.payment_status = 'captured'
       } else {
         return res.status(400).json({ error: 'invalid payment_method' })
+      }
+
+      // The exact Publix total is only known now — charge it separately (off-session, on the
+      // guest's saved card) rather than as part of the up-front service-fee authorization.
+      if (grocery_total > 0 && order.guest?.stripe_customer_id) {
+        const groceryCharge = await chargeSavedCard({
+          customerId: order.guest.stripe_customer_id,
+          amount: grocery_total,
+          metadata: { my30a_grocery_order_id: order.id, kind: 'grocery_total' },
+        })
+        if (groceryCharge?.skipped) {
+          updates.grocery_payment_status = 'pending'
+          updates.notes = appendNote(
+            updates.notes ?? order.notes,
+            `Publix total charge skipped: ${groceryCharge.reason}`
+          )
+        } else {
+          updates.stripe_grocery_payment_intent_id = groceryCharge.id
+          updates.grocery_payment_status = 'captured'
+        }
       }
 
       const { data, error: updateError } = await supabase
@@ -445,6 +547,10 @@ router.post(
 
       if (updateError) return res.status(400).json({ error: updateError.message })
       await logStatus(order.id, 'delivered', req.user.id)
+      await notifyGuest(
+        data,
+        `Order #${data.order_number} delivered · Publix total $${grocery_total} + service fee $${money(order.service_fee)}. Your kitchen is ready!`
+      )
       await notifyAdmins({
         grocery_order_id: data.id,
         message: `Grocery order #${data.order_number} delivered · Shopper fee: $${split.shopper_payout}`,
@@ -495,14 +601,20 @@ router.post('/:id/cancel', requireRole('admin'), async (req, res, next) => {
   try {
     const { order, error } = await loadOrder(req.params.id)
     if (error || !order) return res.status(404).json({ error: 'Order not found' })
-    if (!['assigned', 'shopping', 'on_the_way'].includes(order.status)) {
+    if (!['requested', 'assigned', 'shopping', 'on_the_way'].includes(order.status)) {
       return res.status(400).json({ error: 'Order cannot be cancelled in this status' })
     }
 
     const updates = { status: 'cancelled' }
-    if (order.status !== 'assigned') {
+    if (!['requested', 'assigned'].includes(order.status)) {
       updates.is_flagged = true
       updates.flag_reason = 'CANCELLED_AFTER_START'
+    }
+
+    if (order.stripe_payment_intent_id) {
+      await releasePaymentHold(order.stripe_payment_intent_id).catch((err) =>
+        console.log('Stripe release skipped:', err.message)
+      )
     }
 
     const { data, error: updateError } = await supabase
@@ -514,6 +626,7 @@ router.post('/:id/cancel', requireRole('admin'), async (req, res, next) => {
 
     if (updateError) return res.status(400).json({ error: updateError.message })
     await logStatus(order.id, 'cancelled', req.user.id)
+    await notifyGuest(data, `Your grocery order #${data.order_number} was cancelled by My30A Host.`)
     res.json(adminView(await withSignedUrls(data)))
   } catch (error) {
     next(error)
@@ -537,6 +650,18 @@ router.post('/:id/refund', requireRole('admin'), async (req, res, next) => {
       const refund = await refundPaymentIntent(order.stripe_payment_intent_id)
       if (refund?.skipped) {
         updates.notes = appendNote(order.notes, `Stripe refund skipped: ${refund.reason}`)
+      }
+    }
+
+    if (order.stripe_grocery_payment_intent_id && order.grocery_payment_status === 'captured') {
+      const groceryRefund = await refundPaymentIntent(order.stripe_grocery_payment_intent_id)
+      if (groceryRefund?.skipped) {
+        updates.notes = appendNote(
+          updates.notes ?? order.notes,
+          `Publix total refund skipped: ${groceryRefund.reason}`
+        )
+      } else {
+        updates.grocery_payment_status = 'refunded'
       }
     }
 
@@ -591,8 +716,8 @@ router.patch('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const { order, error } = await loadOrder(req.params.id)
     if (error || !order) return res.status(404).json({ error: 'Order not found' })
-    if (order.status !== 'assigned') {
-      return res.status(400).json({ error: 'Order can only be edited while assigned' })
+    if (!['requested', 'assigned'].includes(order.status)) {
+      return res.status(400).json({ error: 'Order can only be edited while requested or assigned' })
     }
 
     const body = req.body || {}

@@ -19,6 +19,7 @@ import {
   flagLabel,
   formatDateTime,
   paymentLabel,
+  paymentStatusPill,
   splitShares,
   statusLabel,
   statusPill,
@@ -95,6 +96,53 @@ function driverEarningsNote(trip) {
   if (agreement.type === 'percentage') return `${agreement.value}% of trip`
   if (agreement.type === 'hourly') return `${usd(agreement.value)} per hour`
   return null
+}
+
+function AssignTrip({ trip, drivers, vehicles, working, onAssign }) {
+  const [driverId, setDriverId] = useState('')
+  const [vehicleId, setVehicleId] = useState('')
+  const matching = vehicles.filter((vehicle) => vehicle.vehicle_type === trip.vehicle_type)
+  const path = `/api/transfers/${trip.id}/assign`
+  return (
+    <form
+      className="assign-box"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (driverId && vehicleId) onAssign({ driver_id: driverId, vehicle_id: vehicleId })
+      }}
+    >
+      <b>Guest request · confirm driver &amp; vehicle</b>
+      <div className="row2">
+        <div className="field">
+          <label>Driver</label>
+          <select value={driverId} onChange={(event) => setDriverId(event.target.value)} required>
+            <option value="">Select driver</option>
+            {drivers.map((driver) => (
+              <option key={driver.id} value={driver.id}>
+                {driver.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label>Vehicle ({vehicleTypeLabel(trip.vehicle_type)})</label>
+          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} required>
+            <option value="">Select vehicle</option>
+            {matching.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.make} {vehicle.model} · {vehicle.plate}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="actions">
+        <Button type="submit" className="btn" pending={working === path}>
+          Confirm &amp; assign
+        </Button>
+      </div>
+    </form>
+  )
 }
 
 export default function Transfers() {
@@ -313,6 +361,7 @@ export default function Transfers() {
       <div className="filters">
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">All statuses</option>
+          <option value="requested">Requested (guest app)</option>
           <option value="assigned">Assigned</option>
           <option value="started">Started</option>
           <option value="completed">Completed</option>
@@ -478,8 +527,19 @@ export default function Transfers() {
             <div className="kv" style={{ marginTop: 14 }}>
               <span>Guest</span>
               <span>
-                {trip.guest_name} · {trip.guest_phone}
+                {trip.guest_name} · {trip.guest_phone || '—'}
               </span>
+              {trip.is_guest_request ? (
+                <>
+                  <span>Guest app</span>
+                  <span>
+                    {trip.guest_account?.email || '—'}
+                    {trip.addons?.length
+                      ? ` · add-ons: ${trip.addons.map((addon) => addon.name).join(', ')}`
+                      : ''}
+                  </span>
+                </>
+              ) : null}
               <span>Pickup</span>
               <span>{trip.pickup_address}</span>
               <span>Drop-off</span>
@@ -500,6 +560,12 @@ export default function Transfers() {
               <span>Payment</span>
               <span>
                 {paymentLabel(trip.payment_method)}
+                {trip.payment_status ? (
+                  <>
+                    {' '}
+                    <Pill {...paymentStatusPill(trip.payment_status)}>{statusLabel(trip.payment_status)}</Pill>
+                  </>
+                ) : null}
                 {trip.cash_reported != null ? ` · reported ${usd(trip.cash_reported)}` : ''}
               </span>
             </div>
@@ -559,6 +625,17 @@ export default function Transfers() {
                 ))
               )}
             </ul>
+            {trip.status === 'requested' ? (
+              <AssignTrip
+                trip={trip}
+                drivers={drivers}
+                vehicles={vehicles}
+                working={working}
+                onAssign={(body) =>
+                  act(`/api/transfers/${trip.id}/assign`, body, `Trip #${trip.trip_number} assigned`)
+                }
+              />
+            ) : null}
             <div className="actions" style={{ marginTop: 18 }}>
               {trip.is_flagged ? (
                 <Button
@@ -579,7 +656,7 @@ export default function Transfers() {
                   Flag
                 </Button>
               )}
-              {['assigned', 'started'].includes(trip.status) ? (
+              {['requested', 'assigned', 'started'].includes(trip.status) ? (
                 <Button
                   className="btn quiet"
                   pending={working === `/api/transfers/${trip.id}/cancel`}

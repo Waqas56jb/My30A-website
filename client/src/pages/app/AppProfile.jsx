@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -15,11 +16,12 @@ import {
   Utensils,
 } from 'lucide-react'
 import BottomNav from './BottomNav.jsx'
+import { errorText, guest, initials, useGuestQuery } from '../../lib/guestApi.js'
 
 const SAVED = [
-  { Icon: Utensils, label: 'Saved Places', to: '#saved' },
-  { Icon: MapPin, label: 'Favorite Restaurants', to: '#favorites' },
-  { Icon: History, label: 'Vitoria Memory', to: '#memory' },
+  { Icon: Utensils, label: 'Saved Places', to: '/app/profile/saved' },
+  { Icon: MapPin, label: 'Favorite Restaurants', to: '/app/explore/guide?c=restaurants' },
+  { Icon: History, label: 'Vitoria Memory', to: '/app/vitoria' },
 ]
 
 const ACCOUNT = [
@@ -49,6 +51,21 @@ function RowLink({ to, children }) {
 
 export default function AppProfile() {
   const navigate = useNavigate()
+  const { data, error } = useGuestQuery(guest.me, [])
+  const [signingOut, setSigningOut] = useState(false)
+  const profile = data?.profile
+  const name = profile?.name || 'Guest'
+
+  const signOut = async () => {
+    setSigningOut(true)
+    try {
+      await guest.signOut()
+      // GuestRoute redirects to /app/login once AuthContext's session clears — no manual
+      // navigate here, matching ProtectedRoute's pattern for the staff panels.
+    } catch {
+      setSigningOut(false)
+    }
+  }
 
   return (
     <div className="app-guest">
@@ -66,24 +83,24 @@ export default function AppProfile() {
               </button>
               <button type="button" className="app-home-bell app-prof-bell" aria-label="Notifications">
                 <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
-                <span className="app-home-bell-dot" aria-hidden="true" />
               </button>
             </div>
 
             <div className="app-prof-avatar-wrap">
-              <span className="app-prof-avatar" role="img" aria-label="Alex Jessy">
-                AJ
+              <span className="app-prof-avatar" role="img" aria-label={name}>
+                {initials(profile?.name, profile?.email)}
               </span>
               <button type="button" className="app-prof-edit" aria-label="Edit photo">
                 <Pencil size={18} strokeWidth={1.5} aria-hidden="true" />
               </button>
             </div>
 
-            <h1 className="app-prof-name">Alex Jessy</h1>
+            <h1 className="app-prof-name">{name}</h1>
             <p className="app-prof-meta">
-              <span>alexjessi123@gmail.com</span>
-              <span className="app-xfer-pill is-green">Upcoming Stay</span>
+              <span>{profile?.email || ''}</span>
+              {data?.stay_label ? <span className="app-xfer-pill is-green">{data.stay_label}</span> : null}
             </p>
+            {error ? <p className="app-inline-error" style={{ textAlign: 'center' }}>{errorText(error)}</p> : null}
 
             <div className="app-exp-body app-prof-body">
               <section className="app-prof-section">
@@ -92,7 +109,10 @@ export default function AppProfile() {
                   {SAVED.map(({ Icon, label, to }) => (
                     <RowLink key={label} to={to}>
                       <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
-                      <span>{label}</span>
+                      <span>
+                        {label}
+                        {label === 'Saved Places' && data?.stats?.saved_places ? ` (${data.stats.saved_places})` : ''}
+                      </span>
                       <ChevronRight size={20} strokeWidth={1.5} className="is-chev" aria-hidden="true" />
                     </RowLink>
                   ))}
@@ -128,10 +148,11 @@ export default function AppProfile() {
               <button
                 type="button"
                 className="app-exp-btn is-primary app-prof-signout"
-                onClick={() => navigate('/app/login')}
+                onClick={signOut}
+                disabled={signingOut}
               >
                 <LogOut size={22} strokeWidth={1.5} aria-hidden="true" />
-                Sign Out
+                {signingOut ? 'Signing out…' : 'Sign Out'}
               </button>
             </div>
           </div>

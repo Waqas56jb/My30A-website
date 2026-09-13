@@ -1,18 +1,55 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Check, Info, Sparkles } from 'lucide-react'
+import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import { Cta, TransferShell } from '../transfer/TransferShell.jsx'
 import { TipGrid, money, tipAmount } from '../transfer/TipBits.jsx'
-import { addonLabel, addonTotal, serviceFee, useGrocery } from './GroceryShared.jsx'
-
-const PUBLIX_TOTAL = 286.83
+import { useOrderId } from './GroceryShared.jsx'
 
 export default function GroceryTip() {
-  const grocery = useGrocery()
+  const navigate = useNavigate()
+  const id = useOrderId()
+  const { data: order, error } = useGuestQuery(
+    () => (id ? guest.grocery(id) : guest.groceries({ status: 'delivered' }).then((rows) => rows[0] || null)),
+    [id]
+  )
   const [pick, setPick] = useState('18')
-  const fee = serviceFee(grocery)
-  const extras = addonTotal(grocery)
-  const total = PUBLIX_TOTAL + fee + extras
-  const tip = tipAmount(fee, pick)
+  const [custom, setCustom] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [tipError, setTipError] = useState('')
+
+  const fee = order ? order.service_fee : 0
+  const extras = order ? order.addons_total : 0
+  const publix = order ? order.grocery_total : 0
+  const total = order ? order.total : 0
+  const tip = pick === 'custom' ? custom : tipAmount(fee, pick)
+  const addons = order?.addons?.length ? order.addons.map((a) => `${a.name} +$${a.price}`).join(', ') : 'None'
+  const deliveredAt = order?.delivered_at
+    ? new Date(order.delivered_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : null
+
+  const onPick = (key) => {
+    if (key === 'custom') {
+      const value = Number(window.prompt('Tip amount in USD', custom || '10'))
+      if (!Number.isFinite(value) || value < 0) return
+      setCustom(Math.round(value * 100) / 100)
+    }
+    setPick(key)
+  }
+
+  const leaveTip = async () => {
+    if (!order) return
+    setBusy(true)
+    setTipError('')
+    try {
+      await guest.tipGrocery(order.id, Math.round(tip * 100) / 100)
+      navigate('/app/home', { replace: true })
+    } catch (err) {
+      setTipError(errorText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <TransferShell
@@ -26,15 +63,20 @@ export default function GroceryTip() {
             </strong>
             <span>Tips are a great way to show appreciation for excellent service.</span>
           </div>
+          {tipError ? <p className="app-inline-error">{tipError}</p> : null}
           <div className="app-xfer-row-2 is-gap-20">
             <Cta to="/app/home" ghost>
               No Thanks
             </Cta>
-            <Cta to="/app/home">{tip ? `Leave ${money(tip)} Tip` : 'Leave a Tip'}</Cta>
+            <Cta onClick={leaveTip} disabled={busy || !order || order.status !== 'delivered' || !tip}>
+              {busy ? 'Sending…' : tip ? `Leave ${money(tip)} Tip` : 'Leave a Tip'}
+            </Cta>
           </div>
           <p className="app-xfer-warn">
             <Info size={16} strokeWidth={1.5} aria-hidden="true" />
-            Complete within 24 hours Booking auto-cancels otherwise.
+            {order && order.status !== 'delivered'
+              ? 'You can tip once your order is delivered.'
+              : 'Thank you for choosing Vitoria.'}
           </p>
         </>
       }
@@ -55,47 +97,53 @@ export default function GroceryTip() {
           </p>
         </div>
 
-        <section className="app-xfer-card app-groc-sum">
-          <h3>Order Summary</h3>
-          <div className="app-groc-sum-row">
-            <span>
-              <strong>Publix Grocery Total</strong>
-              <small>Charged now</small>
-            </span>
-            <b>{money(PUBLIX_TOTAL)}</b>
-          </div>
-          <div className="app-groc-sum-row">
-            <span>
-              <strong>Service Fee</strong>
-              <small>Authorized until delivery</small>
-            </span>
-            <b>{money(fee)}</b>
-          </div>
-          <div className="app-groc-sum-row">
-            <span>
-              <strong>Add-Ons</strong>
-              <small>{addonLabel(grocery)}</small>
-            </span>
-            <b>{money(extras)}</b>
-          </div>
-          <div className="app-groc-sum-row is-total">
-            <span>
-              <strong>Total</strong>
-            </span>
-            <b>{money(total)}</b>
-          </div>
-          <div className="app-groc-info is-lg is-done">
-            <Info size={20} strokeWidth={1.5} aria-hidden="true" />
-            <span>
-              <strong>Service completed</strong>
-              <small>Delivered on {grocery.date} at 4:38 PM</small>
-            </span>
-          </div>
-        </section>
+        {error ? <p className="app-inline-error">{errorText(error)}</p> : null}
+
+        {order ? (
+          <section className="app-xfer-card app-groc-sum">
+            <h3>Order Summary</h3>
+            <div className="app-groc-sum-row">
+              <span>
+                <strong>Publix Grocery Total</strong>
+                <small>Charged now</small>
+              </span>
+              <b>{money(publix)}</b>
+            </div>
+            <div className="app-groc-sum-row">
+              <span>
+                <strong>Service Fee</strong>
+                <small>Authorized until delivery</small>
+              </span>
+              <b>{money(fee - extras)}</b>
+            </div>
+            <div className="app-groc-sum-row">
+              <span>
+                <strong>Add-Ons</strong>
+                <small>{addons}</small>
+              </span>
+              <b>{money(extras)}</b>
+            </div>
+            <div className="app-groc-sum-row is-total">
+              <span>
+                <strong>Total</strong>
+              </span>
+              <b>{money(total)}</b>
+            </div>
+            <div className="app-groc-info is-lg is-done">
+              <Info size={20} strokeWidth={1.5} aria-hidden="true" />
+              <span>
+                <strong>{order.status === 'delivered' ? 'Service completed' : order.status_label}</strong>
+                <small>{deliveredAt ? `Delivered on ${deliveredAt}` : `Delivery ${order.date_label} · ${order.time_label}`}</small>
+              </span>
+            </div>
+          </section>
+        ) : (
+          <p className="app-empty">No delivered orders yet.</p>
+        )}
 
         <section className="app-xfer-section">
           <h2 className="app-xfer-h">Add A Tip For Your Shopper</h2>
-          <TipGrid base={fee} pick={pick} onPick={setPick} />
+          <TipGrid base={fee} pick={pick} onPick={onPick} />
         </section>
       </div>
     </TransferShell>

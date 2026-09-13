@@ -7,23 +7,46 @@ export const DEFAULT_BOOKING = {
   airport: 'ECP',
   community: 'Rosemary Beach',
   address: '21 N Barrett Square, Rosemary Beach, FL 32461',
-  date: 'Oct 18, 2026',
-  time: '5:50 PM',
+  date: '',
+  time: '',
+  scheduledAt: '',
   passengers: 2,
   bags: 3,
-  flight: 'WN 0987',
+  flight: '',
   vehicle: '4 Passenger Vehicle',
+  vehicleType: '4pax',
+  holiday: false,
 }
 
 export const PRICE = { transfer: 85, holiday: 40 }
+
+export const VEHICLE_TYPES = {
+  '4 Passenger Vehicle': '4pax',
+  '6 Passenger Vehicle': '6pax',
+  '14 Passenger Vehicle': '14pax',
+}
 
 export const pad = (n) => String(n).padStart(2, '0')
 
 export const tripLabel = (t) => (t === 'departure' ? 'Departure Dropoff' : 'Arrival Pickup')
 
+export const usd = (n) => {
+  const value = Number(n || 0)
+  return `$${value % 1 === 0 ? value : value.toFixed(2)}`
+}
+
+export const clock = (iso) =>
+  iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
+
 export function useBooking() {
   const { state } = useLocation()
   return { ...DEFAULT_BOOKING, ...(state?.booking || {}) }
+}
+
+// Reads the transfer id from router state or the ?id= query (so links from Home work).
+export function useTransferId() {
+  const { state, search } = useLocation()
+  return state?.transfer?.id || new URLSearchParams(search).get('id') || ''
 }
 
 export function Stepper({ step }) {
@@ -93,7 +116,11 @@ export function DetailRow({ icon: Icon, label, value }) {
   )
 }
 
-export function PriceCard() {
+// quote: { base_price, addons: [{name, price}], total } from the API (or a transfer row).
+export function PriceCard({ quote, loading }) {
+  const base = quote?.base_price ?? PRICE.transfer
+  const addons = quote?.addons ?? []
+  const total = quote?.total ?? base + addons.reduce((s, a) => s + Number(a.price || 0), 0)
   return (
     <section className="app-xfer-card">
       <h2 className="app-xfer-card-h">
@@ -103,32 +130,34 @@ export function PriceCard() {
       <div className="app-xfer-price">
         <div className="app-xfer-price-row">
           <span>Transfer</span>
-          <span>${PRICE.transfer}</span>
+          <span>{loading ? '…' : usd(base)}</span>
         </div>
-        <div className="app-xfer-price-row">
-          <span>Holiday add-on</span>
-          <span>+${PRICE.holiday}</span>
-        </div>
+        {addons.map((a) => (
+          <div key={a.key || a.name} className="app-xfer-price-row">
+            <span>{a.name}</span>
+            <span>+{usd(a.price)}</span>
+          </div>
+        ))}
         <div className="app-xfer-price-row is-total">
           <span>Total</span>
-          <span>${PRICE.transfer + PRICE.holiday}</span>
+          <span>{loading ? '…' : usd(total)}</span>
         </div>
       </div>
     </section>
   )
 }
 
-export function Cta({ to, state, onClick, ghost, children, type = 'button' }) {
+export function Cta({ to, state, onClick, ghost, disabled, children, type = 'button' }) {
   const cls = `app-xfer-cta${ghost ? ' is-ghost' : ''}`
   if (to) {
     return (
-      <Link to={to} state={state} className={cls}>
+      <Link to={to} state={state} className={cls} aria-disabled={disabled ? 'true' : undefined}>
         {children}
       </Link>
     )
   }
   return (
-    <button type={type} className={cls} onClick={onClick}>
+    <button type={type} className={cls} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   )

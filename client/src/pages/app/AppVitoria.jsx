@@ -1,34 +1,84 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bell, Mic, Paperclip, Plus } from 'lucide-react'
+import { errorText, guest } from '../../lib/guestApi.js'
 
 const CHIPS = ['Best beach today', 'Dinner tonight', 'Things to do', 'Top 5 Restaurants']
+const FOLLOW_UP = 'How can I help to make your stay even better?'
 
-const GREETING = {
-  from: 'vitoria',
-  lines: ['Good Morning, Alex', 'How can I help to make your stay even better?'],
+// Collapse consecutive messages from the same side into one bubble group.
+function groupMessages(messages) {
+  const groups = []
+  for (const m of messages) {
+    const from = m.role === 'assistant' ? 'vitoria' : 'user'
+    const last = groups[groups.length - 1]
+    if (last && last.from === from) last.lines.push(m.content)
+    else groups.push({ from, lines: [m.content], key: m.id })
+  }
+  return groups
 }
 
 export default function AppVitoria() {
   const navigate = useNavigate()
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState([])
+  const [greeting, setGreeting] = useState('')
+  const [thinking, setThinking] = useState(false)
+  const [error, setError] = useState('')
+  const bodyRef = useRef(null)
 
-  const send = (text) => {
+  useEffect(() => {
+    let ignore = false
+    guest
+      .vitoria()
+      .then((data) => {
+        if (ignore) return
+        setGreeting(data.greeting || '')
+        setMessages(data.messages || [])
+      })
+      .catch((err) => !ignore && setError(errorText(err)))
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const el = bodyRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages, thinking])
+
+  const send = async (text) => {
     const clean = text.trim()
-    if (!clean) return
-    setMessages((prev) => {
-      const next = prev.length === 0 ? [GREETING] : [...prev]
-      next.push({ from: 'user', lines: [clean] })
-      return next
-    })
+    if (!clean || thinking) return
+    setError('')
     setDraft('')
+    const optimistic = { id: `tmp-${Date.now()}`, role: 'user', content: clean }
+    setMessages((prev) => [...prev, optimistic])
+    setThinking(true)
+    try {
+      const reply = await guest.ask(clean)
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== optimistic.id),
+        reply.user,
+        reply.assistant,
+      ])
+    } catch (err) {
+      setError(errorText(err))
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
+    } finally {
+      setThinking(false)
+    }
   }
 
   const onSubmit = (e) => {
     e.preventDefault()
     send(draft)
   }
+
+  const groups = groupMessages(messages)
+  const thread = messages.length
+    ? [{ from: 'vitoria', lines: [greeting || 'Hello', FOLLOW_UP], key: 'greeting' }, ...groups]
+    : []
 
   return (
     <div className="app-guest">
@@ -52,41 +102,54 @@ export default function AppVitoria() {
                 <p>Your AI Concierge</p>
               </div>
             </div>
-            <button type="button" className="app-home-bell app-home-bell-soft" aria-label="Notifications">
+            <button
+              type="button"
+              className="app-home-bell app-home-bell-soft"
+              aria-label="Notifications"
+              onClick={() => navigate('/app/profile')}
+            >
               <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
-              <span className="app-home-bell-dot" aria-hidden="true" />
             </button>
           </header>
 
-          <div className="app-vitoria-body">
-            {messages.length === 0 ? (
+          <div className="app-vitoria-body" ref={bodyRef}>
+            {thread.length === 0 ? (
               <div className="app-vitoria-empty">
                 <img
                   src="/victoria-logo.png"
-                  alt="Hello Alex, what can I help you with?"
+                  alt={`${greeting || 'Hello'}, what can I help you with?`}
                   width={209}
                   height={258}
                 />
               </div>
             ) : (
               <div className="app-vitoria-thread" aria-live="polite">
-                {messages.map((m, i) => (
+                {thread.map((m) => (
                   <div
-                    key={i}
+                    key={m.key}
                     className={`app-vitoria-group${m.from === 'user' ? ' is-user' : ''}`}
                   >
                     {m.from === 'vitoria' ? (
                       <span className="app-vitoria-avatar is-dark" aria-hidden="true" />
                     ) : null}
                     <div className="app-vitoria-bubbles">
-                      {m.lines.map((line) => (
-                        <p key={line} className="app-vitoria-bubble">
+                      {m.lines.map((line, i) => (
+                        <p key={`${m.key}-${i}`} className="app-vitoria-bubble">
                           {line}
                         </p>
                       ))}
                     </div>
                   </div>
                 ))}
+                {thinking ? (
+                  <div className="app-vitoria-group">
+                    <span className="app-vitoria-avatar is-dark" aria-hidden="true" />
+                    <div className="app-vitoria-bubbles">
+                      <p className="app-vitoria-bubble is-thinking">Vitoria is typing…</p>
+                    </div>
+                  </div>
+                ) : null}
+                {error ? <p className="app-inline-error">{error}</p> : null}
               </div>
             )}
           </div>
@@ -116,7 +179,7 @@ export default function AppVitoria() {
                 <button type="button" className="app-vitoria-attach" aria-label="Attach">
                   <Paperclip size={16} strokeWidth={1.5} aria-hidden="true" />
                 </button>
-                <button type="button" className="app-vitoria-mic" aria-label="Voice">
+                <button type="submit" className="app-vitoria-mic" aria-label="Send">
                   <Mic size={14} strokeWidth={1.5} aria-hidden="true" />
                 </button>
               </div>

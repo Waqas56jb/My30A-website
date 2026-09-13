@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   BadgeCheck,
   Calendar,
@@ -8,16 +10,38 @@ import {
   Refrigerator,
   Zap,
 } from 'lucide-react'
+import { guest } from '../../../lib/guestApi.js'
 import { Cta, DetailRow, TransferShell } from '../transfer/TransferShell.jsx'
-import { addonLabel, pkgOf, serviceFee, stockingOf, useGrocery } from './GroceryShared.jsx'
+import { addonLabel, pkgOf, serviceFee, stockingOf, useGrocery, useOrderId } from './GroceryShared.jsx'
 
 export default function GroceryPending() {
   const grocery = useGrocery()
+  const { state } = useLocation()
+  const id = useOrderId()
+  const [order, setOrder] = useState(state?.order || null)
+
+  useEffect(() => {
+    if (order || !id) return undefined
+    let ignore = false
+    guest
+      .grocery(id)
+      .then((o) => !ignore && setOrder(o))
+      .catch(() => {})
+    return () => {
+      ignore = true
+    }
+  }, [id, order])
+
+  const addons = order
+    ? order.addons?.length
+      ? order.addons.map((a) => `${a.name} +$${a.price}`).join(', ')
+      : 'None'
+    : addonLabel(grocery)
 
   return (
     <TransferShell
       title="Order Groceries"
-      back="/app/grocery/list"
+      back="/app/home"
       step={4}
       footer={
         <>
@@ -25,6 +49,11 @@ export default function GroceryPending() {
             <Info size={20} strokeWidth={1.5} aria-hidden="true" />
             <span>We’ll notify you as soon as it’s confirmed.</span>
           </div>
+          {order ? (
+            <Cta to={`/app/grocery/track?id=${order.id}`} ghost>
+              Track order #{order.order_number}
+            </Cta>
+          ) : null}
           <Cta to="/app/home">Back to Home</Cta>
         </>
       }
@@ -47,16 +76,16 @@ export default function GroceryPending() {
 
         <section className="app-xfer-card">
           <div className="app-xfer-rows is-flush">
-            <DetailRow icon={Package} label="Package" value={pkgOf(grocery).name} />
-            <DetailRow icon={Refrigerator} label="Stocking" value={stockingOf(grocery).name} />
-            <DetailRow icon={Calendar} label="Delivery date" value={grocery.date} />
-            <DetailRow icon={Clock} label="Delivery time" value={grocery.time} />
+            <DetailRow icon={Package} label="Package" value={order?.package || pkgOf(grocery).name} />
+            <DetailRow icon={Refrigerator} label="Stocking" value={order?.stocking || stockingOf(grocery).name} />
+            <DetailRow icon={Calendar} label="Delivery date" value={order?.date_label || grocery.date} />
+            <DetailRow icon={Clock} label="Delivery time" value={order?.time_label || grocery.time} />
             <DetailRow
               icon={CircleDollarSign}
               label="Estimated price"
-              value={`$${serviceFee(grocery)} + Publix`}
+              value={`$${order ? order.service_fee : serviceFee(grocery)} + Publix`}
             />
-            <DetailRow icon={Zap} label="Add-ons" value={addonLabel(grocery)} />
+            <DetailRow icon={Zap} label="Add-ons" value={addons} />
           </div>
         </section>
       </div>

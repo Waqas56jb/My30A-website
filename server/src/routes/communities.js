@@ -4,7 +4,8 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
 
 const router = Router()
-router.use(requireAuth, requireRole('admin'))
+// Guests read communities + pricing to quote their own transfer requests.
+router.use(requireAuth, requireRole('admin', 'guest'))
 
 router.get('/pricing/all', async (_req, res, next) => {
   try {
