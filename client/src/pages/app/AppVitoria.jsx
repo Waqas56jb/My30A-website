@@ -6,14 +6,25 @@ import { errorText, guest } from '../../lib/guestApi.js'
 const CHIPS = ['Best beach today', 'Dinner tonight', 'Things to do', 'Top 5 Restaurants']
 const FOLLOW_UP = 'How can I help to make your stay even better?'
 
+// A reply is written as real paragraphs separated by a blank line (see the server's system
+// prompt) — each paragraph becomes its own rounded bubble, the way a person sends a few short
+// texts in a row rather than one dense block.
+function paragraphsOf(content) {
+  return String(content || '')
+    .split(/\n{2,}/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
 // Collapse consecutive messages from the same side into one bubble group.
 function groupMessages(messages) {
   const groups = []
   for (const m of messages) {
     const from = m.role === 'assistant' ? 'vitoria' : 'user'
     const last = groups[groups.length - 1]
-    if (last && last.from === from) last.lines.push(m.content)
-    else groups.push({ from, lines: [m.content], key: m.id })
+    const paragraphs = paragraphsOf(m.content)
+    if (last && last.from === from) last.lines.push(...paragraphs)
+    else groups.push({ from, lines: paragraphs, key: m.id })
   }
   return groups
 }

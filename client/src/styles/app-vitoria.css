@@ -174,9 +174,12 @@
   font-family: 'Inter', var(--app-body);
   font-weight: 400;
   font-size: 14px;
-  line-height: 127%;
-  letter-spacing: -0.03em;
+  line-height: 145%;
+  letter-spacing: -0.01em;
   color: #0a1628;
+  /* Preserve single line breaks the model sends within one paragraph (e.g. a short list of
+     places) without collapsing them the way normal HTML whitespace handling would. */
+  white-space: pre-line;
 }
 
 .app-vitoria-group.is-user .app-vitoria-bubble {

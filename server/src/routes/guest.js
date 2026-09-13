@@ -12,6 +12,7 @@ import { getBasePrice } from '../services/pricing.js'
 import { notify } from '../services/notifications.js'
 import { getSignedUrl, uploadFile } from '../lib/storage.js'
 import { chatCompletion } from '../lib/openai.js'
+import { cleanConciergeText } from '../lib/textFormat.js'
 import {
   createPaymentIntent,
   ensureStripeCustomer,
@@ -1768,8 +1769,17 @@ async function vitoriaContext(userId) {
 
 function systemPrompt(ctx) {
   const lines = [
-    'You are Vitoria, the friendly AI concierge inside the My30A Host guest app for vacation rentals on Scenic Highway 30A, Florida.',
-    'Be warm, concise (2-5 short sentences), and specific. Recommend only places from the data below. Never invent phone numbers or prices.',
+    'You are Vitoria, the elegant AI concierge inside the My30A Host guest app for vacation rentals on Scenic Highway 30A, Florida.',
+    'Voice: warm, confident, effortlessly polished — like a five-star hotel concierge texting a guest. Never robotic, never salesy, never gushing.',
+    '',
+    'Formatting rules — follow exactly, no exceptions:',
+    '- Plain text only. Never use markdown: no **bold**, no _italics_, no # headings, no [links](url), no backticks.',
+    '- Never use dashes, bullets or asterisks as list markers. If you mention more than one option, put each on its own line as a short natural phrase — no symbol in front of it.',
+    '- Keep replies short: 2-4 sentences total, or 2-4 short lines when naming multiple places.',
+    '- Separate distinct ideas with one blank line (a real paragraph break). Never run them together in one dense block.',
+    '- Say a place’s name plainly — never bold it, quote it, or capitalize it for emphasis.',
+    '- End with at most one short, warm follow-up question, on its own line — and only when it genuinely helps.',
+    'Recommend only places from the data below. Never invent phone numbers or prices.',
     'Airport transfers and Publix grocery delivery are booked in the Services tab of the app; point guests there when relevant.',
     '',
     `Guest: ${ctx.profile?.name || 'Guest'} (${ctx.firstName}).`,
@@ -1802,45 +1812,48 @@ function systemPrompt(ctx) {
   return lines.join('\n').slice(0, 12000)
 }
 
+// Used only when the AI is unavailable — same voice and layout rules as the system prompt:
+// plain text, one idea per line, real paragraph breaks (\n\n), no bullet symbols.
 function fallbackReply(text, ctx) {
   const q = String(text || '').toLowerCase()
   const name = ctx.firstName
   const byKind = (kind) => ctx.vendors.filter((v) => v.kind === kind)
   const guidesOf = (kind) => ctx.guides.filter((g) => g.kind === kind)
-  const list = (rows, pick) => rows.slice(0, 5).map(pick).join(', ')
+  const namedLines = (rows, pick) => rows.slice(0, 3).map(pick).join('\n')
 
   if (/beach|sunset|swim/.test(q)) {
     const beaches = byKind('beach')
-    return beaches.length
-      ? `Great pick, ${name}! For today I’d head to ${list(beaches, (b) => `${b.name} (${b.place})`)}. Check the beach flags before swimming — double red means the water is closed. Want directions or a bonfire setup for tonight?`
-      : `The beaches along 30A are all public access — look for the blue access signs. Want me to suggest a spot near your stay?`
+    if (!beaches.length) {
+      return `The beaches along 30A are all public access — look for the blue access signs.\n\nWould you like me to suggest a spot near your stay?`
+    }
+    return `For today, I’d recommend:\n\n${namedLines(beaches, (b) => `${b.name}, ${b.place}`)}\n\nCheck the beach flags before swimming — double red means the water is closed.`
   }
   if (/dinner|restaurant|eat|food|lunch|breakfast|top 5/.test(q)) {
     const spots = byKind('restaurant')
-    return spots.length
-      ? `For dinner tonight I’d book ${list(spots, (r) => `${r.name} in ${r.place}${r.hours ? ` (${r.hours})` : ''}`)}. Reservations are recommended in season — tap the restaurant in Explore to book directly.`
-      : `Tap Explore → Restaurants to see tonight’s dining picks near ${ctx.booking?.community_name || '30A'}.`
+    if (!spots.length) {
+      return `Open Explore → Restaurants to see tonight’s dining picks near ${ctx.booking?.community_name || '30A'}.`
+    }
+    return `For dinner tonight, I’d book:\n\n${namedLines(spots, (r) => `${r.name}, ${r.place}${r.hours ? ` — ${r.hours}` : ''}`)}\n\nReservations are recommended in season. Tap the restaurant in Explore to book directly.`
   }
   if (/things to do|activit|fun|golf|bike|boat|kayak|paddle|photo|spa|massage|bonfire/.test(q)) {
     const fun = guidesOf('vendors')
-    return `Here’s what’s popular this week, ${name}: ${list(fun, (g) => `${g.title} (${g.price_from || 'see vendors'})`)}. Open Explore → Local Guide to see vetted vendors and book directly with them.`
+    return `Here’s what’s popular this week, ${name}:\n\n${namedLines(fun, (g) => `${g.title}${g.price_from ? ` — ${g.price_from}` : ''}`)}\n\nOpen Explore → Local Guide to see vetted vendors and book directly with them.`
   }
   if (/grocer|publix|food delivery|stock/.test(q)) {
-    return `You can order groceries from the Services tab: pick a package, choose how you’d like the kitchen stocked, and upload your Publix cart screenshot. You pay our flat service fee plus the exact Publix receipt — no markup.`
+    return `You can order groceries from the Services tab.\n\nPick a package, choose how you’d like the kitchen stocked, and upload your Publix cart screenshot.\n\nYou pay our flat service fee plus the exact Publix receipt — no markup.`
   }
   if (/airport|transfer|ride|pickup|pick up|drop|flight|shuttle|driver/.test(q)) {
-    return `Airport transfers to and from ECP, VPS and PNS are booked in the Services tab. Add your flight number and we’ll track it and confirm your driver — you’ll get a notification as soon as it’s assigned.`
+    return `Airport transfers to and from ECP, VPS and PNS are booked in the Services tab.\n\nAdd your flight number and we’ll track it and confirm your driver — you’ll get a notification as soon as it’s assigned.`
   }
   if (/rule|parking|park|weather|emergency|911|helpline|safety|flag/.test(q)) {
     const section = ctx.info.find((s) => new RegExp(s.title.split(' ')[0].toLowerCase()).test(q)) || ctx.info[0]
-    return section
-      ? `${section.title}: ${(section.items || []).slice(0, 3).join(' ')} You’ll find the full list under Explore → Public Information.`
-      : `Open Explore → Public Information for beach rules, parking, safety and emergency helplines.`
+    if (!section) return `Open Explore → Public Information for beach rules, parking, safety and emergency helplines.`
+    return `${section.title}:\n\n${(section.items || []).slice(0, 3).join('\n')}\n\nYou’ll find the full list under Explore → Public Information.`
   }
   if (/hello|hi|hey|good (morning|afternoon|evening)/.test(q)) {
-    return `Hi ${name}! I can help with the best beach today, dinner tonight, things to do, groceries, and airport transfers. What sounds good?`
+    return `Hi ${name}. I can help with the best beach today, dinner tonight, things to do, groceries or airport transfers.\n\nWhat sounds good?`
   }
-  return `Happy to help, ${name}! I can suggest beaches, dinner spots, activities and local essentials near ${ctx.booking?.community_name || '30A'}, or get you set up with groceries and airport transfers from the Services tab. What would you like?`
+  return `Happy to help, ${name}.\n\nI can suggest beaches, dinner spots, activities and local essentials near ${ctx.booking?.community_name || '30A'}, or set you up with groceries and airport transfers from the Services tab.\n\nWhat would you like?`
 }
 
 router.get('/vitoria/messages', guestOnly, async (req, res, next) => {
@@ -1888,7 +1901,9 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
     const completion = await chatCompletion({
       messages: [{ role: 'system', content: systemPrompt(ctx) }, ...recent],
     })
-    const reply = completion.skipped ? fallbackReply(content, ctx) : completion.content
+    // Sanitized regardless of source — a stray "**" or "- " from the model must never reach
+    // the guest, since the chat bubble renders plain text, not markdown.
+    const reply = cleanConciergeText(completion.skipped ? fallbackReply(content, ctx) : completion.content)
     const model = completion.skipped ? 'fallback' : completion.model
 
     const { data: assistantMessage, error: replyError } = await supabase
