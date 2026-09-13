@@ -212,6 +212,7 @@
 
   .mkt-nav-links {
     order: 3;
+    flex: 0 0 100%;
     width: 100%;
     justify-content: flex-start;
     overflow-x: auto;
@@ -2391,6 +2392,86 @@
 
   .mkt-brand img {
     height: 36px;
+  }
+}
+
+/* Mobile navigation — hamburger + dropdown panel */
+.mkt-nav-toggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .mkt-nav {
+    z-index: 30;
+  }
+
+  .mkt-nav-inner {
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
+  .mkt-brand {
+    margin-right: auto;
+  }
+
+  .mkt-btn-navy {
+    order: 2;
+    margin-left: 0;
+  }
+
+  .mkt-nav-toggle {
+    order: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+    background: rgba(10, 22, 40, 0.35);
+    color: #ffffff;
+    cursor: pointer;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  .mkt-nav-links {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 6;
+    order: 4;
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    width: auto;
+    margin: 8px 0 0;
+    padding: 6px 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(10, 22, 40, 0.96);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+
+  .mkt-nav-links.is-open {
+    display: flex;
+  }
+
+  .mkt-nav-links a {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 16px;
+  }
+
+  .mkt-nav-links a:last-child {
+    border-bottom: 0;
   }
 }
 

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
 
 const NAV = [
   { label: 'Home', href: '#home' },
@@ -23,6 +24,7 @@ const STAY_IMAGES = [
 export default function Home() {
   const videoRef = useRef(null)
   const coastalVideoRef = useRef(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     document.title = 'My30A Host · Where 30A Feels Effortless'
@@ -83,9 +85,13 @@ export default function Home() {
             <a className="mkt-brand" href="#home">
               <img src="/logo-nav.png" alt="My30A Host — Your personal 30A concierge" />
             </a>
-            <nav className="mkt-nav-links" aria-label="Primary">
+            <nav
+              id="mkt-primary-nav"
+              className={`mkt-nav-links${menuOpen ? ' is-open' : ''}`}
+              aria-label="Primary"
+            >
               {NAV.map((item) => (
-                <a key={item.href} href={item.href}>
+                <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
                   {item.label}
                 </a>
               ))}
@@ -93,6 +99,20 @@ export default function Home() {
             <Link className="mkt-btn mkt-btn-navy" to="/app">
               Get Started
             </Link>
+            <button
+              type="button"
+              className="mkt-nav-toggle"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              aria-controls="mkt-primary-nav"
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              {menuOpen ? (
+                <X size={22} strokeWidth={1.8} aria-hidden="true" />
+              ) : (
+                <Menu size={22} strokeWidth={1.8} aria-hidden="true" />
+              )}
+            </button>
           </div>
         </header>
 

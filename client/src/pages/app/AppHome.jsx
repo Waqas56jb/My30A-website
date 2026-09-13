@@ -33,16 +33,16 @@ const ORDERS = [
 ]
 
 const EXPLORE = [
-  { key: 'beaches', label: 'Beaches', tone: 'sea', Icon: Umbrella },
-  { key: 'restaurants', label: 'Restaurants', tone: 'sand', Icon: UtensilsCrossed },
-  { key: 'activities', label: 'Activities', tone: 'leaf', Icon: Mountain },
-  { key: 'beaches-2', label: 'Beaches', tone: 'sea', Icon: Umbrella },
+  { key: 'beaches', label: 'Beaches', tone: 'sea', Icon: Umbrella, to: '/app/explore/guide?c=beaches' },
+  { key: 'restaurants', label: 'Restaurants', tone: 'sand', Icon: UtensilsCrossed, to: '/app/explore/guide?c=restaurants' },
+  { key: 'activities', label: 'Activities', tone: 'leaf', Icon: Mountain, to: '/app/explore/guide?c=all' },
+  { key: 'beaches-2', label: 'Beaches', tone: 'sea', Icon: Umbrella, to: '/app/explore/guide?c=beaches' },
 ]
 
 const PICKS = [
-  { key: 'p1', image: '/1.png', title: 'Perfect Sunset Spot Tonight', place: 'Inlet Beach' },
-  { key: 'p2', image: '/2.png', title: 'Dinner Near Rosemary Beach', place: 'Inlet Beach' },
-  { key: 'p3', image: '/3.png', title: 'Perfect Sunset Spot Tonight', place: 'Inlet Beach' },
+  { key: 'p1', image: '/1.png', title: 'Perfect Sunset Spot Tonight', place: 'Inlet Beach', to: '/app/explore/beach/rosemary' },
+  { key: 'p2', image: '/2.png', title: 'Dinner Near Rosemary Beach', place: 'Inlet Beach', to: '/app/explore/restaurant/pescado' },
+  { key: 'p3', image: '/3.png', title: 'Perfect Sunset Spot Tonight', place: 'Inlet Beach', to: '/app/explore/beach/rosemary' },
 ]
 
 function Rating() {
@@ -61,8 +61,8 @@ function Rating() {
 }
 
 function OrderCard({ order }) {
-  const body = (
-    <>
+  return (
+    <Link to={order.to} className={`app-home-order app-home-order-${order.tone}`}>
       <div className="app-home-order-head">
         <div className="app-home-order-main">
           <span className="app-home-order-icon" aria-hidden="true">
@@ -79,17 +79,7 @@ function OrderCard({ order }) {
         <Clock size={14} strokeWidth={1.5} aria-hidden="true" />
         <span>{order.meta}</span>
       </div>
-    </>
-  )
-  const cls = `app-home-order app-home-order-${order.tone}`
-  return order.to ? (
-    <Link to={order.to} className={cls}>
-      {body}
     </Link>
-  ) : (
-    <button type="button" className={cls}>
-      {body}
-    </button>
   )
 }
 
@@ -145,18 +135,18 @@ export default function AppHome() {
               <section className="app-home-section">
                 <div className="app-home-section-head">
                   <h2 className="app-home-h2">Explore 30A</h2>
-                  <a href="#explore" className="app-home-seeall">
+                  <Link to="/app/explore" className="app-home-seeall">
                     See all
-                  </a>
+                  </Link>
                 </div>
                 <div className="app-home-explore">
-                  {EXPLORE.map(({ key, label, tone, Icon }) => (
-                    <button key={key} type="button" className="app-home-explore-chip">
+                  {EXPLORE.map(({ key, label, tone, Icon, to }) => (
+                    <Link key={key} to={to} className="app-home-explore-chip">
                       <span className={`app-home-explore-icon app-home-explore-icon-${tone}`}>
                         <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
                       </span>
                       <span>{label}</span>
-                    </button>
+                    </Link>
                   ))}
                 </div>
               </section>
@@ -164,13 +154,13 @@ export default function AppHome() {
               <section className="app-home-section">
                 <div className="app-home-section-head">
                   <h2 className="app-home-h2">Vitoria’s Pick Tonight</h2>
-                  <a href="#picks" className="app-home-seeall">
+                  <Link to="/app/explore/guide" className="app-home-seeall">
                     See all
-                  </a>
+                  </Link>
                 </div>
                 <div className="app-home-picks">
                   {PICKS.map((p) => (
-                    <button key={p.key} type="button" className="app-home-pick">
+                    <Link key={p.key} to={p.to} className="app-home-pick">
                       <img
                         className="app-home-pick-img"
                         src={p.image}
@@ -188,7 +178,7 @@ export default function AppHome() {
                           <Rating />
                         </span>
                       </span>
-                    </button>
+                    </Link>
                   ))}
                 </div>
               </section>

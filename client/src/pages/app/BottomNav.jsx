@@ -25,14 +25,22 @@ export default function BottomNav({ active }) {
         <span>Services</span>
       </Link>
       <span className="app-home-nav-spacer" aria-hidden="true" />
-      <a href="#profile" className={itemClass('profile', active)}>
+      <Link
+        to="/app/profile"
+        className={itemClass('profile', active)}
+        aria-current={active === 'profile' ? 'page' : undefined}
+      >
         <CircleUserRound size={18} strokeWidth={1.5} aria-hidden="true" />
         <span>Profile</span>
-      </a>
-      <a href="#explore" className={itemClass('explore', active)}>
+      </Link>
+      <Link
+        to="/app/explore"
+        className={itemClass('explore', active)}
+        aria-current={active === 'explore' ? 'page' : undefined}
+      >
         <Compass size={18} strokeWidth={1.5} aria-hidden="true" />
         <span>Explore</span>
-      </a>
+      </Link>
       <Link to="/app/vitoria" className="app-home-nav-fab" aria-label="Vitoria">
         <Sparkles size={18} strokeWidth={1.5} aria-hidden="true" />
         <span>Vitoria</span>

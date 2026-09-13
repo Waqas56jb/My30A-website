@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Check } from 'lucide-react'
 import {
   IconArrowLeft,
   IconUser,
@@ -45,8 +46,13 @@ export default function Signup() {
             >
               <IconArrowLeft />
             </button>
-            <img className="app-signup-logo" src="/logoforApp.png" alt="M30A" />
-            <span className="app-signup-top-spacer" aria-hidden="true" />
+            <img
+              className="app-signup-logo"
+              src="/logoforApp.png"
+              alt="M30A"
+              width={194}
+              height={100}
+            />
           </header>
 
           <form className="app-signup-card" onSubmit={onSubmit}>
@@ -134,9 +140,13 @@ export default function Signup() {
             <label className="app-signup-agree">
               <input
                 type="checkbox"
+                className="app-cb-input"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
               />
+              <span className={`app-cb${agreed ? ' is-on' : ''}`} aria-hidden="true">
+                {agreed ? <Check size={12} strokeWidth={2.5} /> : null}
+              </span>
               <span>
                 I agree with the <a href="#terms">Terms of Service</a>
                 {' | '}

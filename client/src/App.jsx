@@ -11,6 +11,7 @@ import AppLogin from './pages/app/AppLogin.jsx'
 import AppHome from './pages/app/AppHome.jsx'
 import AppServices from './pages/app/AppServices.jsx'
 import AppVitoria from './pages/app/AppVitoria.jsx'
+import AppProfile from './pages/app/AppProfile.jsx'
 import TransferBook from './pages/app/transfer/TransferBook.jsx'
 import TransferReview from './pages/app/transfer/TransferReview.jsx'
 import TransferPending from './pages/app/transfer/TransferPending.jsx'
@@ -24,6 +25,13 @@ import GroceryPending from './pages/app/grocery/GroceryPending.jsx'
 import GroceryPayment from './pages/app/grocery/GroceryPayment.jsx'
 import GroceryTrack from './pages/app/grocery/GroceryTrack.jsx'
 import GroceryTip from './pages/app/grocery/GroceryTip.jsx'
+import Explore from './pages/app/explore/Explore.jsx'
+import LocalGuide from './pages/app/explore/LocalGuide.jsx'
+import VendorList from './pages/app/explore/VendorList.jsx'
+import VendorDetail from './pages/app/explore/VendorDetail.jsx'
+import RestaurantDetail from './pages/app/explore/RestaurantDetail.jsx'
+import BeachDetail from './pages/app/explore/BeachDetail.jsx'
+import PublicInfo from './pages/app/explore/PublicInfo.jsx'
 import Trips from './pages/driver/Trips.jsx'
 import Earnings from './pages/driver/Earnings.jsx'
 import Vehicles from './pages/partner/Vehicles.jsx'
@@ -35,6 +43,7 @@ import './styles/app-home.css'
 import './styles/app-vitoria.css'
 import './styles/app-transfer.css'
 import './styles/app-grocery.css'
+import './styles/app-explore.css'
 
 const PANEL_ROLES = ['driver', 'partner', 'shopper']
 
@@ -135,6 +144,14 @@ function AppRoutes() {
       <Route path="/app/home" element={<AppHome />} />
       <Route path="/app/services" element={<AppServices />} />
       <Route path="/app/vitoria" element={<AppVitoria />} />
+      <Route path="/app/profile" element={<AppProfile />} />
+      <Route path="/app/explore" element={<Explore />} />
+      <Route path="/app/explore/guide" element={<LocalGuide />} />
+      <Route path="/app/explore/vendors/:slug" element={<VendorList />} />
+      <Route path="/app/explore/vendor/:id" element={<VendorDetail />} />
+      <Route path="/app/explore/restaurant/:id" element={<RestaurantDetail />} />
+      <Route path="/app/explore/beach/:id" element={<BeachDetail />} />
+      <Route path="/app/explore/info" element={<PublicInfo />} />
       <Route path="/app/transfer" element={<TransferBook />} />
       <Route path="/app/transfer/review" element={<TransferReview />} />
       <Route path="/app/transfer/pending" element={<TransferPending />} />

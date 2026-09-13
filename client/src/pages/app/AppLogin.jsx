@@ -40,8 +40,13 @@ export default function AppLogin() {
             >
               <IconArrowLeft />
             </button>
-            <img className="app-signup-logo" src="/logoforApp.png" alt="M30A" />
-            <span className="app-signup-top-spacer" aria-hidden="true" />
+            <img
+              className="app-signup-logo"
+              src="/logoforApp.png"
+              alt="M30A"
+              width={194}
+              height={100}
+            />
           </header>
 
           <form className="app-signup-card" onSubmit={onSubmit}>

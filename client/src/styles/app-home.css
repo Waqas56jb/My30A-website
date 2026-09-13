@@ -688,6 +688,13 @@
   height: 18px;
 }
 
+.app-home-order,
+.app-home-explore-chip,
+.app-home-pick {
+  text-decoration: none;
+  color: var(--home-ink);
+}
+
 @media (max-width: 380px) {
   .app-home-hero,
   .app-home-body,
