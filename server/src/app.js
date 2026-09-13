@@ -19,6 +19,9 @@ import authRouter from './routes/auth.js'
 import guestRouter from './routes/guest.js'
 import contentRouter from './routes/content.js'
 import paymentsRouter from './routes/payments.js'
+import publicRouter from './routes/public.js'
+import jobsRouter from './routes/jobs.js'
+import messagesRouter from './routes/messages.js'
 import { ensureBucket } from './lib/storage.js'
 
 const app = express()
@@ -118,6 +121,10 @@ app.use('/api/notifications', notificationsRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/guest', guestRouter)
 app.use('/api/content', contentRouter)
+app.use('/api/messages', messagesRouter)
+app.use('/api/jobs', jobsRouter)
+// Secret-link guest pages + Twilio voice webhooks (Twilio posts form-encoded bodies).
+app.use('/api/public', express.urlencoded({ extended: false }), publicRouter)
 
 ensureBucket().catch((error) => {
   console.log('Storage bucket setup skipped:', error.message)

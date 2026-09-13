@@ -2,6 +2,7 @@
 // Vitoria concierge chat, and guest-originated airport transfer / grocery requests.
 // Requests are inserted into the same transfers / grocery_orders tables the admin, driver and
 // shopper panels already use, with status 'requested' until an admin assigns staff.
+import crypto from 'crypto'
 import { Router } from 'express'
 import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
@@ -19,6 +20,16 @@ import {
   releasePaymentHold,
   retrievePaymentIntent,
 } from '../lib/stripe.js'
+import { maskedCallNumber } from '../lib/sms.js'
+import {
+  ROUND_TRIP_DISCOUNT_PERCENT,
+  availableCredit,
+  cancelForGuest,
+  consumeCredits,
+  firstName as tripFirstName,
+  guestLinks,
+  vehicleGuestLabel,
+} from '../services/tripFlow.js'
 
 const router = Router()
 const guestOnly = requireRole('guest')
@@ -36,15 +47,18 @@ const VEHICLE_LABELS = {
   '14pax': '14 Passenger Vehicle',
 }
 const PAYMENT_METHODS = ['card_on_file', 'card', 'apple_pay', 'google_pay', 'cash']
-const ACTIVE_TRIP = ['requested', 'assigned', 'started']
+const ACTIVE_TRIP = ['requested', 'assigned', 'started', 'arrived', 'picked_up']
 const ACTIVE_ORDER = ['requested', 'assigned', 'shopping', 'on_the_way']
 const TRIP_LABELS = {
   requested: 'Requested',
   assigned: 'Confirmed',
   started: 'Driver on the way',
+  arrived: 'Driver arrived',
+  picked_up: 'On your way',
   completed: 'Completed',
   cancelled: 'Cancelled',
   refunded: 'Refunded',
+  no_show: 'No-show',
 }
 const ORDER_LABELS = {
   requested: 'Requested',
@@ -68,7 +82,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const TRANSFER_SELECT = `
   *,
   driver:profiles!driver_id (id, name),
-  vehicle:vehicles!vehicle_id (id, make, model, plate, vehicle_type),
+  vehicle:vehicles!vehicle_id (id, make, model, plate, vehicle_type, capacity, show_name),
   community:communities!community_id (id, name)
 `
 const ORDER_SELECT = `
@@ -394,8 +408,16 @@ function transferView(transfer, extra = {}) {
     tip_amount: money(transfer.tip_amount) || 0,
     payment_method: transfer.payment_method,
     payment_status: transfer.payment_status,
-    driver: transfer.driver ? { id: transfer.driver.id, name: transfer.driver.name } : null,
-    vehicle_label: vehicleLabel(transfer.vehicle),
+    driver: transfer.driver ? { id: transfer.driver.id, name: tripFirstName(transfer.driver.name) } : null,
+    vehicle_label: vehicleGuestLabel(transfer.vehicle),
+    call_number: transfer.driver_id && ACTIVE_TRIP.includes(transfer.status) ? maskedCallNumber() : null,
+    arrived_at: transfer.arrived_at,
+    picked_up_at: transfer.picked_up_at,
+    cancellation_fee: money(transfer.cancellation_fee) || 0,
+    no_show_fee: money(transfer.no_show_fee) || 0,
+    discount_percent: money(transfer.discount_percent) || 0,
+    round_trip_group_id: transfer.round_trip_group_id || null,
+    links: transfer.guest_token ? guestLinks(transfer) : null,
     notes: transfer.notes,
     started_at: transfer.started_at,
     completed_at: transfer.completed_at,
@@ -490,6 +512,11 @@ async function quoteTransfer(body, booking) {
     .map((addon) => ({ key: addon.key, name: addon.name, price: addon.price }))
   const base_price = round2(priced.base_price)
   const addons_total = round2(addons.reduce((sum, addon) => sum + addon.price, 0))
+  const list_total = round2(base_price + addons_total)
+  // Round trip booked together = 5% off both legs (pricing rules sheet).
+  const round_trip = Boolean(body.round_trip || body.return_trip)
+  const discount_percent = round_trip ? ROUND_TRIP_DISCOUNT_PERCENT : 0
+  const total = round2(list_total * (1 - discount_percent / 100))
 
   return {
     direction,
@@ -502,7 +529,12 @@ async function quoteTransfer(body, booking) {
     base_price,
     addons,
     addons_total,
-    total: round2(base_price + addons_total),
+    list_total,
+    round_trip,
+    discount_percent,
+    discount_amount: round2(list_total - total),
+    total,
+    round_trip_total: round_trip ? round2(total * 2) : total,
     available_addons: catalog.transfer.addons,
   }
 }
@@ -1004,7 +1036,22 @@ router.get('/explore/info', async (_req, res, next) => {
       .eq('is_active', true)
       .order('sort_order')
     if (error) return res.status(400).json({ error: error.message })
-    res.json({ sections: data || [] })
+    // Free public layer (beach accesses, parks & playgrounds, emergency numbers) — facts, never partners.
+    const { data: places } = await supabase
+      .from('public_places')
+      .select('section_key, section_title, name, community, details, sort_order')
+      .eq('is_active', true)
+      .order('sort_order')
+    const grouped = []
+    for (const place of places || []) {
+      let section = grouped.find((s) => s.key === place.section_key)
+      if (!section) {
+        section = { key: place.section_key, title: place.section_title, places: [] }
+        grouped.push(section)
+      }
+      section.places.push({ name: place.name, community: place.community, details: place.details })
+    }
+    res.json({ sections: data || [], places: grouped })
   } catch (error) {
     next(error)
   }
@@ -1065,7 +1112,9 @@ router.delete('/saved/:key', guestOnly, async (req, res, next) => {
 router.post('/transfers/quote', guestOnly, async (req, res, next) => {
   try {
     const booking = await loadBooking(req.user.id)
-    res.json(await quoteTransfer(req.body || {}, booking))
+    const quote = await quoteTransfer(req.body || {}, booking)
+    const credit = await availableCredit({ guest_id: req.user.id, guest_email: req.user.email })
+    res.json({ ...quote, available_credit: credit.total })
   } catch (error) {
     sendError(res, next, error)
   }
@@ -1120,25 +1169,67 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
       created_by: req.user.id,
     }
 
-    const { data, error } = await supabase
-      .from('transfers')
-      .insert(insert)
-      .select(TRANSFER_SELECT)
-      .single()
-    if (error) return res.status(400).json({ error: error.message })
+    insert.discount_percent = quote.discount_percent
 
-    await logTrip(data.id, 'requested', req.user.id)
-    await notifyAdmins({
-      transfer_id: data.id,
-      message: `New transfer request #${data.trip_number} from ${insert.guest_name} · ${formatWhen(data.scheduled_at)} · ${data.pickup_address} → ${data.dropoff_address} · $${quote.total}`,
-    })
+    // Apply any "$25 on your next booking" credit to the first leg.
+    const credit = await availableCredit({ guest_id: req.user.id, guest_email: req.user.email })
+    if (credit.total > 0) {
+      const charged = round2(Math.max(0, quote.total - credit.total))
+      insert.customer_charge = charged
+      insert.cash_expected = charged
+      insert.notes = [insert.notes, `Credit applied: $${credit.total}`].filter(Boolean).join('\n')
+    }
+
+    // Round trip: second leg mirrors the first (direction/addresses swapped), same 5% discount.
+    const returnTrip = body.return_trip && body.return_trip.scheduled_at ? body.return_trip : null
+    if (returnTrip && Number.isNaN(new Date(returnTrip.scheduled_at).getTime())) {
+      return res.status(400).json({ error: 'return_trip.scheduled_at must be an ISO datetime' })
+    }
+    const rows = [insert]
+    if (returnTrip) {
+      const groupId = crypto.randomUUID()
+      insert.round_trip_group_id = groupId
+      rows.push({
+        ...insert,
+        direction: isArrival ? 'to_airport' : 'from_airport',
+        pickup_address: insert.dropoff_address,
+        dropoff_address: insert.pickup_address,
+        scheduled_at: new Date(returnTrip.scheduled_at).toISOString(),
+        flight_number: returnTrip.flight_number ? String(returnTrip.flight_number).trim() : null,
+        customer_charge: quote.total,
+        cash_expected: quote.total,
+        notes: body.notes ? String(body.notes).trim() : null,
+      })
+    }
+
+    const { data: created, error } = await supabase
+      .from('transfers')
+      .insert(rows)
+      .select(TRANSFER_SELECT)
+    if (error) return res.status(400).json({ error: error.message })
+    const data = created[0]
+    const returnLeg = created[1] || null
+    if (credit.total > 0) await consumeCredits(credit.ids, data.id)
+
+    for (const row of created) {
+      await logTrip(row.id, 'requested', req.user.id)
+      await notifyAdmins({
+        transfer_id: row.id,
+        message: `New transfer request #${row.trip_number} from ${insert.guest_name} · ${formatWhen(row.scheduled_at)} · ${row.pickup_address} → ${row.dropoff_address} · $${money(row.customer_charge)}${returnLeg ? ' · round trip (5% off)' : ''}`,
+      })
+    }
     await notify({
       user_id: req.user.id,
       transfer_id: data.id,
-      message: `We received your airport transfer request #${data.trip_number}. We’ll confirm your driver shortly.`,
+      message: `We received your airport transfer request #${data.trip_number}${returnLeg ? ` and return #${returnLeg.trip_number}` : ''}. We’ll confirm your driver shortly.`,
     })
 
-    res.status(201).json(transferView(data))
+    res.status(201).json(
+      transferView(data, {
+        credit_applied: credit.total,
+        return_transfer: returnLeg ? transferView(returnLeg) : null,
+      })
+    )
   } catch (error) {
     sendError(res, next, error)
   }
@@ -1249,30 +1340,75 @@ router.post('/transfers/:id/cancel', guestOnly, async (req, res, next) => {
   try {
     const transfer = await loadTransfer(req.params.id, req.user.id)
     if (!transfer) return res.status(404).json({ error: 'Transfer not found' })
-    if (transfer.status !== 'requested') {
+    if (!['requested', 'assigned'].includes(transfer.status)) {
       return res.status(400).json({
-        error: 'Only a pending request can be cancelled here. Message My30A Host to cancel a confirmed trip.',
+        error: 'Your driver is already on the way. Message My30A Host to cancel this trip.',
       })
     }
-    if (transfer.stripe_payment_intent_id) {
-      await releasePaymentHold(transfer.stripe_payment_intent_id).catch((err) =>
-        console.log('Stripe release skipped:', err.message)
-      )
-    }
+    // Published policy: 48h+ full release · 24–48h $50 · same day $75 (captured from the hold).
+    const result = await cancelForGuest({ transfer, actorId: req.user.id, select: TRANSFER_SELECT })
+    res.json(transferView(result.transfer, { cancellation_fee: result.fee, cancellation_window: result.window }))
+  } catch (error) {
+    next(error)
+  }
+})
 
+// Cancellation preview so the app can show "Cancel now: $0 / $50 / $75" before confirming.
+router.get('/transfers/:id/cancellation-preview', guestOnly, async (req, res, next) => {
+  try {
+    const transfer = await loadTransfer(req.params.id, req.user.id)
+    if (!transfer) return res.status(404).json({ error: 'Transfer not found' })
+    const { cancellationFeeFor } = await import('../services/tripFlow.js')
+    const { fee, window, hours } = cancellationFeeFor(transfer)
+    res.json({ fee, window, hours_until_pickup: Math.max(0, Math.round(hours * 10) / 10), can_cancel: ['requested', 'assigned'].includes(transfer.status) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Per-trip chat with the driver (app guests). Guests without the app use the SMS link instead.
+router.get('/transfers/:id/messages', guestOnly, async (req, res, next) => {
+  try {
+    const transfer = await loadTransfer(req.params.id, req.user.id)
+    if (!transfer) return res.status(404).json({ error: 'Transfer not found' })
+    const { data } = await supabase
+      .from('trip_messages')
+      .select('id, sender_role, sender_name, body, created_at')
+      .eq('transfer_id', transfer.id)
+      .order('created_at', { ascending: true })
+      .limit(300)
+    // Staff appear by first name only in guest-facing threads.
+    const messages = (data || []).map((row) => ({
+      ...row,
+      sender_name: row.sender_role === 'guest' ? row.sender_name : tripFirstName(row.sender_name),
+    }))
+    res.json({ messages, chat_open: ACTIVE_TRIP.includes(transfer.status) && Boolean(transfer.driver_id) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/transfers/:id/messages', guestOnly, async (req, res, next) => {
+  try {
+    const transfer = await loadTransfer(req.params.id, req.user.id)
+    if (!transfer) return res.status(404).json({ error: 'Transfer not found' })
+    if (!ACTIVE_TRIP.includes(transfer.status)) return res.status(410).json({ error: 'This trip has ended. Chat is closed.' })
+    if (!transfer.driver_id) return res.status(400).json({ error: 'Chat opens once your driver is confirmed.' })
+    const body = String(req.body?.body || '').trim()
+    if (!body) return res.status(400).json({ error: 'Message is empty' })
+    if (body.length > 1000) return res.status(400).json({ error: 'Message is too long' })
     const { data, error } = await supabase
-      .from('transfers')
-      .update({ status: 'cancelled' })
-      .eq('id', transfer.id)
-      .select(TRANSFER_SELECT)
+      .from('trip_messages')
+      .insert({ transfer_id: transfer.id, sender_role: 'guest', sender_id: req.user.id, sender_name: req.user.name || 'Guest', body })
+      .select('id, sender_role, sender_name, body, created_at')
       .single()
     if (error) return res.status(400).json({ error: error.message })
-    await logTrip(transfer.id, 'cancelled', req.user.id)
-    await notifyAdmins({
+    await notify({
+      user_id: transfer.driver_id,
       transfer_id: transfer.id,
-      message: `Transfer request #${transfer.trip_number} was cancelled by the guest`,
+      message: `Trip #${transfer.trip_number} · ${tripFirstName(req.user.name)}: ${body.slice(0, 120)}`,
     })
-    res.json(transferView(data))
+    res.status(201).json(data)
   } catch (error) {
     next(error)
   }

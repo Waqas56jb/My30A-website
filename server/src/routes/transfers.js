@@ -7,7 +7,26 @@ import {
   calculateCashReconciliation,
 } from '../services/earnings.js'
 import { notify } from '../services/notifications.js'
-import { capturePaymentIntent, refundPaymentIntent, releasePaymentHold } from '../lib/stripe.js'
+import {
+  capturePaymentIntent,
+  createCheckoutSession,
+  refundPaymentIntent,
+  retrieveCheckoutSession,
+} from '../lib/stripe.js'
+import { maskedCallNumber } from '../lib/sms.js'
+import { addDays, monthRange as tzMonthRange, startOfDay } from '../lib/timezone.js'
+import {
+  ACTIVE_TRIP_STATUSES,
+  TRIP_LABELS,
+  cancelByHost,
+  cancelForGuest,
+  guestLinks,
+  markNoShow,
+  publicBaseUrl,
+  requestTip,
+  smsGuest,
+  statusSms,
+} from '../services/tripFlow.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -18,7 +37,7 @@ const TRANSFER_SELECT = `
   driver:profiles!driver_id (id, name, email, roles, is_active),
   vehicle_owner:profiles!vehicle_owner_id (id, name, email, roles),
   guest:profiles!guest_id (id, name, email, phone),
-  vehicle:vehicles!vehicle_id (id, make, model, year, plate, vehicle_type, owner_id, owner_fee_percent),
+  vehicle:vehicles!vehicle_id (id, make, model, year, plate, vehicle_type, owner_id, owner_fee_percent, capacity, show_name),
   community:communities!community_id (id, name)
 `
 
@@ -36,18 +55,15 @@ function appendNote(existing, extra) {
   return [existing, extra].filter(Boolean).join('\n')
 }
 
+// Day/month windows are Chicago-local (the date the driver panel sends), not UTC — otherwise a
+// 7 pm Central trip lands in the next UTC day and vanishes from "Today".
 function monthRange(month) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  const start = new Date(Date.UTC(year, monthNumber - 1, 1))
-  const end = new Date(Date.UTC(year, monthNumber, 1))
+  const { start, end } = tzMonthRange(month)
   return { start: start.toISOString(), end: end.toISOString() }
 }
 
 function dayRange(date) {
-  const start = new Date(`${date}T00:00:00.000Z`)
-  const end = new Date(start)
-  end.setUTCDate(end.getUTCDate() + 1)
-  return { start: start.toISOString(), end: end.toISOString() }
+  return { start: startOfDay(date).toISOString(), end: startOfDay(addDays(date, 1)).toISOString() }
 }
 
 function formatWhen(value) {
@@ -100,6 +116,14 @@ function adminView(transfer, extra = {}) {
     base_price: money(transfer.base_price),
     addons: transfer.addons || [],
     is_guest_request: Boolean(transfer.guest_id),
+    status_label: TRIP_LABELS[transfer.status] || transfer.status,
+    cancellation_fee: money(transfer.cancellation_fee) || 0,
+    no_show_fee: money(transfer.no_show_fee) || 0,
+    discount_percent: money(transfer.discount_percent) || 0,
+    round_trip_group_id: transfer.round_trip_group_id || null,
+    pay_link_url: transfer.pay_link_url || null,
+    tip_paid_via: transfer.tip_paid_via || null,
+    guest_links: transfer.guest_token ? guestLinks(transfer) : null,
     guest_account: transfer.guest
       ? {
           id: transfer.guest.id,
@@ -128,7 +152,13 @@ function driverView(transfer) {
     bags: transfer.bags,
     flight_number: transfer.flight_number,
     guest_name: transfer.guest_name,
-    guest_phone: transfer.guest_phone,
+    // The guest's number is never shown to the driver: calls go through the masked Twilio
+    // number and coordination happens in the trip chat.
+    guest_call_number: ACTIVE_TRIP_STATUSES.includes(transfer.status) ? maskedCallNumber() : null,
+    status_label: TRIP_LABELS[transfer.status] || transfer.status,
+    arrived_at: transfer.arrived_at,
+    picked_up_at: transfer.picked_up_at,
+    pay_link_url: transfer.pay_link_url || null,
     vehicle_label: vehicleLabel(transfer.vehicle),
     status: transfer.status,
     driver_payout,
@@ -458,6 +488,8 @@ router.post('/:id/assign', requireRole('admin'), async (req, res, next) => {
       data,
       `Your airport transfer #${data.trip_number} is confirmed · ${formatWhen(data.scheduled_at)} · Driver ${driver.name} · ${vehicleLabel(vehicle)}`
     )
+    // Confirmation SMS carries the secret chat link (and the masked call number once Twilio is on).
+    await smsGuest(data, statusSms(data, 'assigned'), 'assigned')
 
     res.json(adminView(data))
   } catch (error) {
@@ -488,7 +520,180 @@ router.post('/:id/start', requireRole('driver', 'partner', 'admin'), async (req,
       data,
       `Your driver ${data.driver?.name || ''} is on the way · Trip #${data.trip_number}`.replace('  ', ' ')
     )
+    await smsGuest(data, statusSms(data, 'started'), 'started')
     res.json(driverView(data))
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Driver is at the pickup point (airport curb / home address).
+router.post('/:id/arrive', requireRole('driver', 'partner', 'admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    if (transfer.driver_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' })
+    if (transfer.status !== 'started') {
+      return res.status(400).json({ error: 'Tap "On the way" before "Arrived"' })
+    }
+    const { data, error: updateError } = await supabase
+      .from('transfers')
+      .update({ status: 'arrived', arrived_at: new Date().toISOString() })
+      .eq('id', transfer.id)
+      .select(TRANSFER_SELECT)
+      .single()
+    if (updateError) return res.status(400).json({ error: updateError.message })
+    await logStatus(transfer.id, 'arrived', req.user.id)
+    await notifyGuest(data, `${data.driver?.name || 'Your driver'} has arrived and is waiting at the pickup area · Trip #${data.trip_number}`)
+    await smsGuest(data, statusSms(data, 'arrived'), 'arrived')
+    res.json(driverView(data))
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Guest is in the vehicle.
+router.post('/:id/pickup', requireRole('driver', 'partner', 'admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    if (transfer.driver_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' })
+    if (!['started', 'arrived'].includes(transfer.status)) {
+      return res.status(400).json({ error: 'Trip must be on the way or arrived to pick up the guest' })
+    }
+    const { data, error: updateError } = await supabase
+      .from('transfers')
+      .update({ status: 'picked_up', picked_up_at: new Date().toISOString() })
+      .eq('id', transfer.id)
+      .select(TRANSFER_SELECT)
+      .single()
+    if (updateError) return res.status(400).json({ error: updateError.message })
+    await logStatus(transfer.id, 'picked_up', req.user.id)
+    await notifyGuest(data, `You're on your way! Enjoy the ride · Trip #${data.trip_number}`)
+    await smsGuest(data, statusSms(data, 'picked_up'), 'picked_up')
+    res.json(driverView(data))
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Admin declares a no-show (after the 90-minute rule): $75 captured, remainder released.
+router.post('/:id/no-show', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    if (!['assigned', 'started', 'arrived'].includes(transfer.status)) {
+      return res.status(400).json({ error: 'No-show can only be declared before the guest is picked up' })
+    }
+    const result = await markNoShow({ transfer, actorId: req.user.id, select: TRANSFER_SELECT })
+    if (transfer.driver_id) {
+      await notify({ user_id: transfer.driver_id, transfer_id: transfer.id, message: `Trip #${transfer.trip_number} marked as no-show by My30A Host. You may leave.` })
+    }
+    res.json(adminView(result.transfer, { stripe: result.settlement }))
+  } catch (error) {
+    next(error)
+  }
+})
+
+// On-the-spot card payment: a hosted Stripe page the driver shows the guest (link / QR).
+router.post('/:id/pay-link', requireRole('driver', 'partner', 'admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    const isAdmin = (req.user.roles || []).includes('admin')
+    if (!isAdmin && transfer.driver_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' })
+    if (!ACTIVE_TRIP_STATUSES.includes(transfer.status)) {
+      return res.status(400).json({ error: 'Trip is not active' })
+    }
+    if (transfer.payment_status === 'captured' || transfer.payment_status === 'authorized') {
+      return res.status(400).json({ error: 'This trip is already paid / authorized on a card.' })
+    }
+
+    if (transfer.stripe_checkout_session_id) {
+      const existing = await retrieveCheckoutSession(transfer.stripe_checkout_session_id)
+      if (existing && !existing.skipped) {
+        if (existing.payment_status === 'paid') return res.json({ paid: true, url: null })
+        if (existing.status === 'open') return res.json({ paid: false, url: existing.url, session_id: existing.id })
+      }
+    }
+
+    const base = publicBaseUrl()
+    const amount = money(transfer.customer_charge)
+    const session = await createCheckoutSession({
+      amount,
+      description: `My30A Host airport transfer #${transfer.trip_number}`,
+      metadata: { my30a_transfer_id: transfer.id, kind: 'on_the_spot' },
+      successUrl: `${base}/trip/${transfer.guest_token}?paid=1`,
+      cancelUrl: `${base}/trip/${transfer.guest_token}`,
+      customerEmail: transfer.guest_email || undefined,
+    })
+    if (session?.skipped) return res.status(503).json({ error: 'Card payments are not configured' })
+
+    await supabase
+      .from('transfers')
+      .update({ stripe_checkout_session_id: session.id, pay_link_url: session.url })
+      .eq('id', transfer.id)
+    res.status(201).json({ paid: false, url: session.url, session_id: session.id, amount })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Per-trip chat (driver ↔ guest). Admin can read and post too.
+router.get('/:id/messages', requireRole('driver', 'partner', 'admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    const isAdmin = (req.user.roles || []).includes('admin')
+    if (!isAdmin && transfer.driver_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' })
+    const { data } = await supabase
+      .from('trip_messages')
+      .select('id, sender_role, sender_name, body, created_at')
+      .eq('transfer_id', transfer.id)
+      .order('created_at', { ascending: true })
+      .limit(300)
+    res.json({ messages: data || [], chat_open: ACTIVE_TRIP_STATUSES.includes(transfer.status), guest_first_name: String(transfer.guest_name || 'Guest').split(/\s+/)[0] })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/:id/messages', requireRole('driver', 'partner', 'admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    const isAdmin = (req.user.roles || []).includes('admin')
+    if (!isAdmin && transfer.driver_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' })
+    if (!ACTIVE_TRIP_STATUSES.includes(transfer.status)) {
+      return res.status(410).json({ error: 'This trip has ended. Chat is closed.' })
+    }
+    const body = String(req.body?.body || '').trim()
+    if (!body) return res.status(400).json({ error: 'Message is empty' })
+    if (body.length > 1000) return res.status(400).json({ error: 'Message is too long' })
+
+    const senderRole = isAdmin && transfer.driver_id !== req.user.id ? 'admin' : 'driver'
+    const { data, error: insertError } = await supabase
+      .from('trip_messages')
+      .insert({ transfer_id: transfer.id, sender_role: senderRole, sender_id: req.user.id, sender_name: req.user.name || senderRole, body })
+      .select('id, sender_role, sender_name, body, created_at')
+      .single()
+    if (insertError) return res.status(400).json({ error: insertError.message })
+
+    await notifyGuest(transfer, `${req.user.name || 'Your driver'}: ${body.slice(0, 140)}`)
+    // Guests without the app only learn about a reply by SMS — throttled to one per 2 minutes.
+    if (!transfer.guest_id) {
+      const { data: recent } = await supabase
+        .from('sms_log')
+        .select('created_at')
+        .eq('transfer_id', transfer.id)
+        .eq('kind', 'chat')
+        .gte('created_at', new Date(Date.now() - 2 * 60 * 1000).toISOString())
+        .limit(1)
+      if (!recent?.length) {
+        await smsGuest(transfer, `${req.user.name || 'Your driver'}: ${body.slice(0, 120)} — reply here: ${guestLinks(transfer).chat}`, 'chat')
+      }
+    }
+    res.status(201).json(data)
   } catch (error) {
     next(error)
   }
@@ -499,8 +704,8 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
     const { transfer, error } = await loadTransfer(req.params.id)
     if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
     if (transfer.driver_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' })
-    if (transfer.status !== 'started') {
-      return res.status(400).json({ error: 'Trip must be started to complete' })
+    if (!['started', 'arrived', 'picked_up'].includes(transfer.status)) {
+      return res.status(400).json({ error: 'Trip must be in progress (on the way / arrived / picked up) to complete' })
     }
 
     const { payment_method, cash_reported, tip_amount } = req.body || {}
@@ -580,7 +785,24 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
         updates.payment_status = 'captured'
       }
     } else if (['card', 'apple_pay', 'google_pay'].includes(payment_method)) {
+      // On-the-spot card: if a Stripe payment link was generated it must actually be paid.
+      if (transfer.stripe_checkout_session_id) {
+        const session = await retrieveCheckoutSession(transfer.stripe_checkout_session_id)
+        if (session && !session.skipped) {
+          if (session.payment_status !== 'paid') {
+            return res.status(400).json({
+              error: 'The guest has not completed the payment link yet. Ask them to finish paying, or choose another payment method.',
+            })
+          }
+          if (session.payment_intent) updates.stripe_payment_intent_id = String(session.payment_intent)
+        }
+      }
       updates.payment_status = 'captured'
+    } else if (payment_method === 'zelle') {
+      // Guest paid My30A Host directly; flagged so admin verifies it in Zelle.
+      updates.payment_status = 'captured'
+      updates.notes = appendNote(transfer.notes, `Paid via Zelle — confirmed by ${req.user.name || 'driver'}, verify in Zelle`)
+      reasons.push('ZELLE_REVIEW')
     } else if (payment_method === 'cash') {
       if (cash_reported === undefined || cash_reported === null || cash_reported === '') {
         return res.status(400).json({ error: 'cash_reported is required for cash payments' })
@@ -612,10 +834,8 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
 
     if (updateError) return res.status(400).json({ error: updateError.message })
     await logStatus(transfer.id, 'completed', req.user.id)
-    await notifyGuest(
-      data,
-      `Trip #${data.trip_number} completed · Total $${money(data.customer_charge)}. Thank you for riding with My30A Host!`
-    )
+    // In-app tip prompt for app guests + SMS with the no-login tip link for everyone.
+    await requestTip(data)
 
     const ownerRoles = owner.roles || []
     const ownerIsPartner = ownerRoles.includes('partner')
@@ -693,33 +913,21 @@ router.post('/:id/cancel', requireRole('admin'), async (req, res, next) => {
   try {
     const { transfer, error } = await loadTransfer(req.params.id)
     if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
-    if (!['requested', 'assigned', 'started'].includes(transfer.status)) {
-      return res.status(400).json({ error: 'Trip can only be cancelled if requested, assigned or started' })
+    if (!ACTIVE_TRIP_STATUSES.includes(transfer.status)) {
+      return res.status(400).json({ error: 'Trip can only be cancelled while it is still active' })
     }
 
-    const updates = { status: 'cancelled' }
-    if (transfer.status === 'started') {
-      updates.is_flagged = true
-      updates.flag_reason = 'CANCELLED_AFTER_START'
+    // initiated_by 'host' (default): full release + $25 credit on the guest's next booking.
+    // initiated_by 'guest' (admin cancelling on the guest's behalf): published fee windows apply.
+    const initiatedBy = req.body?.initiated_by === 'guest' ? 'guest' : 'host'
+    const result =
+      initiatedBy === 'guest'
+        ? await cancelForGuest({ transfer, actorId: req.user.id, select: TRANSFER_SELECT })
+        : await cancelByHost({ transfer, actorId: req.user.id, select: TRANSFER_SELECT, reason: req.body?.reason })
+    if (transfer.driver_id && initiatedBy === 'host') {
+      await notify({ user_id: transfer.driver_id, transfer_id: transfer.id, message: `Trip #${transfer.trip_number} was cancelled by My30A Host.` })
     }
-
-    if (transfer.stripe_payment_intent_id) {
-      await releasePaymentHold(transfer.stripe_payment_intent_id).catch((err) =>
-        console.log('Stripe release skipped:', err.message)
-      )
-    }
-
-    const { data, error: updateError } = await supabase
-      .from('transfers')
-      .update(updates)
-      .eq('id', transfer.id)
-      .select(TRANSFER_SELECT)
-      .single()
-
-    if (updateError) return res.status(400).json({ error: updateError.message })
-    await logStatus(transfer.id, 'cancelled', req.user.id)
-    await notifyGuest(data, `Your airport transfer #${data.trip_number} was cancelled by My30A Host.`)
-    res.json(adminView(data))
+    res.json(adminView(result.transfer, { cancellation: { initiated_by: initiatedBy, fee: result.fee ?? 0, stripe: result.settlement } }))
   } catch (error) {
     next(error)
   }
@@ -877,7 +1085,20 @@ router.get('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const { transfer, error } = await loadTransfer(req.params.id)
     if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
-    res.json(adminView(transfer, { status_log: await loadStatusLog(transfer.id) }))
+    const [status_log, messages, sms, calls] = await Promise.all([
+      loadStatusLog(transfer.id),
+      supabase.from('trip_messages').select('id, sender_role, sender_name, body, created_at').eq('transfer_id', transfer.id).order('created_at'),
+      supabase.from('sms_log').select('id, to_phone, body, kind, status, error, created_at').eq('transfer_id', transfer.id).order('created_at'),
+      supabase.from('call_log').select('id, direction, from_phone, to_phone, status, duration_seconds, created_at').eq('transfer_id', transfer.id).order('created_at'),
+    ])
+    res.json(
+      adminView(transfer, {
+        status_log,
+        messages: messages.data || [],
+        sms_log: sms.data || [],
+        call_log: calls.data || [],
+      })
+    )
   } catch (error) {
     next(error)
   }

@@ -1672,3 +1672,15 @@ th.num {
   display: block;
   margin-bottom: 10px;
 }
+
+/* Trip conversation / SMS / call history inside the Transfers drawer */
+.comms { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+.comms > b { display: block; margin-bottom: 4px; }
+.comms-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 10px; align-items: start; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,0.03); font-size: 13px; }
+.comms-row.is-guest { background: rgba(13,79,69,0.08); }
+.comms-row.is-driver { background: rgba(201,169,110,0.15); }
+.comms-row .who { font-weight: 600; }
+.comms-row .what { white-space: pre-wrap; word-break: break-word; }
+.comms-row .when { white-space: nowrap; opacity: 0.6; }
+.guest-links a { word-break: break-all; }
+@media (max-width: 640px) { .comms-row { grid-template-columns: 1fr; } }

@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Settings,
   ShoppingBasket,
   Truck,
@@ -25,6 +26,7 @@ const NAV = [
   { to: '/payouts', label: 'Payouts', icon: Wallet },
   { to: '/people', label: 'People', icon: Users },
   { to: '/vehicles', label: 'Vehicles', icon: Truck },
+  { to: '/messages', label: 'Messages', icon: MessageSquare },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

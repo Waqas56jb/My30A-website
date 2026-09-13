@@ -64,7 +64,7 @@ router.get('/', async (_req, res, next) => {
         .select(tripSelect)
         .gte('scheduled_at', dayStart)
         .lte('scheduled_at', dayEnd)
-        .in('status', ['assigned', 'started'])
+        .in('status', ['requested', 'assigned', 'started', 'arrived', 'picked_up'])
         .order('scheduled_at', { ascending: true }),
     ])
 

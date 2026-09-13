@@ -101,10 +101,48 @@ export async function retrievePaymentIntent(id) {
   return stripe.paymentIntents.retrieve(id)
 }
 
-export async function capturePaymentIntent(id) {
+// Captures the full authorized amount, or a partial amount (cancellation / no-show fee): Stripe
+// releases whatever is not captured back to the guest's card automatically.
+export async function capturePaymentIntent(id, amount) {
   const stripe = await getStripe()
   if (!stripe) return notConfigured
+  if (amount !== undefined && amount !== null) {
+    return stripe.paymentIntents.capture(id, { amount_to_capture: Math.round(Number(amount) * 100) })
+  }
   return stripe.paymentIntents.capture(id)
+}
+
+// Hosted Stripe Checkout page: used for on-the-spot card payments (driver shows the link/QR to
+// the guest) and for tips from guests who have no saved card.
+export async function createCheckoutSession({ amount, description, metadata, successUrl, cancelUrl, customerId, customerEmail }) {
+  const stripe = await getStripe()
+  if (!stripe) return notConfigured
+  return stripe.checkout.sessions.create({
+    mode: 'payment',
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'usd',
+          unit_amount: Math.round(Number(amount) * 100),
+          product_data: { name: description },
+        },
+      },
+    ],
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    customer: customerId || undefined,
+    customer_email: customerId ? undefined : customerEmail || undefined,
+    metadata,
+    payment_intent_data: { metadata },
+  })
+}
+
+export async function retrieveCheckoutSession(id) {
+  const stripe = await getStripe()
+  if (!stripe) return notConfigured
+  if (!id) return null
+  return stripe.checkout.sessions.retrieve(id)
 }
 
 export async function refundPaymentIntent(id) {

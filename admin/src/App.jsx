@@ -11,6 +11,7 @@ import People from './pages/People.jsx'
 import Settings from './pages/Settings.jsx'
 import Transfers from './pages/Transfers.jsx'
 import Vehicles from './pages/Vehicles.jsx'
+import Messages from './pages/Messages.jsx'
 
 function AppRoutes() {
   const { loading } = useAuth()
@@ -44,6 +45,7 @@ function AppRoutes() {
         <Route path="/payouts" element={<Payouts />} />
         <Route path="/people" element={<People />} />
         <Route path="/vehicles" element={<Vehicles />} />
+        <Route path="/messages" element={<Messages />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

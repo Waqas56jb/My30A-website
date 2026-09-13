@@ -11,6 +11,7 @@ import {
   releasePaymentHold,
 } from '../lib/stripe.js'
 import { getSignedUrl, uploadFile } from '../lib/storage.js'
+import { addDays, monthRange as tzMonthRange, startOfDay } from '../lib/timezone.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -42,18 +43,14 @@ function appendNote(existing, extra) {
   return [existing, extra].filter(Boolean).join('\n')
 }
 
+// Chicago-local day/month windows (see transfers.js) so evening deliveries stay under "Today".
 function monthRange(month) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  const start = new Date(Date.UTC(year, monthNumber - 1, 1))
-  const end = new Date(Date.UTC(year, monthNumber, 1))
+  const { start, end } = tzMonthRange(month)
   return { start: start.toISOString(), end: end.toISOString() }
 }
 
 function dayRange(date) {
-  const start = new Date(`${date}T00:00:00.000Z`)
-  const end = new Date(start)
-  end.setUTCDate(end.getUTCDate() + 1)
-  return { start: start.toISOString(), end: end.toISOString() }
+  return { start: startOfDay(date).toISOString(), end: startOfDay(addDays(date, 1)).toISOString() }
 }
 
 function formatWhen(value) {

@@ -43,6 +43,12 @@ const RESOURCES = {
     pk: 'key',
     columns: ['key', 'kind', 'name', 'sub', 'price', 'unit', 'tone', 'icon', 'sort_order', 'is_active'],
   },
+  // Free public-info layer (beach accesses, parks, emergency) — facts, never partners.
+  places: {
+    table: 'public_places',
+    pk: 'id',
+    columns: ['id', 'section_key', 'section_title', 'name', 'community', 'details', 'sort_order', 'is_active'],
+  },
 }
 
 function resource(req, res) {

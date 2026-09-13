@@ -121,6 +121,11 @@ async function ensureAccount({ email, name, roles, phone = null }) {
   return id
 }
 
+// The /mine?date= endpoints use Chicago-local days (what the driver/shopper panels send).
+function chicagoDate(iso) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+}
+
 function isoPlusHours(hours) {
   return new Date(Date.now() + hours * 3600 * 1000).toISOString()
 }
@@ -261,17 +266,19 @@ async function main() {
   await expect('GET /api/guest/explore/guide?c=beaches', 'GET', '/api/guest/explore/guide?c=beaches', G, 200, (d) => d.items.length >= 3 && d.items.every((i) => i.filters.includes('beaches')))
   await expect('GET /api/guest/explore/guide (all)', 'GET', '/api/guest/explore/guide', G, 200, (d) => d.items.length >= 6)
   await expect('GET /api/guest/explore/search?q=bonfire', 'GET', '/api/guest/explore/search?q=bonfire', G, 200, (d) => d.vendors.length >= 1)
-  await expect('GET /api/guest/explore/vendors/beach-bonfires', 'GET', '/api/guest/explore/vendors/beach-bonfires', G, 200, (d) => d.count === 3 && d.title === 'Beach Bonfire')
+  const bonfireList = await expect('GET /api/guest/explore/vendors/beach-bonfires (real partners)', 'GET', '/api/guest/explore/vendors/beach-bonfires', G, 200, (d) => d.count >= 9 && /Beach/.test(d.title))
+  const bonfireBefore = bonfireList.count
   await expect('GET /api/guest/explore/vendors/unknown → 404', 'GET', '/api/guest/explore/vendors/nope', G, 404)
-  const bonfire = await expect('GET /api/guest/explore/vendor/bonfire-co', 'GET', '/api/guest/explore/vendor/bonfire-co', G, 200, (d) => d.name === '30A Bonfire Co.' && d.services.length === 4 && d.saved === false)
-  await expect('GET /api/guest/explore/vendor/:uuid', 'GET', `/api/guest/explore/vendor/${bonfire.id}`, G, 200, (d) => d.slug === 'bonfire-co')
+  const bonfireSlug = bonfireList.vendors[0].slug
+  const bonfire = await expect('GET /api/guest/explore/vendor/:slug (real partner)', 'GET', `/api/guest/explore/vendor/${bonfireSlug}`, G, 200, (d) => d.name === bonfireList.vendors[0].name && d.saved === false && d.website_url !== undefined)
+  await expect('GET /api/guest/explore/vendor/:uuid', 'GET', `/api/guest/explore/vendor/${bonfire.id}`, G, 200, (d) => d.slug === bonfireSlug)
   await expect('GET /api/guest/explore/vendor/pescado (restaurant)', 'GET', '/api/guest/explore/vendor/pescado', G, 200, (d) => d.kind === 'restaurant' && d.tags.length === 5 && d.hours_today)
   await expect('GET /api/guest/explore/vendor/rosemary (beach)', 'GET', '/api/guest/explore/vendor/rosemary', G, 200, (d) => d.kind === 'beach' && d.amenities.length === 6 && d.rules.length === 5)
   await expect('GET /api/guest/explore/info', 'GET', '/api/guest/explore/info', G, 200, (d) => d.sections.length === 8 && d.sections[0].items.length === 6)
-  await expect('POST /api/guest/saved/bonfire-co', 'POST', '/api/guest/saved/bonfire-co', G, 201, (d) => d.saved === true)
-  await expect('GET /api/guest/saved', 'GET', '/api/guest/saved', G, 200, (d) => d.some((v) => v.slug === 'bonfire-co'))
-  await expect('vendor detail shows saved=true', 'GET', '/api/guest/explore/vendor/bonfire-co', G, 200, (d) => d.saved === true)
-  await expect('DELETE /api/guest/saved/bonfire-co', 'DELETE', '/api/guest/saved/bonfire-co', G, 200, (d) => d.saved === false)
+  await expect('POST /api/guest/saved/:slug', 'POST', `/api/guest/saved/${bonfireSlug}`, G, 201, (d) => d.saved === true)
+  await expect('GET /api/guest/saved', 'GET', '/api/guest/saved', G, 200, (d) => d.some((v) => v.slug === bonfireSlug))
+  await expect('vendor detail shows saved=true', 'GET', `/api/guest/explore/vendor/${bonfireSlug}`, G, 200, (d) => d.saved === true)
+  await expect('DELETE /api/guest/saved/:slug', 'DELETE', `/api/guest/saved/${bonfireSlug}`, G, 200, (d) => d.saved === false)
   await expect('POST /api/guest/saved/unknown → 404', 'POST', '/api/guest/saved/does-not-exist', G, 404)
 
   // ---------- 9. guest transfer request ----------
@@ -324,7 +331,7 @@ async function main() {
   await expect('PATCH /api/transfers/:id while requested', 'PATCH', `/api/transfers/${t1.id}`, { ...A, body: { notes: 'Guest arrives Terminal B' } }, 200, (d) => d.notes === 'Guest arrives Terminal B')
   await expect('POST /api/transfers/:id/assign missing → 400', 'POST', `/api/transfers/${t1.id}/assign`, { ...A, body: {} }, 400)
   await expect('POST /api/transfers/:id/assign', 'POST', `/api/transfers/${t1.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200, (d) => d.status === 'assigned' && d.driver_id === ids.driver && d.vehicle_owner_id === ids.partner)
-  await expect('guest sees T1 confirmed with driver', 'GET', `/api/guest/transfers/${t1.id}`, G, 200, (d) => d.status === 'assigned' && d.driver?.name === 'Test Driver' && d.vehicle_label?.includes('E2E-4PAX'))
+  await expect('guest sees T1 confirmed with driver', 'GET', `/api/guest/transfers/${t1.id}`, G, 200, (d) => d.status === 'assigned' && d.driver?.name === 'Test' && d.vehicle_label?.includes('E2E-4PAX'))
 
   await expect('GET /api/grocery?status=requested', 'GET', '/api/grocery?status=requested', A, 200, (d) => d.some((o) => o.id === g1.id && o.guest_account?.email === GUEST.email && o.list_file_signed_url))
   await expect('GET /api/grocery/:id (admin)', 'GET', `/api/grocery/${g1.id}`, A, 200, (d) => d.addons.length === 1 && d.stocking)
@@ -334,7 +341,7 @@ async function main() {
 
   // ---------- 12. driver panel ----------
   const D = { token: await passwordToken(ACCOUNTS.driver.email, TEST_PASSWORD) }
-  const tripDate = scheduled.slice(0, 10)
+  const tripDate = chicagoDate(scheduled)
   await expect('GET /api/transfers/mine (driver)', 'GET', `/api/transfers/mine?date=${tripDate}`, D, 200, (d) => d.some((t) => t.id === t1.id && t.status === 'assigned'))
   await expect('POST /api/transfers/:id/complete before start → 400', 'POST', `/api/transfers/${t1.id}/complete`, { ...D, body: { payment_method: 'card' } }, 400)
   await expect('POST /api/transfers/:id/start', 'POST', `/api/transfers/${t1.id}/start`, D, 200, (d) => d.status === 'started')
@@ -380,7 +387,7 @@ async function main() {
 
   // ---------- 15. shopper panel ----------
   const S = { token: await passwordToken(ACCOUNTS.shopper.email, TEST_PASSWORD) }
-  const orderDate = deliveryTime.slice(0, 10)
+  const orderDate = chicagoDate(deliveryTime)
   await expect('GET /api/grocery/mine (shopper)', 'GET', `/api/grocery/mine?date=${orderDate}`, S, 200, (d) => d.some((o) => o.id === g1.id && o.status === 'assigned'))
   await expect('POST /api/grocery/:id/on-the-way before shopping → 400', 'POST', `/api/grocery/${g1.id}/on-the-way`, S, 400)
   await expect('POST /api/grocery/:id/shopping', 'POST', `/api/grocery/${g1.id}/shopping`, S, 200, (d) => d.status === 'shopping')
@@ -438,17 +445,17 @@ async function main() {
   await expect('GET /api/guest/vitoria/messages (4 messages)', 'GET', '/api/guest/vitoria/messages', G, 200, (d) => d.messages.length === 4)
 
   // ---------- 19. admin content management ----------
-  await expect('GET /api/content', 'GET', '/api/content', A, 200, (d) => d.resources.length === 5)
+  await expect('GET /api/content', 'GET', '/api/content', A, 200, (d) => d.resources.length >= 6 && d.resources.includes('places'))
   await expect('GET /api/content/guides', 'GET', '/api/content/guides', A, 200, (d) => d.length >= 12)
   await expect('GET /api/content/catalog', 'GET', '/api/content/catalog', A, 200, (d) => d.length === 10)
   await expect('GET /api/content/unknown → 404', 'GET', '/api/content/nope', A, 404)
   const newVendor = await expect('POST /api/content/vendors (create)', 'POST', '/api/content/vendors', { ...A, body: { guide_slug: 'beach-bonfires', slug: 'e2e-test-vendor', name: 'E2E Test Vendor', place: 'Seaside, FL', rating: 4.5, review_count: 1, description: 'Temporary vendor', image_url: '/image6.png', price_from: 99 } }, 201, (d) => d.id && d.slug === 'e2e-test-vendor')
-  await expect('guest sees 4 bonfire vendors now', 'GET', '/api/guest/explore/vendors/beach-bonfires', G, 200, (d) => d.count === 4)
+  await expect('guest sees one more bonfire vendor now', 'GET', '/api/guest/explore/vendors/beach-bonfires', G, 200, (d) => d.count === bonfireBefore + 1)
   await expect('PATCH /api/content/vendors/:id', 'PATCH', `/api/content/vendors/${newVendor.id}`, { ...A, body: { rating: 4.8 } }, 200, (d) => Number(d.rating) === 4.8)
   await expect('POST /api/content/vendors (upsert by slug)', 'POST', '/api/content/vendors', { ...A, body: { slug: 'e2e-test-vendor', name: 'E2E Test Vendor (renamed)' } }, 201, (d) => d.id === newVendor.id && d.name.includes('renamed'))
   await expect('DELETE /api/content/vendors/:id', 'DELETE', `/api/content/vendors/${newVendor.id}`, A, 200, (d) => d.deleted === 1)
   await expect('DELETE again → 404', 'DELETE', `/api/content/vendors/${newVendor.id}`, A, 404)
-  await expect('guest back to 3 bonfire vendors', 'GET', '/api/guest/explore/vendors/beach-bonfires', G, 200, (d) => d.count === 3)
+  await expect('guest back to the original bonfire vendor count', 'GET', '/api/guest/explore/vendors/beach-bonfires', G, 200, (d) => d.count === bonfireBefore)
   await expect('POST /api/content/info (upsert section)', 'POST', '/api/content/info', { ...A, body: { key: 'e2e', title: 'E2E Section', items: ['one', 'two'], sort_order: 99 } }, 201, (d) => d.key === 'e2e')
   await expect('DELETE /api/content/info/e2e', 'DELETE', '/api/content/info/e2e', A, 200)
 
@@ -457,6 +464,9 @@ async function main() {
   await expect('POST /api/auth/change-password', 'POST', '/api/auth/change-password', { ...G, body: { current_password: TEST_PASSWORD, new_password: 'Guest-New-2026!' } }, 200, (d) => d.ok)
   await expect('login with new password', 'POST', '/api/guest/login', { body: { email: GUEST.email, password: 'Guest-New-2026!' } }, 200)
   await expect('restore demo password', 'POST', '/api/auth/change-password', { ...G, body: { current_password: 'Guest-New-2026!', new_password: TEST_PASSWORD } }, 200, (d) => d.ok)
+  // A password change invalidates the guest's other sessions (expected) — get a fresh token.
+  const relogin = await expect('re-login after password change', 'POST', '/api/guest/login', { body: { email: GUEST.email, password: TEST_PASSWORD } }, 200, (d) => d.session?.access_token)
+  G.token = relogin.session.access_token
 
   // ---------- 21. final guest state ----------
   await expect('GET /api/guest/me (stats updated)', 'GET', '/api/guest/me', G, 200, (d) => d.stats.transfers >= 2 && d.stats.grocery_orders >= 2 && d.stay_label)
@@ -616,6 +626,139 @@ async function main() {
     const g5GroceryRefunds = await stripe.refunds.list({ payment_intent: g5GroceryIntent.id, limit: 1 })
     record(g5ServiceRefunds.data.length === 1, 'Stripe confirms the service-fee charge was refunded')
     record(g5GroceryRefunds.data.length === 1, 'Stripe confirms the Publix-total charge was refunded too')
+  }
+
+  // ---------- 23. Trip flow v2: statuses, fees, no-show, chat, SMS log, public links, tips, round trip, jobs ----------
+  {
+    const stripe = stripeConfigured ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
+    const confirm = (clientSecret) => stripe.paymentIntents.confirm(clientSecret.split('_secret_')[0], { payment_method: 'pm_card_visa' })
+    const piId = (clientSecret) => clientSecret.split('_secret_')[0]
+    const payAndAuthorize = async (id) => {
+      const pay = await call('POST', `/api/guest/transfers/${id}/pay`, { ...G, body: { payment_method: 'card_on_file' } })
+      await confirm(pay.data.client_secret)
+      await call('POST', `/api/guest/transfers/${id}/sync-payment`, G)
+      return piId(pay.data.client_secret)
+    }
+    const guestTransfer = (hours, extra = {}) =>
+      call('POST', '/api/guest/transfers', { ...G, body: { trip_type: 'arrival', airport: 'ECP', vehicle_type: '4pax', scheduled_at: isoPlusHours(hours), passengers: 2, bags: 1, flight_number: 'DL 100', ...extra } })
+
+    // Content import
+    await expect('partners: /explore/guide lists 20+ categories', 'GET', '/api/guest/explore/guide', G, 200, (d) => d.items.length >= 20)
+    await expect('partners: On The Water has 34 vendors', 'GET', '/api/guest/explore/vendors/on-the-water', G, 200, (d) => d.count === 34)
+    await expect('partners: Golf Courses has 7 vendors', 'GET', '/api/guest/explore/vendors/golf-courses', G, 200, (d) => d.count === 7)
+    await expect('partners: closed gallery is hidden (Arts & Culture = 9 active)', 'GET', '/api/guest/explore/vendors/arts-culture', G, 200, (d) => d.count === 9)
+    await expect('public info: 4 place sections, 79 places', 'GET', '/api/guest/explore/info', G, 200, (d) => d.places.length === 4 && d.places.reduce((n, s) => n + s.places.length, 0) === 79)
+    await expect('admin content: places resource', 'GET', '/api/content/places', A, 200, (d) => d.length === 79)
+
+    // Round trip + quote
+    await expect('quote round trip → 5% off, both legs', 'POST', '/api/guest/transfers/quote', { ...G, body: { airport: 'ECP', vehicle_type: '4pax', round_trip: true } }, 200, (d) => d.discount_percent === 5 && d.total === 80.75 && d.round_trip_total === 161.5 && typeof d.available_credit === 'number')
+    const rt = await expect('POST /api/guest/transfers round trip creates 2 linked legs', 'POST', '/api/guest/transfers', { ...G, body: { trip_type: 'arrival', airport: 'ECP', vehicle_type: '4pax', scheduled_at: isoPlusHours(100), passengers: 2, bags: 1, return_trip: { scheduled_at: isoPlusHours(200), flight_number: 'DL 200' } } }, 201, (d) => d.return_transfer && d.discount_percent === 5 && d.total === 80.75 && d.return_transfer.trip_type === 'departure' && d.round_trip_group_id && d.round_trip_group_id === d.return_transfer.round_trip_group_id)
+    await expect('cancellation preview 48h+ → $0', 'GET', `/api/guest/transfers/${rt.id}/cancellation-preview`, G, 200, (d) => d.fee === 0 && d.window === '48h+')
+    await expect('guest cancel 48h+ → no fee', 'POST', `/api/guest/transfers/${rt.id}/cancel`, G, 200, (d) => d.status === 'cancelled' && d.cancellation_fee === 0)
+    await expect('guest cancel return leg too', 'POST', `/api/guest/transfers/${rt.return_transfer.id}/cancel`, G, 200, (d) => d.status === 'cancelled')
+
+    // Vehicle name visibility for guests
+    await expect('PATCH vehicle show_name=false', 'PATCH', `/api/vehicles/${vehicle.id}`, { ...A, body: { show_name: false } }, 200, (d) => d.show_name === false)
+
+    if (!stripe) {
+      record(true, 'trip flow v2 Stripe-dependent checks skipped (no STRIPE_SECRET_KEY)')
+    } else {
+      // Guest cancel 24–48h → $50 captured from the hold
+      const t9 = (await guestTransfer(30)).data
+      const t9Pi = await payAndAuthorize(t9.id)
+      await expect('assign T9', 'POST', `/api/transfers/${t9.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200)
+      await expect('guest view hides model when show_name=false', 'GET', `/api/guest/transfers/${t9.id}`, G, 200, (d) => d.vehicle_label === 'Private transfer · Up to 4 passengers' && d.driver?.name === 'Test')
+      await expect('cancellation preview 24–48h → $50', 'GET', `/api/guest/transfers/${t9.id}/cancellation-preview`, G, 200, (d) => d.fee === 50 && d.window === '24-48h')
+      await expect('guest cancel 24–48h → $50 fee captured', 'POST', `/api/guest/transfers/${t9.id}/cancel`, G, 200, (d) => d.status === 'cancelled' && d.cancellation_fee === 50 && d.payment_status === 'captured')
+      const t9Intent = await stripe.paymentIntents.retrieve(t9Pi)
+      record(t9Intent.status === 'succeeded' && t9Intent.amount_received === 5000, 'Stripe: T9 captured exactly $50, rest released', `${t9Intent.status} / received $${t9Intent.amount_received / 100}`)
+      await expect('PATCH vehicle show_name=true (restore)', 'PATCH', `/api/vehicles/${vehicle.id}`, { ...A, body: { show_name: true } }, 200, (d) => d.show_name === true)
+
+      // Same-day cancel on the guest's behalf by admin → $75
+      const t10 = (await guestTransfer(5)).data
+      const t10Pi = await payAndAuthorize(t10.id)
+      await expect('assign T10', 'POST', `/api/transfers/${t10.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200)
+      await expect('admin cancel on guest behalf same-day → $75', 'POST', `/api/transfers/${t10.id}/cancel`, { ...A, body: { initiated_by: 'guest' } }, 200, (d) => d.status === 'cancelled' && d.cancellation_fee === 75)
+      const t10Intent = await stripe.paymentIntents.retrieve(t10Pi)
+      record(t10Intent.amount_received === 7500, 'Stripe: T10 captured exactly $75', `received $${t10Intent.amount_received / 100}`)
+
+      // Host cancels → full release + $25 credit, applied to the guest's next booking
+      const t11 = (await guestTransfer(30)).data
+      const t11Pi = await payAndAuthorize(t11.id)
+      await expect('assign T11', 'POST', `/api/transfers/${t11.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200)
+      await expect('admin cancel (host) → full release + credit', 'POST', `/api/transfers/${t11.id}/cancel`, { ...A, body: { reason: 'vehicle issue' } }, 200, (d) => d.status === 'cancelled' && d.cancellation_fee === 0 && d.cancellation.stripe.action === 'released')
+      const t11Intent = await stripe.paymentIntents.retrieve(t11Pi)
+      record(t11Intent.status === 'canceled', 'Stripe: T11 hold fully released', t11Intent.status)
+      await expect('quote shows the $25 credit', 'POST', '/api/guest/transfers/quote', { ...G, body: { airport: 'ECP', vehicle_type: '4pax' } }, 200, (d) => d.available_credit >= 25)
+      const t12 = await expect('next booking consumes the credit ($85 − $25)', 'POST', '/api/guest/transfers', { ...G, body: { trip_type: 'arrival', airport: 'ECP', vehicle_type: '4pax', scheduled_at: isoPlusHours(120), passengers: 1, bags: 1 } }, 201, (d) => d.credit_applied >= 25 && d.total === 85 - d.credit_applied)
+      await expect('credit is now used up', 'POST', '/api/guest/transfers/quote', { ...G, body: { airport: 'ECP', vehicle_type: '4pax' } }, 200, (d) => d.available_credit === 0)
+      await expect('cancel T12 (cleanup)', 'POST', `/api/guest/transfers/${t12.id}/cancel`, G, 200)
+
+      // Full driver flow with chat, SMS log and public links
+      const t13 = (await guestTransfer(20)).data
+      const t13Pi = await payAndAuthorize(t13.id)
+      await expect('assign T13 → SMS logged (skipped: Twilio not configured)', 'POST', `/api/transfers/${t13.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200)
+      const t13Admin = await expect('admin view has guest_links (chat + tip)', 'GET', `/api/transfers/${t13.id}`, A, 200, (d) => d.guest_links?.chat && d.guest_links?.tip)
+      const token = t13Admin.guest_links.chat.split('/trip/')[1]
+      await expect('driver /mine does NOT expose guest_phone', 'GET', `/api/transfers/mine?date=${chicagoDate(t13.scheduled_at)}`, D, 200, (d) => d.some((t) => t.id === t13.id) && d.every((t) => !('guest_phone' in t)))
+      await expect('driver: On the way', 'POST', `/api/transfers/${t13.id}/start`, D, 200, (d) => d.status === 'started')
+      await expect('driver: Arrived', 'POST', `/api/transfers/${t13.id}/arrive`, D, 200, (d) => d.status === 'arrived' && d.arrived_at)
+      await expect('guest tracker shows Driver arrived', 'GET', `/api/guest/transfers/${t13.id}`, G, 200, (d) => d.status_label === 'Driver arrived')
+      await expect('public trip page (no login) is live', 'GET', `/api/public/trip/${token}`, {}, 200, (d) => d.trip.status === 'arrived' && d.chat_open === true && d.trip.driver.first_name === 'Test')
+      await expect('public trip page 404 for bad token', 'GET', `/api/public/trip/${'0'.repeat(32)}`, {}, 404)
+      await expect('guest posts via secret link', 'POST', `/api/public/trip/${token}/messages`, { body: { body: 'I am at door 3 with a red bag' } }, 201, (d) => d.sender_role === 'guest')
+      await expect('guest posts via app', 'POST', `/api/guest/transfers/${t13.id}/messages`, { ...G, body: { body: 'Blue jacket' } }, 201)
+      await expect('driver reads the thread', 'GET', `/api/transfers/${t13.id}/messages`, D, 200, (d) => d.messages.length === 2 && d.chat_open)
+      await expect('driver replies', 'POST', `/api/transfers/${t13.id}/messages`, { ...D, body: { body: 'See you, white Ford Fusion' } }, 201, (d) => d.sender_role === 'driver')
+      await expect('guest app reads reply', 'GET', `/api/guest/transfers/${t13.id}/messages`, G, 200, (d) => d.messages.length === 3)
+      await expect('driver: Guest in vehicle', 'POST', `/api/transfers/${t13.id}/pickup`, D, 200, (d) => d.status === 'picked_up' && d.picked_up_at)
+      await expect('driver: Complete (card on file captured)', 'POST', `/api/transfers/${t13.id}/complete`, { ...D, body: { payment_method: 'card_on_file' } }, 200, (d) => d.status === 'completed')
+      const t13Intent = await stripe.paymentIntents.retrieve(t13Pi)
+      record(t13Intent.status === 'succeeded' && t13Intent.amount_received === 8500, 'Stripe: T13 captured full $85 on completion', `received $${t13Intent.amount_received / 100}`)
+      const t13Full = await expect('admin sees messages + SMS log for every status', 'GET', `/api/transfers/${t13.id}`, A, 200, (d) => d.messages.length === 3 && ['assigned', 'started', 'arrived', 'picked_up', 'completed'].every((k) => d.sms_log.some((s) => s.kind === k && s.status === 'skipped')) && d.tip_requested_at)
+      record(t13Full.sms_log.find((s) => s.kind === 'completed')?.body.includes('/tip/'), 'completion SMS carries the tip link', t13Full.sms_log.find((s) => s.kind === 'completed')?.body)
+      await expect('public chat closed after completion', 'POST', `/api/public/trip/${token}/messages`, { body: { body: 'late' } }, 410)
+      await expect('public trip page after completion shows tip_url, no chat', 'GET', `/api/public/trip/${token}`, {}, 200, (d) => d.chat_open === false && d.tip_url)
+      await expect('public tip page (no login)', 'GET', `/api/public/tip/${token}`, {}, 200, (d) => d.can_tip && d.options.length === 3 && d.options[1].pct === 18 && d.saved_card === true)
+      await expect('public tip charges the saved card off-session', 'POST', `/api/public/tip/${token}`, { body: { tip_amount: 12 } }, 200, (d) => d.ok && d.tip_amount === 12 && d.trip.tip_amount === 12)
+      await expect('admin search finds the conversation by trip #', 'GET', `/api/messages?q=%23${t13.trip_number}`, A, 200, (d) => d.messages.length === 3 && d.sms.length >= 5)
+      await expect('admin search by driver', 'GET', `/api/messages?driver_id=${ids.driver}&kind=chat`, A, 200, (d) => d.messages.length >= 3)
+
+      // No-show → $75 captured, rest released
+      const t14 = (await guestTransfer(6)).data
+      const t14Pi = await payAndAuthorize(t14.id)
+      await expect('assign T14', 'POST', `/api/transfers/${t14.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200)
+      await expect('driver on the way (T14)', 'POST', `/api/transfers/${t14.id}/start`, D, 200)
+      await expect('driver arrived (T14)', 'POST', `/api/transfers/${t14.id}/arrive`, D, 200)
+      await expect('admin declares no-show → $75', 'POST', `/api/transfers/${t14.id}/no-show`, A, 200, (d) => d.status === 'no_show' && d.no_show_fee === 75 && d.stripe.action === 'captured')
+      const t14Intent = await stripe.paymentIntents.retrieve(t14Pi)
+      record(t14Intent.amount_received === 7500, 'Stripe: T14 no-show captured exactly $75', `received $${t14Intent.amount_received / 100}`)
+
+      // On-the-spot: pay link must be paid before completing with card; Zelle path
+      const t15 = await expect('admin creates walk-in T15 (no card on file)', 'POST', '/api/transfers', { ...A, body: { guest_name: 'Walk In', guest_phone: '+1 850 555 0177', pickup_address: '30A Beach House', dropoff_address: AIRPORT('ECP'), community_id: rosemary.id, airport: 'ECP', direction: 'to_airport', vehicle_type: '4pax', passengers: 1, bags: 1, driver_id: ids.driver, vehicle_id: vehicle.id, payment_method: 'card', scheduled_at: isoPlusHours(8) } }, 201)
+      await expect('driver on the way (T15)', 'POST', `/api/transfers/${t15.id}/start`, D, 200)
+      await expect('driver generates Stripe payment link', 'POST', `/api/transfers/${t15.id}/pay-link`, D, 201, (d) => d.url?.startsWith('https://checkout.stripe.com') && d.amount === 85)
+      await expect('same link returned while still open', 'POST', `/api/transfers/${t15.id}/pay-link`, D, 200, (d) => d.paid === false && d.url)
+      await expect('complete with card while link unpaid → 400', 'POST', `/api/transfers/${t15.id}/complete`, { ...D, body: { payment_method: 'card' } }, 400)
+      await expect('complete via Zelle → recorded + flagged for admin review', 'POST', `/api/transfers/${t15.id}/complete`, { ...D, body: { payment_method: 'zelle' } }, 200, (d) => d.status === 'completed' && d.payment_method === 'zelle')
+      await expect('admin sees Zelle review flag', 'GET', `/api/transfers/${t15.id}`, A, 200, (d) => d.is_flagged && d.flag_reason === 'ZELLE_REVIEW' && d.payment_status === 'captured')
+      await expect('driver tips are 100% driver (tip via driver endpoint still works)', 'POST', `/api/transfers/${t15.id}/tip`, { ...D, body: { tip_amount: 7 } }, 200, (d) => d.tip_amount === 7)
+
+      // 24h auto-cancel job
+      const t16 = (await guestTransfer(60)).data
+      await expect('assign T16 (never authorized)', 'POST', `/api/transfers/${t16.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200)
+      await admin.from('trip_status_log').update({ created_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString() }).eq('transfer_id', t16.id).eq('status', 'assigned')
+      await expect('POST /api/jobs/run expires the unauthorized hold', 'POST', '/api/jobs/run', A, 200, (d) => d.ok && d.expire_unauthorized_holds.expired.includes(t16.id))
+      await expect('T16 auto-cancelled', 'GET', `/api/transfers/${t16.id}`, A, 200, (d) => d.status === 'cancelled' && /Auto-cancelled/.test(d.notes))
+      await expect('jobs endpoint rejects anonymous', 'POST', '/api/jobs/run', {}, 401)
+    }
+
+    // Twilio voice webhook (not configured → friendly TwiML, never a crash)
+    {
+      const res = await fetch(`${API}/api/public/voice`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ From: '+18505550100', CallSid: 'CAtest' }) })
+      const xml = await res.text()
+      record(res.status === 200 && xml.includes('<Response>'), 'POST /api/public/voice returns TwiML', xml.slice(0, 80))
+    }
   }
 
   console.log(`\n${results.length - failures}/${results.length} checks passed${failures ? `, ${failures} FAILED` : ''}.`)

@@ -363,7 +363,10 @@ export default function Transfers() {
           <option value="">All statuses</option>
           <option value="requested">Requested (guest app)</option>
           <option value="assigned">Assigned</option>
-          <option value="started">Started</option>
+          <option value="started">On the way</option>
+          <option value="arrived">Arrived</option>
+          <option value="picked_up">Guest picked up</option>
+          <option value="no_show">No-show</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
           <option value="refunded">Refunded</option>
@@ -568,6 +571,38 @@ export default function Transfers() {
                 ) : null}
                 {trip.cash_reported != null ? ` · reported ${usd(trip.cash_reported)}` : ''}
               </span>
+              {trip.cancellation_fee || trip.no_show_fee || trip.discount_percent ? (
+                <>
+                  <span>Fees</span>
+                  <span>
+                    {trip.no_show_fee ? `No-show $${trip.no_show_fee}` : ''}
+                    {trip.cancellation_fee ? `Cancellation $${trip.cancellation_fee}` : ''}
+                    {trip.discount_percent ? `Round trip −${trip.discount_percent}%` : ''}
+                  </span>
+                </>
+              ) : null}
+              {trip.guest_links ? (
+                <>
+                  <span>Guest links</span>
+                  <span className="guest-links">
+                    <a href={trip.guest_links.chat} target="_blank" rel="noreferrer">
+                      Trip chat
+                    </a>
+                    {' · '}
+                    <a href={trip.guest_links.tip} target="_blank" rel="noreferrer">
+                      Tip page
+                    </a>
+                    {trip.pay_link_url ? (
+                      <>
+                        {' · '}
+                        <a href={trip.pay_link_url} target="_blank" rel="noreferrer">
+                          Payment link
+                        </a>
+                      </>
+                    ) : null}
+                  </span>
+                </>
+              ) : null}
             </div>
             <div className="kv">
               <span>Customer charge</span>
@@ -625,6 +660,37 @@ export default function Transfers() {
                 ))
               )}
             </ul>
+            {(trip.messages || []).length || (trip.sms_log || []).length || (trip.call_log || []).length ? (
+              <div className="comms">
+                <b>Conversation, SMS & calls</b>
+                {(trip.messages || []).map((m) => (
+                  <div key={m.id} className={`comms-row is-${m.sender_role}`}>
+                    <span className="who">{m.sender_name || m.sender_role}</span>
+                    <span className="what">{m.body}</span>
+                    <span className="when">{formatDateTime(m.created_at)}</span>
+                  </div>
+                ))}
+                {(trip.sms_log || []).map((s) => (
+                  <div key={s.id} className="comms-row is-sms">
+                    <span className="who">
+                      SMS <Pill {...(s.status === 'sent' ? {} : s.status === 'failed' ? { warn: true } : { neutral: true })}>{s.status}</Pill>
+                    </span>
+                    <span className="what">{s.body}</span>
+                    <span className="when">{formatDateTime(s.created_at)}</span>
+                  </div>
+                ))}
+                {(trip.call_log || []).map((c) => (
+                  <div key={c.id} className="comms-row is-call">
+                    <span className="who">Call</span>
+                    <span className="what">
+                      {(c.direction || '').replace(/_/g, ' ')} · {c.status || '—'}
+                      {c.duration_seconds ? ` · ${c.duration_seconds}s` : ''}
+                    </span>
+                    <span className="when">{formatDateTime(c.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {trip.status === 'requested' ? (
               <AssignTrip
                 trip={trip}
@@ -656,13 +722,43 @@ export default function Transfers() {
                   Flag
                 </Button>
               )}
-              {['requested', 'assigned', 'started'].includes(trip.status) ? (
+              {['requested', 'assigned', 'started', 'arrived', 'picked_up'].includes(trip.status) ? (
+                <>
+                  <Button
+                    className="btn quiet"
+                    pending={working === `/api/transfers/${trip.id}/cancel`}
+                    onClick={() => {
+                      if (window.confirm('Cancel as My30A Host? The hold is fully released and the guest gets a $25 credit.')) {
+                        act(`/api/transfers/${trip.id}/cancel`, { initiated_by: 'host' }, 'Cancelled · guest credited $25')
+                      }
+                    }}
+                  >
+                    We cancel
+                  </Button>
+                  <Button
+                    className="btn quiet"
+                    pending={working === `/api/transfers/${trip.id}/cancel`}
+                    onClick={() => {
+                      if (window.confirm('Cancel on the guest’s behalf? The published fee applies: $0 (48h+), $50 (24–48h) or $75 (same day).')) {
+                        act(`/api/transfers/${trip.id}/cancel`, { initiated_by: 'guest' }, 'Cancelled · fee applied')
+                      }
+                    }}
+                  >
+                    Guest cancels
+                  </Button>
+                </>
+              ) : null}
+              {['assigned', 'started', 'arrived'].includes(trip.status) ? (
                 <Button
-                  className="btn quiet"
-                  pending={working === `/api/transfers/${trip.id}/cancel`}
-                  onClick={() => act(`/api/transfers/${trip.id}/cancel`, undefined, 'Cancelled')}
+                  className="btn danger"
+                  pending={working === `/api/transfers/${trip.id}/no-show`}
+                  onClick={() => {
+                    if (window.confirm('Declare a no-show? $75 is captured from the hold and the rest is released.')) {
+                      act(`/api/transfers/${trip.id}/no-show`, undefined, 'No-show recorded · $75 captured')
+                    }
+                  }}
                 >
-                  Cancel
+                  No-show
                 </Button>
               ) : null}
               {trip.status === 'completed' ? (

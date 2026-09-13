@@ -5,6 +5,30 @@
 import { Router } from 'express'
 import { supabase } from '../lib/supabase.js'
 import { constructWebhookEvent, mapIntentStatus } from '../lib/stripe.js'
+import { recordTip } from '../services/tripFlow.js'
+
+// Hosted Checkout pages: on-the-spot card payments shown by the driver, and tips paid from the
+// no-login tip link. The client-side confirm endpoints do the same thing; this makes it robust
+// when the guest closes the page before being redirected back.
+async function syncCheckoutSession(session) {
+  const transferId = session.metadata?.my30a_transfer_id
+  const kind = session.metadata?.kind
+  if (!transferId || session.payment_status !== 'paid') return
+  const { data: transfer } = await supabase.from('transfers').select('*').eq('id', transferId).maybeSingle()
+  if (!transfer) return
+  if (kind === 'tip') {
+    if (Number(transfer.tip_amount || 0) > 0) return
+    await recordTip({ transfer, tip_amount: session.amount_total / 100, via: 'checkout', select: '*' })
+  } else if (kind === 'on_the_spot') {
+    await supabase
+      .from('transfers')
+      .update({
+        payment_status: 'captured',
+        stripe_payment_intent_id: session.payment_intent ? String(session.payment_intent) : transfer.stripe_payment_intent_id,
+      })
+      .eq('id', transfer.id)
+  }
+}
 
 const router = Router()
 
@@ -57,6 +81,10 @@ router.post('/webhook', async (req, res) => {
         await syncByPaymentIntent(intent, status)
         break
       }
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded':
+        await syncCheckoutSession(event.data.object)
+        break
       default:
         break
     }

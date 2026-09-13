@@ -112,6 +112,7 @@ router.post('/', async (req, res, next) => {
         capacity: capacityNumber,
         plate,
         owner_fee_percent: fee,
+        show_name: req.body?.show_name === undefined ? true : Boolean(req.body.show_name),
       })
       .select('*, owner:profiles!owner_id(name)')
       .single()
@@ -142,6 +143,8 @@ router.patch('/:id', async (req, res, next) => {
     if (body.make !== undefined) updates.make = body.make
     if (body.model !== undefined) updates.model = body.model
     if (body.plate !== undefined) updates.plate = body.plate
+    // OFF shows guests "Private transfer · Up to N passengers" instead of the model name.
+    if (body.show_name !== undefined) updates.show_name = Boolean(body.show_name)
 
     if (body.year !== undefined) {
       const yearNumber = Number(body.year)

@@ -27,6 +27,7 @@ function emptyVehicle(defaultFee, ownerId) {
     vehicle_type: '4pax',
     owner_id: ownerId || '',
     owner_fee_percent: String(defaultFee ?? 20),
+    show_name: true,
   }
 }
 
@@ -78,6 +79,7 @@ export default function Vehicles() {
       owner_id: vehicle.owner_id || '',
       owner_fee_percent: String(vehicle.owner_fee_percent ?? ''),
       status: vehicle.status || 'active',
+      show_name: vehicle.show_name !== false,
     })
     setFormError('')
     setModal(vehicle)
@@ -99,6 +101,7 @@ export default function Vehicles() {
       capacity: capacityFor(form.vehicle_type),
       owner_id: form.owner_id,
       owner_fee_percent: Number(form.owner_fee_percent),
+      show_name: Boolean(form.show_name),
     }
     if (!payload.make || !payload.model || !payload.plate || !payload.owner_id) {
       setFormError('Make, model, plate, and owner are required.')
@@ -164,6 +167,12 @@ export default function Vehicles() {
                   <tr key={vehicle.id}>
                     <td data-label="Vehicle">
                       {vehicle.make} {vehicle.model} {vehicle.year} · {vehicle.plate}
+                      {vehicle.show_name === false ? (
+                        <>
+                          <br />
+                          <small className="muted">name hidden from guests</small>
+                        </>
+                      ) : null}
                     </td>
                     <td data-label="Type">{vehicleTypeLabel(vehicle.vehicle_type, vehicle.capacity)}</td>
                     <td data-label="Owner">
@@ -276,6 +285,18 @@ export default function Vehicles() {
               onChange={(event) => setForm({ ...form, owner_fee_percent: event.target.value })}
               style={{ maxWidth: 120 }}
             />
+          </div>
+          <div className="field">
+            <label className="checks" style={{ margin: 0 }}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.show_name)}
+                  onChange={(event) => setForm({ ...form, show_name: event.target.checked })}
+                />
+                Show vehicle name to guests (off = “Private transfer · Up to N passengers”)
+              </label>
+            </label>
           </div>
           {modal !== 'add' ? (
             <div className="field">

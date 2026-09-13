@@ -131,7 +131,10 @@ export function statusLabel(status) {
   const labels = {
     requested: 'Requested',
     assigned: 'Assigned',
-    started: 'Started',
+    started: 'On the way',
+    arrived: 'Arrived',
+    picked_up: 'Guest picked up',
+    no_show: 'No-show',
     completed: 'Completed',
     cancelled: 'Cancelled',
     refunded: 'Refunded',
@@ -157,6 +160,9 @@ export function paymentLabel(method) {
   if (method === 'card_on_file') return 'Card on file'
   if (method === 'cash') return 'Cash'
   if (method === 'card') return 'Card on the spot'
+  if (method === 'apple_pay') return 'Apple Pay'
+  if (method === 'google_pay') return 'Google Pay'
+  if (method === 'zelle') return 'Zelle'
   return method || '—'
 }
 
@@ -219,6 +225,7 @@ export function flagLabel(reason) {
     .map((part) => {
       const key = part.trim()
       if (key === 'CASH_MISMATCH') return 'Cash mismatch'
+      if (key === 'ZELLE_REVIEW') return 'Zelle — verify'
       if (key === 'CANCELLED_AFTER_START') return 'Cancelled after start'
       if (key === 'NEGATIVE_PLATFORM_AMOUNT') return 'Needs review'
       return key.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
@@ -259,6 +266,7 @@ export function compensationLabel(agreement, roles = [], { includeSince = true }
 
 export function statusPill(status) {
   if (status === 'requested') return { warn: true }
+  if (status === 'no_show') return { warn: true }
   if (status === 'assigned') return { sand: true }
   if (status === 'refunded' || status === 'cancelled' || status === 'inactive') return { neutral: true }
   return {}
