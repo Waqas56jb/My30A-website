@@ -138,10 +138,28 @@ export function PriceCard({ quote, loading }) {
             <span>+{usd(a.price)}</span>
           </div>
         ))}
+        {quote?.discount_amount > 0 ? (
+          <div className="app-xfer-price-row">
+            <span>Round trip −{quote.discount_percent}%</span>
+            <span>−{usd(quote.discount_amount)}</span>
+          </div>
+        ) : null}
+        {quote?.credit_applied > 0 ? (
+          <div className="app-xfer-price-row">
+            <span>Credit applied</span>
+            <span>−{usd(quote.credit_applied)}</span>
+          </div>
+        ) : null}
         <div className="app-xfer-price-row is-total">
-          <span>Total</span>
+          <span>{quote?.round_trip ? 'Per leg' : 'Total'}</span>
           <span>{loading ? '…' : usd(total)}</span>
         </div>
+        {quote?.round_trip ? (
+          <div className="app-xfer-price-row is-total">
+            <span>Both legs</span>
+            <span>{usd(quote.round_trip_total)}</span>
+          </div>
+        ) : null}
       </div>
     </section>
   )

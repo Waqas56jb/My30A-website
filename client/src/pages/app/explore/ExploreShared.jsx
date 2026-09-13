@@ -97,10 +97,14 @@ export function Pill({ icon: Icon, children, white }) {
 }
 
 export function RatingPill({ rating, reviews, white }) {
+  // Real partners without a published rating get a neutral badge instead of a made-up score.
+  if (rating === null || rating === undefined) {
+    return <span className={`app-exp-pill${white ? ' is-white' : ''}`}>Local partner</span>
+  }
   return (
     <span className={`app-exp-pill${white ? ' is-white' : ''}`}>
       <Star size={14} strokeWidth={0} fill="#f5b50a" className="app-exp-star" aria-hidden="true" />
-      <b>{rating === null || rating === undefined ? '5.0' : Number(rating).toFixed(1)}</b> ({reviews ?? 0})
+      <b>{Number(rating).toFixed(1)}</b> ({reviews ?? 0})
     </span>
   )
 }

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Car } from 'lucide-react'
+import { Car, Copy, ExternalLink } from 'lucide-react'
 import BottomSheet from '../../components/BottomSheet.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import EarningsStrip, { EarningsStripSkeleton } from '../../components/EarningsStrip.jsx'
 import { usePageHeader } from '../../components/Layout.jsx'
 import Spinner from '../../components/Spinner.jsx'
 import TripCard, { TripCardSkeleton } from '../../components/TripCard.jsx'
+import TripChat from '../../components/TripChat.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { api, withQuery } from '../../lib/api.js'
 import {
@@ -22,18 +23,24 @@ import { useTitle } from '../../lib/useTitle.js'
 
 const PAY_CHOICES = [
   { id: 'card_on_file', label: 'Card on file' },
-  { id: 'cash', label: 'Cash' },
   { id: 'card', label: 'Card / tap' },
   { id: 'wallet', label: 'Apple / Google Pay' },
+  { id: 'cash', label: 'Cash' },
+  { id: 'zelle', label: 'Zelle' },
 ]
 
+const IN_PROGRESS = ['assigned', 'started', 'arrived', 'picked_up']
+const PROGRESS_RANK = { picked_up: 0, arrived: 1, started: 2, assigned: 3 }
+
 function visibleTrips(trips) {
-  return (trips || []).filter((trip) => trip.status !== 'cancelled' && trip.status !== 'refunded')
+  return (trips || []).filter((trip) => !['cancelled', 'refunded', 'no_show'].includes(trip.status))
 }
 
 function nextTripLabel(trip, now) {
   if (!trip) return 'No upcoming trips'
-  if (trip.status === 'started') return 'Trip in progress'
+  if (trip.status === 'picked_up') return 'Guest on board'
+  if (trip.status === 'arrived') return 'Waiting at pickup'
+  if (trip.status === 'started') return 'On the way to pickup'
   const wait = formatCountdown(trip.scheduled_at, now)
   if (wait === 'now') return 'Next trip now'
   return `Next trip in ${wait}`
@@ -50,12 +57,15 @@ export default function Trips() {
 
   const [workingId, setWorkingId] = useState('')
   const [completing, setCompleting] = useState(null)
+  const [chatTrip, setChatTrip] = useState(null)
   const [payMethod, setPayMethod] = useState('card_on_file')
   const [wallet, setWallet] = useState('apple_pay')
   const [cashReported, setCashReported] = useState('')
   const [tipAmount, setTipAmount] = useState('')
   const [sheetError, setSheetError] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const [payLink, setPayLink] = useState(null)
+  const [linkBusy, setLinkBusy] = useState(false)
   const [updatedAt, setUpdatedAt] = useState(null)
   const [now, setNow] = useState(() => Date.now())
   const [revealed, setRevealed] = useState(false)
@@ -63,10 +73,10 @@ export default function Trips() {
   const trips = useMemo(() => visibleTrips(tripsQuery.data), [tripsQuery.data])
   const upNext = useMemo(() => {
     return trips
-      .filter((trip) => trip.status === 'assigned' || trip.status === 'started')
+      .filter((trip) => IN_PROGRESS.includes(trip.status))
       .sort((a, b) => {
-        if (a.status === 'started' && b.status !== 'started') return -1
-        if (b.status === 'started' && a.status !== 'started') return 1
+        const rank = PROGRESS_RANK[a.status] - PROGRESS_RANK[b.status]
+        if (rank) return rank
         return new Date(a.scheduled_at) - new Date(b.scheduled_at)
       })
   }, [trips])
@@ -117,6 +127,26 @@ export default function Trips() {
     return () => window.clearInterval(timer)
   }, [])
 
+  async function refreshTrips() {
+    invalidateQuery('/api/transfers/mine')
+    await tripsQuery.refetch()
+    setUpdatedAt(Date.now())
+  }
+
+  // One handler for On the way → Arrived → Guest in vehicle (each sends the guest an update).
+  async function advance(trip, action, okMessage) {
+    setWorkingId(trip.id)
+    try {
+      await api(`/api/transfers/${trip.id}/${action}`, { method: 'POST' })
+      toast.success(okMessage)
+      await refreshTrips()
+    } catch (error) {
+      toast.error(errorMessage(error))
+    } finally {
+      setWorkingId('')
+    }
+  }
+
   function closeSheet() {
     if (confirming) return
     setCompleting(null)
@@ -125,30 +155,42 @@ export default function Trips() {
     setTipAmount('')
     setPayMethod('card_on_file')
     setWallet('apple_pay')
-  }
-
-  async function startTrip(trip) {
-    setWorkingId(trip.id)
-    try {
-      await api(`/api/transfers/${trip.id}/start`, { method: 'POST' })
-      toast.success('Trip started')
-      invalidateQuery('/api/transfers/mine')
-      await tripsQuery.refetch()
-      setUpdatedAt(Date.now())
-    } catch (error) {
-      toast.error(errorMessage(error))
-    } finally {
-      setWorkingId('')
-    }
+    setPayLink(null)
   }
 
   function openComplete(trip) {
     setCompleting(trip)
-    setPayMethod('card_on_file')
+    setPayMethod(trip.payment_status === 'authorized' || trip.payment_status === 'captured' ? 'card_on_file' : 'card')
     setWallet('apple_pay')
     setCashReported('')
     setTipAmount('')
     setSheetError('')
+    setPayLink(trip.pay_link_url ? { url: trip.pay_link_url, paid: false } : null)
+  }
+
+  async function generatePayLink() {
+    if (!completing) return
+    setLinkBusy(true)
+    setSheetError('')
+    try {
+      const link = await api(`/api/transfers/${completing.id}/pay-link`, { method: 'POST' })
+      setPayLink(link)
+      if (link.paid) toast.success('Guest already paid the link')
+    } catch (error) {
+      setSheetError(errorMessage(error))
+    } finally {
+      setLinkBusy(false)
+    }
+  }
+
+  async function copyLink() {
+    if (!payLink?.url) return
+    try {
+      await navigator.clipboard.writeText(payLink.url)
+      toast.success('Link copied — show it to the guest or send it from the chat')
+    } catch {
+      toast.error('Could not copy; long-press the link instead')
+    }
   }
 
   async function confirmComplete(event) {
@@ -168,8 +210,9 @@ export default function Trips() {
       if (method === 'cash') body.cash_reported = Number(cashReported)
       if (tipAmount !== '') body.tip_amount = Number(tipAmount)
       await api(`/api/transfers/${completing.id}/complete`, { method: 'POST', body })
-      toast.success('Trip completed')
+      toast.success('Trip completed ✔ · Payment recorded · Tip request sent to guest.')
       setCompleting(null)
+      setPayLink(null)
       invalidateQuery('/api/transfers/mine')
       invalidateQuery('/api/earnings/mine')
       await Promise.all([tripsQuery.refetch(), earningsQuery.refetch()])
@@ -184,6 +227,8 @@ export default function Trips() {
   const loading = tripsQuery.loading
   const summary = earningsQuery.data
   const next = upNext[0]
+  const cardOnFile = completing && (completing.payment_status === 'authorized' || completing.payment_status === 'captured')
+  const needsLink = payMethod === 'card' || payMethod === 'wallet'
 
   return (
     <section className="trips-page">
@@ -225,8 +270,11 @@ export default function Trips() {
                     key={trip.id}
                     trip={trip}
                     pending={workingId === trip.id}
-                    onStart={startTrip}
+                    onStart={(t) => advance(t, 'start', 'Guest notified: driver on the way')}
+                    onArrive={(t) => advance(t, 'arrive', 'Guest notified: you have arrived')}
+                    onPickup={(t) => advance(t, 'pickup', 'Guest on board — enjoy the ride')}
                     onComplete={openComplete}
+                    onMessage={setChatTrip}
                     style={{ '--stagger': `${index * 40}ms` }}
                   />
                 ))}
@@ -238,11 +286,7 @@ export default function Trips() {
             ) : (
               <div className={`trip-grid${revealed ? ' is-ready' : ''}`}>
                 {done.map((trip, index) => (
-                  <TripCard
-                    key={trip.id}
-                    trip={trip}
-                    style={{ '--stagger': `${index * 40}ms` }}
-                  />
+                  <TripCard key={trip.id} trip={trip} style={{ '--stagger': `${index * 40}ms` }} />
                 ))}
               </div>
             )}
@@ -271,6 +315,15 @@ export default function Trips() {
       </aside>
 
       <BottomSheet
+        open={Boolean(chatTrip)}
+        onClose={() => setChatTrip(null)}
+        title={chatTrip ? `Trip #${chatTrip.trip_number} · ${chatTrip.guest_name || 'Guest'}` : ''}
+        sub={chatTrip ? transferRoute(chatTrip) : ''}
+      >
+        {chatTrip ? <TripChat trip={chatTrip} /> : null}
+      </BottomSheet>
+
+      <BottomSheet
         open={Boolean(completing)}
         onClose={closeSheet}
         title={completing ? `Complete trip #${completing.trip_number}` : ''}
@@ -281,46 +334,64 @@ export default function Trips() {
         }
       >
         <form onSubmit={confirmComplete}>
-          <div className="field">
-            <label>How did the guest pay?</label>
-            <div className="choices">
-              {PAY_CHOICES.map((choice) => {
-                const on =
-                  choice.id === 'wallet'
-                    ? payMethod === 'wallet'
-                    : payMethod === choice.id
-                return (
+          {cardOnFile ? (
+            <div className="note">
+              Card on file is authorized — it is charged automatically when you confirm. Nothing
+              else to do.
+            </div>
+          ) : (
+            <div className="field">
+              <label>How did the guest pay?</label>
+              <div className="choices">
+                {PAY_CHOICES.filter((choice) => choice.id !== 'card_on_file').map((choice) => (
                   <button
                     key={choice.id}
                     type="button"
-                    className={`choice${on ? ' on' : ''}`}
+                    className={`choice${payMethod === choice.id ? ' on' : ''}`}
                     onClick={() => setPayMethod(choice.id)}
                   >
                     {choice.label}
                   </button>
-                )
-              })}
-            </div>
-            {payMethod === 'wallet' ? (
-              <div className="pay-toggle">
-                <button
-                  type="button"
-                  className={wallet === 'apple_pay' ? 'on' : ''}
-                  onClick={() => setWallet('apple_pay')}
-                >
-                  Apple Pay
-                </button>
-                <button
-                  type="button"
-                  className={wallet === 'google_pay' ? 'on' : ''}
-                  onClick={() => setWallet('google_pay')}
-                >
-                  Google Pay
-                </button>
+                ))}
               </div>
-            ) : null}
-          </div>
-          {payMethod === 'cash' ? (
+              {payMethod === 'wallet' ? (
+                <div className="pay-toggle">
+                  <button type="button" className={wallet === 'apple_pay' ? 'on' : ''} onClick={() => setWallet('apple_pay')}>
+                    Apple Pay
+                  </button>
+                  <button type="button" className={wallet === 'google_pay' ? 'on' : ''} onClick={() => setWallet('google_pay')}>
+                    Google Pay
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {!cardOnFile && needsLink ? (
+            <div className="field">
+              <label>Stripe payment link for the guest</label>
+              {payLink?.url ? (
+                <div className="paylink">
+                  <a href={payLink.url} target="_blank" rel="noreferrer">
+                    <ExternalLink size={14} /> Open payment page ({usd(completing?.customer_charge ?? payLink.amount)})
+                  </a>
+                  <button type="button" className="btn ghost sm" onClick={copyLink}>
+                    <Copy size={14} /> Copy link
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="btn ghost" disabled={linkBusy} onClick={generatePayLink}>
+                  {linkBusy ? <Spinner size={16} /> : 'Generate payment link'}
+                </button>
+              )}
+              <div className="note">
+                Show the page to the guest (or copy the link into the chat). Once they pay, confirm below.
+                If they tapped a card on your own reader, just confirm.
+              </div>
+            </div>
+          ) : null}
+
+          {payMethod === 'cash' && !cardOnFile ? (
             <div className="field">
               <label htmlFor="cash-received">Cash received from guest</label>
               <input
@@ -333,8 +404,12 @@ export default function Trips() {
               />
             </div>
           ) : null}
+          {payMethod === 'zelle' && !cardOnFile ? (
+            <div className="note">Confirm only once you’ve seen the Zelle payment land. Welson will verify it.</div>
+          ) : null}
+
           <div className="field">
-            <label htmlFor="tip-received">Tip received (optional)</label>
+            <label htmlFor="tip-received">Tip received in person (optional)</label>
             <input
               id="tip-received"
               inputMode="decimal"
@@ -344,8 +419,8 @@ export default function Trips() {
             />
           </div>
           <div className="note tip">
-            Tips are 100% yours. For cash trips you keep your earnings + tip and hand the rest to
-            Welson at payout.
+            Tips are 100% yours. The guest also gets a tip link automatically after you confirm.
+            For cash trips you keep your earnings + tip and hand the rest to Welson at payout.
           </div>
           {sheetError ? <p className="sheet-error">{sheetError}</p> : null}
           <div className="btn-row">

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Check, Clock, Info, Mail, Upload } from 'lucide-react'
+import { Calendar, Check, Clock, Info, Mail, MapPin, Upload } from 'lucide-react'
 import { errorText, guest } from '../../../lib/guestApi.js'
 import { Cta, TransferShell } from '../transfer/TransferShell.jsx'
 import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
@@ -20,6 +20,8 @@ const STEPS = [
 export default function GroceryList() {
   const navigate = useNavigate()
   const incoming = useGrocery()
+  const [address, setAddress] = useState('')
+  const [addressLoaded, setAddressLoaded] = useState(false)
   const [date, setDate] = useState(tomorrow())
   const [time, setTime] = useState('16:00')
   const [agree, setAgree] = useState(true)
@@ -28,10 +30,30 @@ export default function GroceryList() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  // Prefill from the guest's saved stay, same as the transfer flow — but always editable, since
+  // groceries might go to a different address than the one on file.
+  useEffect(() => {
+    let ignore = false
+    guest
+      .booking()
+      .then((b) => {
+        if (!ignore && b?.property_address) setAddress(b.property_address)
+      })
+      .catch(() => {})
+      .finally(() => !ignore && setAddressLoaded(true))
+    return () => {
+      ignore = true
+    }
+  }, [])
+
   const grocery = { ...incoming, date: fmtDate(date), time: fmtTime(time), deliveryAt: toIso(date, time) }
 
   const submit = async () => {
     setError('')
+    if (!address.trim()) {
+      setError('Please enter your delivery address.')
+      return
+    }
     if (!agree) {
       setError('Please agree to the cancellation policy to continue.')
       return
@@ -39,6 +61,7 @@ export default function GroceryList() {
     setBusy(true)
     try {
       let order = await guest.createGrocery({
+        delivery_address: address.trim(),
         package: grocery.pkg,
         stocking: grocery.stocking,
         addons: Object.keys(grocery.addons || {}).filter((key) => grocery.addons[key]),
@@ -83,6 +106,24 @@ export default function GroceryList() {
       }
     >
       <div className="app-groc-stack">
+        <section className="app-xfer-section">
+          <div className="app-xfer-h-group">
+            <h2 className="app-xfer-h">Delivery Address</h2>
+            <p className="app-xfer-hint-addr">Where should we deliver and stock your groceries?</p>
+          </div>
+          <label className="app-xfer-box app-xfer-addr">
+            <span className="app-xfer-box-l">
+              <MapPin size={16} strokeWidth={1.5} aria-hidden="true" />
+              <input
+                type="text"
+                value={address}
+                placeholder={addressLoaded ? 'Enter your delivery address' : 'Loading your address…'}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </span>
+          </label>
+        </section>
+
         <section className="app-xfer-section">
           <div className="app-xfer-intro">
             <h2 className="app-xfer-h is-20">Send Your Grocery List</h2>

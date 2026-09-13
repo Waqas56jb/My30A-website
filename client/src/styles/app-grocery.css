@@ -1,17 +1,5 @@
 /* Order Groceries flow (Figma 440 wide) */
 
-.app-groc {
-  --xfer-footer-h: 236px;
-}
-
-.app-groc-tall {
-  --xfer-footer-h: 270px;
-}
-
-.app-groc-tip {
-  --xfer-footer-h: 250px;
-}
-
 .app-groc-stack {
   display: flex;
   flex-direction: column;

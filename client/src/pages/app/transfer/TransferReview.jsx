@@ -25,6 +25,7 @@ import {
   tripLabel,
   useBooking,
 } from './TransferShell.jsx'
+import { Picker, fmtDate, fmtTime, toIso, tomorrow } from './TransferBook.jsx'
 
 const POLICY = [
   '48h+ before pickup: Full release - no charge',
@@ -39,6 +40,10 @@ export default function TransferReview() {
   const [agree, setAgree] = useState(true)
   const [policyOpen, setPolicyOpen] = useState(true)
   const [holiday, setHoliday] = useState(Boolean(booking.holiday))
+  const [roundTrip, setRoundTrip] = useState(false)
+  const [returnDate, setReturnDate] = useState(tomorrow())
+  const [returnTime, setReturnTime] = useState('11:00')
+  const [returnFlight, setReturnFlight] = useState('')
   const [quote, setQuote] = useState(null)
   const [quoteError, setQuoteError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -50,6 +55,7 @@ export default function TransferReview() {
     community: booking.community,
     vehicle_type: booking.vehicleType,
     holiday,
+    round_trip: roundTrip,
   }
 
   useEffect(() => {
@@ -64,7 +70,7 @@ export default function TransferReview() {
       ignore = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking.tripType, booking.airport, booking.community, booking.vehicleType, holiday])
+  }, [booking.tripType, booking.airport, booking.community, booking.vehicleType, holiday, roundTrip])
 
   const submit = async () => {
     setError('')
@@ -81,6 +87,9 @@ export default function TransferReview() {
         passengers: booking.passengers,
         bags: booking.bags,
         flight_number: booking.flight || undefined,
+        return_trip: roundTrip
+          ? { scheduled_at: toIso(returnDate, returnTime), flight_number: returnFlight.trim() || undefined }
+          : undefined,
       })
       navigate('/app/transfer/pending', {
         replace: true,
@@ -153,6 +162,42 @@ export default function TransferReview() {
 
         <PriceCard quote={quote} loading={!quote && !quoteError} />
         {quoteError ? <p className="app-inline-error">{quoteError}</p> : null}
+        {quote?.available_credit > 0 ? (
+          <div className="app-xfer-note is-info">
+            <Info size={20} strokeWidth={1.5} aria-hidden="true" />
+            <span>You have a ${quote.available_credit} credit — it’s applied automatically when you submit.</span>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          className="app-xfer-agree"
+          aria-pressed={roundTrip}
+          onClick={() => setRoundTrip((r) => !r)}
+        >
+          <span className={`app-xfer-cb${roundTrip ? ' is-on' : ''}`} aria-hidden="true">
+            {roundTrip ? <Check size={12} strokeWidth={3} /> : null}
+          </span>
+          Book the return trip too — 5% off both legs
+        </button>
+        {roundTrip ? (
+          <section className="app-xfer-section">
+            <h2 className="app-xfer-h">Return {booking.tripType === 'departure' ? 'pickup' : 'drop-off'} date &amp; time</h2>
+            <div className="app-xfer-row-2 is-gap-10">
+              <Picker icon={Calendar} type="date" value={returnDate} min={tomorrow()} display={fmtDate(returnDate)} onChange={setReturnDate} />
+              <Picker icon={Clock} type="time" value={returnTime} display={fmtTime(returnTime)} onChange={setReturnTime} />
+            </div>
+            <label className="app-xfer-box" style={{ marginTop: 10 }}>
+              <Plane size={16} strokeWidth={1.5} aria-hidden="true" />
+              <input
+                type="text"
+                placeholder="Return flight number (optional)"
+                value={returnFlight}
+                onChange={(e) => setReturnFlight(e.target.value)}
+              />
+            </label>
+          </section>
+        ) : null}
 
         {quote?.available_addons?.length ? (
           <button

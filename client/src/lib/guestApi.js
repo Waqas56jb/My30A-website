@@ -77,6 +77,10 @@ export const guest = {
   cancelTransfer: (id) => api(`/api/guest/transfers/${id}/cancel`, { method: 'POST' }),
   tipTransfer: (id, tip_amount) =>
     api(`/api/guest/transfers/${id}/tip`, { method: 'POST', body: { tip_amount } }),
+  cancellationPreview: (id) => api(`/api/guest/transfers/${id}/cancellation-preview`),
+  messages: (id) => api(`/api/guest/transfers/${id}/messages`),
+  sendMessage: (id, body) =>
+    api(`/api/guest/transfers/${id}/messages`, { method: 'POST', body: { body } }),
 
   // grocery
   groceryQuote: (body) => api('/api/guest/grocery/quote', { method: 'POST', body }),
@@ -99,6 +103,16 @@ export const guest = {
   vitoria: () => api('/api/guest/vitoria/messages'),
   ask: (content) => api('/api/guest/vitoria/messages', { method: 'POST', body: { content } }),
   clearVitoria: () => api('/api/guest/vitoria/messages', { method: 'DELETE' }),
+}
+
+// Secret-link pages (no login): my30ahost.com/trip/<token> and /tip/<token>, reached by SMS.
+export const pub = {
+  trip: (token) => api(`/api/public/trip/${token}`),
+  sendMessage: (token, body) => api(`/api/public/trip/${token}/messages`, { method: 'POST', body: { body } }),
+  tip: (token) => api(`/api/public/tip/${token}`),
+  sendTip: (token, tip_amount) => api(`/api/public/tip/${token}`, { method: 'POST', body: { tip_amount } }),
+  confirmTip: (token, session_id) =>
+    api(`/api/public/tip/${token}/confirm`, { method: 'POST', body: { session_id } }),
 }
 
 // Small data hook: { data, loading, error, reload }. `loader` is re-run when deps change.

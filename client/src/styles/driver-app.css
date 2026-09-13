@@ -1141,3 +1141,21 @@
     opacity: 1;
   }
 }
+
+/* ---- trip chat (driver dashboard) ---- */
+.guest-actions { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.guest-actions button.guest-call { background: none; border: 0; cursor: pointer; font: inherit; }
+.trip .hint { display: flex; align-items: center; gap: 6px; opacity: 0.75; margin-top: 6px; }
+.chat { display: flex; flex-direction: column; gap: 10px; }
+.chat-list { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 2px; }
+.chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: rgba(0,0,0,0.06); }
+.chat-msg.me { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: #0d4f45; color: #fff; }
+.chat-msg.admin { border-left: 3px solid #c9a96e; }
+.chat-body { white-space: pre-wrap; word-break: break-word; }
+.chat-meta { font-size: 11px; opacity: 0.7; margin-top: 3px; }
+.chat-empty { opacity: 0.7; font-size: 14px; margin: 6px 0; }
+.chat-input { display: flex; gap: 8px; }
+.chat-input input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.15); font: inherit; }
+.chat-input .btn { padding: 0 14px; }
+.paylink { display: flex; flex-direction: column; gap: 8px; }
+.paylink a { display: inline-flex; align-items: center; gap: 6px; word-break: break-all; }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -9,14 +9,16 @@ import {
   Luggage,
   MapPin,
   MessageCircle,
+  Phone,
   Plane,
+  Send,
   TreePalm,
   Users,
 } from 'lucide-react'
 import { errorText, guest } from '../../../lib/guestApi.js'
 import { Cta, TransferShell, clock, useTransferId } from './TransferShell.jsx'
 
-const ORDER = ['requested', 'assigned', 'started', 'completed']
+const ORDER = ['requested', 'assigned', 'started', 'arrived', 'picked_up', 'completed']
 
 function buildSteps(transfer) {
   const logTime = (status) => {
@@ -33,6 +35,8 @@ function buildSteps(transfer) {
       desc: transfer.driver ? `${driver} is your driver · ${transfer.vehicle_label}` : 'Your transfer has been confirmed.',
     },
     { key: 'started', title: 'Driver on the way', desc: `${driver} is on the way to ${from}.`, pin: true },
+    { key: 'arrived', title: 'Driver arrived', desc: `${driver} is waiting at the pickup area — message to meet up.` },
+    { key: 'picked_up', title: 'Guest picked up', desc: 'You’re on your way. Enjoy the ride!' },
     { key: 'completed', title: 'Completed', desc: 'We’ll mark your transfer as completed once you arrive.' },
   ]
   const idx = ORDER.indexOf(transfer.status)
@@ -47,11 +51,98 @@ function buildSteps(transfer) {
   })
 }
 
+// Guest ↔ driver chat inside the tracker (app guests). Guests without the app use the SMS link.
+export function TripChatBox({ load, send, meRole = 'guest', open }) {
+  const [messages, setMessages] = useState([])
+  const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const listRef = useRef(null)
+
+  useEffect(() => {
+    let ignore = false
+    const tick = async () => {
+      try {
+        const data = await load()
+        if (!ignore) setMessages(data.messages || [])
+      } catch {
+        /* keep last known */
+      }
+    }
+    tick()
+    const timer = setInterval(tick, 8000)
+    return () => {
+      ignore = true
+      clearInterval(timer)
+    }
+  }, [load])
+
+  useEffect(() => {
+    const el = listRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages.length])
+
+  const submit = async (e) => {
+    e.preventDefault()
+    const body = draft.trim()
+    if (!body || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const saved = await send(body)
+      // The poll may have fetched this message before the POST resolved — never append twice.
+      setMessages((prev) => (prev.some((m) => m.id === saved.id) ? prev : [...prev, saved]))
+      setDraft('')
+    } catch (err) {
+      setError(errorText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="app-xfer-card is-tight app-chat">
+      <p className="app-xfer-instr-h">
+        <MessageCircle size={16} strokeWidth={1.5} aria-hidden="true" /> Message your driver
+      </p>
+      <div className="app-chat-list" ref={listRef}>
+        {messages.length === 0 ? (
+          <p className="app-chat-empty">Tell your driver exactly where to meet you.</p>
+        ) : (
+          messages.map((m) => (
+            <div key={m.id} className={`app-chat-msg${m.sender_role === meRole ? ' is-me' : ''}`}>
+              <span>{m.body}</span>
+              <small>
+                {m.sender_role === meRole ? 'You' : m.sender_name || m.sender_role} · {clock(m.created_at)}
+              </small>
+            </div>
+          ))
+        )}
+      </div>
+      {error ? <p className="app-inline-error">{error}</p> : null}
+      {open ? (
+        <form className="app-chat-form" onSubmit={submit}>
+          <input value={draft} placeholder="Type a message…" maxLength={1000} onChange={(e) => setDraft(e.target.value)} />
+          <button type="submit" disabled={busy || !draft.trim()} aria-label="Send">
+            <Send size={16} strokeWidth={2} />
+          </button>
+        </form>
+      ) : (
+        <p className="app-chat-empty">Chat opens once your driver is confirmed and closes when the trip ends.</p>
+      )}
+    </section>
+  )
+}
+
 export default function TransferTrack() {
   const id = useTransferId()
   const [transfer, setTransfer] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const transferId = transfer?.id
+  // Stable loaders so the chat box's polling effect isn't restarted by the 15s tracker poll.
+  const loadChat = useCallback(() => guest.messages(transferId), [transferId])
+  const sendChat = useCallback((body) => guest.sendMessage(transferId, body), [transferId])
 
   useEffect(() => {
     let ignore = false
@@ -79,7 +170,21 @@ export default function TransferTrack() {
   }, [id])
 
   const cancel = async () => {
-    if (!transfer || !window.confirm('Cancel this transfer request?')) return
+    if (!transfer) return
+    let fee = 0
+    let windowLabel = ''
+    try {
+      const preview = await guest.cancellationPreview(transfer.id)
+      fee = preview.fee
+      windowLabel = preview.window
+    } catch {
+      /* fall back to a generic confirm */
+    }
+    const text =
+      fee > 0
+        ? `Cancel this transfer? A $${fee} cancellation fee applies (${windowLabel} before pickup) and will be charged to your card.`
+        : 'Cancel this transfer? No fee — your card hold will be released.'
+    if (!window.confirm(text)) return
     setBusy(true)
     try {
       setTransfer(await guest.cancelTransfer(transfer.id))
@@ -102,7 +207,9 @@ export default function TransferTrack() {
   const to = transfer.trip_type === 'departure' ? transfer.airport : transfer.community
   const shortDate = (transfer.date_label || '').replace(/,\s*\d{4}$/, '')
   const steps = buildSteps(transfer)
-  const ended = ['cancelled', 'refunded'].includes(transfer.status)
+  const ended = ['cancelled', 'refunded', 'no_show'].includes(transfer.status)
+  const chatOpen = Boolean(transfer.driver) && !ended && transfer.status !== 'completed'
+  const canCancel = ['requested', 'assigned'].includes(transfer.status)
 
   return (
     <TransferShell
@@ -117,9 +224,9 @@ export default function TransferTrack() {
           !['authorized', 'captured'].includes(transfer.payment_status) ? (
             <Cta to={`/app/transfer/payment?id=${transfer.id}`}>Authorize Payment</Cta>
           ) : null}
-          {transfer.status === 'requested' ? (
+          {canCancel ? (
             <Cta onClick={cancel} ghost disabled={busy}>
-              {busy ? 'Cancelling…' : 'Cancel Request'}
+              {busy ? 'Cancelling…' : 'Cancel Transfer'}
             </Cta>
           ) : null}
           <Cta to="/app/home">Back to Home</Cta>
@@ -146,7 +253,10 @@ export default function TransferTrack() {
                 <Luggage size={16} strokeWidth={1.5} aria-hidden="true" /> {transfer.bags} Bags
               </span>
             </p>
-            <strong className="app-xfer-ride-kind">Private Transfer · #{transfer.trip_number}</strong>
+            <strong className="app-xfer-ride-kind">
+              Private Transfer · #{transfer.trip_number}
+              {transfer.discount_percent ? ` · round trip −${transfer.discount_percent}%` : ''}
+            </strong>
           </div>
           <div className="app-xfer-ride-art">
             <img src="/image8.png" alt="" />
@@ -157,6 +267,12 @@ export default function TransferTrack() {
         </section>
 
         {error ? <p className="app-inline-error">{error}</p> : null}
+        {transfer.cancellation_fee ? (
+          <div className="app-xfer-note is-info">
+            <Info size={20} strokeWidth={1.5} aria-hidden="true" />
+            <span>A ${transfer.cancellation_fee} cancellation fee was applied per our policy.</span>
+          </div>
+        ) : null}
 
         <ol className="app-xfer-tl">
           {steps.map((s) => (
@@ -183,6 +299,10 @@ export default function TransferTrack() {
             </li>
           ))}
         </ol>
+
+        {transfer.driver ? (
+          <TripChatBox open={chatOpen} load={loadChat} send={sendChat} />
+        ) : null}
 
         <section className="app-xfer-card is-tight">
           <div className="app-xfer-kv">
@@ -213,7 +333,12 @@ export default function TransferTrack() {
               <strong>{transfer.driver?.name || 'Assigning your driver…'}</strong>
             </span>
             <span className="app-xfer-actions">
-              <Link to="/app/vitoria" className="app-xfer-action" aria-label="Message about your driver">
+              {transfer.call_number ? (
+                <a href={`tel:${transfer.call_number}`} className="app-xfer-action" aria-label="Call your driver">
+                  <Phone size={18} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
+                </a>
+              ) : null}
+              <Link to="/app/vitoria" className="app-xfer-action" aria-label="Message Vitoria">
                 <MessageCircle size={18} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
               </Link>
             </span>
@@ -231,7 +356,7 @@ export default function TransferTrack() {
           <p className="app-xfer-instr">
             {transfer.trip_type === 'departure'
               ? `Your driver will meet you at ${transfer.address}.`
-              : 'Driver will meet you at Baggage Claim, outside door 3 with a My30A Host sign.'}
+              : 'Driver will meet you at Baggage Claim with a My30A Host sign. Message them for the exact door.'}
           </p>
         </section>
 

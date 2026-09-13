@@ -1,4 +1,4 @@
-import { Phone, Play } from 'lucide-react'
+import { Car, CheckCircle2, MapPin, MessageCircle, Navigation, Phone, Play } from 'lucide-react'
 import Spinner from './Spinner.jsx'
 import {
   formatDuration,
@@ -10,14 +10,18 @@ import {
   usd,
 } from '../lib/format.js'
 
+const ACTIVE = ['assigned', 'started', 'arrived', 'picked_up']
+
 function statusPill(trip) {
-  if (trip.status === 'started') {
-    return { className: 'pill live', label: `Started ${formatTime(trip.started_at)}` }
-  }
+  if (trip.status === 'started') return { className: 'pill live', label: `On the way ${formatTime(trip.started_at)}` }
+  if (trip.status === 'arrived') return { className: 'pill live', label: `Arrived ${formatTime(trip.arrived_at)}` }
+  if (trip.status === 'picked_up') return { className: 'pill live', label: `Guest on board ${formatTime(trip.picked_up_at)}` }
   if (trip.status === 'completed') {
     const duration = formatDuration(trip.started_at, trip.completed_at)
     return { className: 'pill done', label: duration ? `Completed · ${duration}` : 'Completed' }
   }
+  if (trip.status === 'no_show') return { className: 'pill', label: 'No-show' }
+  if (trip.status === 'cancelled') return { className: 'pill', label: 'Cancelled' }
   return { className: 'pill', label: 'Assigned' }
 }
 
@@ -68,16 +72,32 @@ function completedFooter(trip) {
   return null
 }
 
-export default function TripCard({ trip, pending, onStart, onComplete, style }) {
+function ActionButton({ pending, busyLabel, icon: Icon, label, onClick, ghost }) {
+  return (
+    <button type="button" className={`btn${ghost ? ' ghost' : ''}`} disabled={pending} onClick={onClick}>
+      {pending ? (
+        <>
+          <Spinner size={16} /> {busyLabel}
+        </>
+      ) : (
+        <>
+          {Icon ? <Icon size={16} /> : null} {label}
+        </>
+      )}
+    </button>
+  )
+}
+
+// Driver flow: Assigned → On the way → Arrived → Guest in vehicle → Complete trip.
+export default function TripCard({ trip, pending, onStart, onArrive, onPickup, onComplete, onMessage, style }) {
   const pill = statusPill(trip)
-  const phone = telHref(trip.guest_phone)
   const done = trip.status === 'completed'
+  const active = ACTIVE.includes(trip.status)
   const footer = done ? completedFooter(trip) : null
+  const callHref = trip.guest_call_number ? telHref(trip.guest_call_number) : null
   const extras = [
     trip.passengers ? `${trip.passengers} passenger${trip.passengers === 1 ? '' : 's'}` : null,
-    trip.bags != null && trip.bags !== ''
-      ? `${trip.bags} bag${Number(trip.bags) === 1 ? '' : 's'}`
-      : null,
+    trip.bags != null && trip.bags !== '' ? `${trip.bags} bag${Number(trip.bags) === 1 ? '' : 's'}` : null,
     trip.flight_number ? `Flight ${trip.flight_number}` : null,
     trip.vehicle_label || null,
   ].filter(Boolean)
@@ -98,19 +118,30 @@ export default function TripCard({ trip, pending, onStart, onComplete, style }) 
           {extras.length > 1 ? ` · ${extras.slice(1).join(' · ')}` : ''}
         </div>
       ) : null}
-      {trip.guest_name || phone ? (
+      {trip.guest_name || active ? (
         <div className="guest">
           <span>{trip.guest_name || 'Guest'}</span>
-          {phone ? (
-            <a href={phone} className="guest-call">
-              <Phone size={14} strokeWidth={2} />
-              <span className="call-label">Call </span>
-              {formatPhone(trip.guest_phone)}
-            </a>
+          {active ? (
+            <span className="guest-actions">
+              {/* Guest's real number is never shown — calls are routed through the masked number. */}
+              {callHref ? (
+                <a href={callHref} className="guest-call" title="Masked call via My30A Host">
+                  <Phone size={14} strokeWidth={2} />
+                  <span className="call-label">Call </span>
+                  {formatPhone(trip.guest_call_number)}
+                </a>
+              ) : null}
+              {onMessage ? (
+                <button type="button" className="guest-call" onClick={() => onMessage(trip)}>
+                  <MessageCircle size={14} strokeWidth={2} />
+                  <span className="call-label">Message</span>
+                </button>
+              ) : null}
+            </span>
           ) : null}
         </div>
       ) : null}
-      {(trip.pickup_address || trip.dropoff_address) && trip.status !== 'completed' ? (
+      {(trip.pickup_address || trip.dropoff_address) && !done ? (
         <div className="meta">
           {trip.pickup_address ? (
             <>
@@ -123,29 +154,26 @@ export default function TripCard({ trip, pending, onStart, onComplete, style }) 
       ) : null}
       {moneyBlock(trip)}
       {footer ? <div className="meta">{footer}</div> : null}
+
       {trip.status === 'assigned' ? (
-        <button type="button" className="btn ghost" disabled={pending} onClick={() => onStart?.(trip)}>
-          {pending ? (
-            <>
-              <Spinner size={16} /> Starting…
-            </>
-          ) : (
-            <>
-              <Play size={16} /> Start trip
-            </>
-          )}
-        </button>
+        <ActionButton pending={pending} busyLabel="Updating…" icon={Play} label="On the way" onClick={() => onStart?.(trip)} ghost />
       ) : null}
       {trip.status === 'started' ? (
-        <button type="button" className="btn" disabled={pending} onClick={() => onComplete?.(trip)}>
-          {pending ? (
-            <>
-              <Spinner size={16} /> Saving…
-            </>
-          ) : (
-            'Complete trip'
-          )}
-        </button>
+        <div className="btn-row">
+          <ActionButton pending={pending} busyLabel="Updating…" icon={MapPin} label="Arrived" onClick={() => onArrive?.(trip)} />
+          <ActionButton pending={pending} busyLabel="Updating…" icon={Car} label="Guest in vehicle" onClick={() => onPickup?.(trip)} ghost />
+        </div>
+      ) : null}
+      {trip.status === 'arrived' ? (
+        <ActionButton pending={pending} busyLabel="Updating…" icon={Car} label="Guest in vehicle" onClick={() => onPickup?.(trip)} />
+      ) : null}
+      {trip.status === 'picked_up' ? (
+        <ActionButton pending={pending} busyLabel="Saving…" icon={CheckCircle2} label="Complete trip" onClick={() => onComplete?.(trip)} />
+      ) : null}
+      {trip.status === 'started' || trip.status === 'arrived' ? (
+        <p className="meta hint">
+          <Navigation size={12} /> Waiting at pickup? Message the guest with your exact spot.
+        </p>
       ) : null}
     </article>
   )

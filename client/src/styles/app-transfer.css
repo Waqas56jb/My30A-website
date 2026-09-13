@@ -8,7 +8,6 @@
   --xfer-blue: #247aab;
   --xfer-orange: #feae35;
   --xfer-green: #22a055;
-  --xfer-footer-h: 190px;
 
   background:
     linear-gradient(0deg, rgba(246, 254, 255, 0.87), rgba(246, 254, 255, 0.87)),
@@ -23,7 +22,7 @@
   overflow-x: hidden;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  padding-bottom: calc(var(--xfer-footer-h) + 24px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: 24px;
 }
 
 .app-xfer-scroll::-webkit-scrollbar {
@@ -482,13 +481,12 @@
   color: var(--xfer-ink);
 }
 
-/* —— Sticky footer (Frame 2147230530: radius 16, padding 20 20 8, gap 20) —— */
-
+/* —— Footer (Frame 2147230530: radius 16, padding 20 20 8, gap 20) ——
+   A normal flex sibling of .app-xfer-scroll (not an absolute overlay): it always takes exactly
+   the height its content needs, so extra buttons / error text / notices can never get hidden
+   behind it, and the scroll area (flex: 1) shrinks to fill whatever space is left. */
 .app-xfer-footer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  flex-shrink: 0;
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -498,6 +496,8 @@
   border-bottom: 0;
   border-radius: 16px 16px 0 0;
   background: #ffffff;
+  max-height: 60%;
+  overflow-y: auto;
 }
 
 .app-xfer-note {

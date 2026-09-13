@@ -5,7 +5,11 @@ import { ExploreHead, ExploreShell } from './ExploreShared.jsx'
 
 export default function PublicInfo() {
   const { data, loading, error } = useGuestQuery(guest.info, [])
-  const sections = data?.sections || []
+  // Text sections (rules/parking/…) plus the free public layer (beach accesses, parks, emergency).
+  const sections = [
+    ...(data?.sections || []),
+    ...(data?.places || []).map((s) => ({ key: s.key, title: s.title, places: s.places, items: [] })),
+  ]
   const [open, setOpen] = useState(null)
   const openKey = open === null ? sections[0]?.key || null : open
 
@@ -42,6 +46,14 @@ export default function PublicInfo() {
                   <ul className="app-exp-acc-list">
                     {s.items.map((item) => (
                       <li key={item}>{item}</li>
+                    ))}
+                    {(s.places || []).map((p) => (
+                      <li key={p.name}>
+                        <strong>{p.name}</strong>
+                        {p.community ? ` · ${p.community}` : ''}
+                        {p.details ? <br /> : null}
+                        {p.details ? <span className="app-exp-acc-detail">{p.details}</span> : null}
+                      </li>
                     ))}
                   </ul>
                 ) : null}

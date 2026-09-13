@@ -34,6 +34,8 @@ import VendorDetail from './pages/app/explore/VendorDetail.jsx'
 import RestaurantDetail from './pages/app/explore/RestaurantDetail.jsx'
 import BeachDetail from './pages/app/explore/BeachDetail.jsx'
 import PublicInfo from './pages/app/explore/PublicInfo.jsx'
+import TripPage from './pages/public/TripPage.jsx'
+import TipPage from './pages/public/TipPage.jsx'
 import Trips from './pages/driver/Trips.jsx'
 import Earnings from './pages/driver/Earnings.jsx'
 import Vehicles from './pages/partner/Vehicles.jsx'
@@ -186,6 +188,9 @@ function AppRoutes() {
           }
         />
       ))}
+      {/* Secret-link pages from SMS — no login */}
+      <Route path="/trip/:token" element={<TripPage />} />
+      <Route path="/tip/:token" element={<TipPage />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"
