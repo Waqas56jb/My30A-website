@@ -53,6 +53,8 @@ export const guest = {
   saveBooking: (body) => api('/api/guest/booking', { method: 'PUT', body }),
   communities: () => api('/api/guest/communities'),
   catalog: () => api('/api/guest/catalog'),
+  addressAutocomplete: (q) => api(withQuery('/api/guest/address-autocomplete', { q })),
+  addressCheck: (body) => api('/api/guest/address-check', { method: 'POST', body }),
   notifications: () => api('/api/notifications/mine'),
 
   // explore

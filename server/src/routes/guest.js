@@ -22,6 +22,8 @@ import {
   retrievePaymentIntent,
 } from '../lib/stripe.js'
 import { maskedCallNumber } from '../lib/sms.js'
+import { geocodeQuery } from '../lib/nominatim.js'
+import { checkAddressAgainstCommunity } from '../services/geocoding.js'
 import {
   ROUND_TRIP_DISCOUNT_PERCENT,
   availableCredit,
@@ -225,7 +227,7 @@ async function loadProfile(id) {
 async function loadBooking(guestId) {
   const { data } = await supabase
     .from('guest_bookings')
-    .select('*, community:communities!community_id (id, name, zone, default_airport)')
+    .select('*, community:communities!community_id (id, name, zone, default_airport, lat, lng, radius_miles)')
     .eq('guest_id', guestId)
     .eq('is_active', true)
     .maybeSingle()
@@ -258,7 +260,10 @@ function stayLabel(booking) {
 }
 
 async function resolveCommunity({ community_id, community }) {
-  let query = supabase.from('communities').select('id, name, zone, default_airport').eq('is_active', true)
+  let query = supabase
+    .from('communities')
+    .select('id, name, zone, default_airport, lat, lng, radius_miles')
+    .eq('is_active', true)
   if (community_id) query = query.eq('id', community_id)
   else if (community) query = query.ilike('name', String(community).trim())
   else return null
@@ -526,7 +531,7 @@ async function quoteTransfer(body, booking) {
     airport_label: AIRPORTS[airport],
     vehicle_type,
     vehicle: VEHICLE_LABELS[vehicle_type],
-    community: { id: community.id, name: community.name },
+    community,
     base_price,
     addons,
     addons_total,
@@ -758,8 +763,9 @@ router.put('/booking', guestOnly, async (req, res, next) => {
   try {
     const body = req.body || {}
     const updates = { updated_at: new Date().toISOString() }
+    let community = null
     if (body.community_id !== undefined || body.community !== undefined) {
-      const community = await resolveCommunity(body)
+      community = await resolveCommunity(body)
       if (!community) return res.status(400).json({ error: 'community not found' })
       updates.community_id = community.id
     }
@@ -775,6 +781,21 @@ router.put('/booking', guestOnly, async (req, res, next) => {
     }
 
     const existing = await loadBooking(req.user.id)
+
+    // Whichever of community/address didn't change this call still needs checking against
+    // whichever did — e.g. changing just the address must be re-checked against the community
+    // already on file, and vice versa.
+    const finalAddress = 'property_address' in updates ? updates.property_address : existing?.property_address
+    const finalCommunity = community || existing?.community || null
+    if (finalAddress && finalCommunity) {
+      await enforceAddressInCommunity({
+        address: finalAddress,
+        lat: body.lat,
+        lon: body.lon,
+        community: finalCommunity,
+      })
+    }
+
     const query = existing
       ? supabase.from('guest_bookings').update(updates).eq('id', existing.id)
       : supabase.from('guest_bookings').insert({ guest_id: req.user.id, is_active: true, ...updates })
@@ -782,7 +803,7 @@ router.put('/booking', guestOnly, async (req, res, next) => {
     if (error) return res.status(400).json({ error: error.message })
     res.status(existing ? 200 : 201).json(bookingView(await loadBooking(req.user.id)))
   } catch (error) {
-    next(error)
+    sendError(res, next, error)
   }
 })
 
@@ -811,6 +832,50 @@ router.get('/communities', async (_req, res, next) => {
     res.json(data || [])
   } catch (error) {
     next(error)
+  }
+})
+
+// Live address suggestions as the guest types (debounced client-side). Not scoped to a single
+// community — we want to also surface "looks like this is actually in <other community>" cases.
+router.get('/address-autocomplete', async (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim()
+    if (q.length < 3) return res.json([])
+    const results = await geocodeQuery(q, { limit: 6 })
+    res.json(
+      results.map((r) => ({
+        label: r.label,
+        lat: r.lat,
+        lon: r.lon,
+        address: r.address,
+      }))
+    )
+  } catch (error) {
+    sendError(res, next, error)
+  }
+})
+
+// Confirms a typed/selected address actually falls inside the community the guest picked — the
+// same fixed transfer_pricing row only applies when the address really is inside that community.
+router.post('/address-check', async (req, res, next) => {
+  try {
+    const body = req.body || {}
+    const address = String(body.address || '').trim()
+    if (!address && !(Number.isFinite(body.lat) && Number.isFinite(body.lon))) {
+      return res.status(400).json({ error: 'address is required' })
+    }
+    const community = await resolveCommunity(body)
+    if (!community) return res.status(400).json({ error: 'community not found' })
+
+    const result = await checkAddressAgainstCommunity({
+      address,
+      lat: body.lat,
+      lon: body.lon,
+      community,
+    })
+    res.json(result)
+  } catch (error) {
+    sendError(res, next, error)
   }
 })
 
@@ -1110,12 +1175,39 @@ router.delete('/saved/:key', guestOnly, async (req, res, next) => {
 
 // ---------- airport transfers ----------
 
+// Guest-typed address vs. selected community: hard-blocks a mismatch (fixed per-community pricing
+// only makes sense if the address is actually inside that community), but never blocks a booking
+// just because the geocoder itself is unreachable — that's a service hiccup, not a bad address.
+async function enforceAddressInCommunity({ address, lat, lon, community }) {
+  let check
+  try {
+    check = await checkAddressAgainstCommunity({ address, lat, lon, community })
+  } catch (error) {
+    console.error('address-community check failed, allowing booking to proceed:', error.message)
+    return null
+  }
+  if (check.reason === 'NOT_FOUND') throw httpError(400, check.message)
+  if (!check.ok) throw httpError(400, check.message)
+  return check
+}
+
 router.post('/transfers/quote', guestOnly, async (req, res, next) => {
   try {
     const booking = await loadBooking(req.user.id)
     const quote = await quoteTransfer(req.body || {}, booking)
     const credit = await availableCredit({ guest_id: req.user.id, guest_email: req.user.email })
-    res.json({ ...quote, available_credit: credit.total })
+    let address_check = null
+    const body = req.body || {}
+    const address = String(body.address || booking?.property_address || '').trim()
+    if (address || (Number.isFinite(body.lat) && Number.isFinite(body.lon))) {
+      address_check = await checkAddressAgainstCommunity({
+        address,
+        lat: body.lat,
+        lon: body.lon,
+        community: quote.community,
+      }).catch(() => null)
+    }
+    res.json({ ...quote, available_credit: credit.total, address_check })
   } catch (error) {
     sendError(res, next, error)
   }
@@ -1143,6 +1235,7 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
     }
 
     const quote = await quoteTransfer(body, booking)
+    await enforceAddressInCommunity({ address, lat: body.lat, lon: body.lon, community: quote.community })
     const profile = await loadProfile(req.user.id)
     const isArrival = quote.direction === 'from_airport'
     const insert = {

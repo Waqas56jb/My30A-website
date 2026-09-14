@@ -164,7 +164,17 @@ export default function TransferBook() {
   const [community, setCommunity] = useState('')
   const [address, setAddress] = useState('')
   const [savedAddress, setSavedAddress] = useState('')
+  // The stay prefill fetch can resolve after the guest has already interacted with the form (it's
+  // a real network round trip, not instant) — never let it clobber a field they've already touched.
+  const addressTouched = useRef(false)
+  const communityTouched = useRef(false)
   const [showSugg, setShowSugg] = useState(false)
+  const [liveSuggestions, setLiveSuggestions] = useState([])
+  const [suggLoading, setSuggLoading] = useState(false)
+  // lat/lon of a suggestion the guest actually picked — trusted over re-geocoding the typed text.
+  const [addressPoint, setAddressPoint] = useState(null)
+  const [addrCheck, setAddrCheck] = useState(null)
+  const [addrChecking, setAddrChecking] = useState(false)
   const [date, setDate] = useState(tomorrow())
   const [time, setTime] = useState('17:50')
   const [passengers, setPassengers] = useState(2)
@@ -186,10 +196,10 @@ export default function TransferBook() {
       .booking()
       .then((b) => {
         if (ignore || !b) return
-        if (b.community_name) setCommunity(b.community_name)
+        if (b.community_name && !communityTouched.current) setCommunity(b.community_name)
         if (b.default_airport) setAirport(b.default_airport)
         if (b.property_address) {
-          setAddress(b.property_address)
+          if (!addressTouched.current) setAddress(b.property_address)
           setSavedAddress(b.property_address)
         }
       })
@@ -199,19 +209,95 @@ export default function TransferBook() {
     }
   }, [])
 
+  // Live "as you type" address suggestions (debounced) from the 30A-corridor geocoder.
+  useEffect(() => {
+    const q = address.trim()
+    if (!showSugg || q.length < 3) {
+      setLiveSuggestions([])
+      setSuggLoading(false)
+      return
+    }
+    let ignore = false
+    setSuggLoading(true)
+    const t = setTimeout(() => {
+      guest
+        .addressAutocomplete(q)
+        .then((rows) => {
+          if (!ignore) setLiveSuggestions(rows || [])
+        })
+        .catch(() => {
+          if (!ignore) setLiveSuggestions([])
+        })
+        .finally(() => {
+          if (!ignore) setSuggLoading(false)
+        })
+    }, 350)
+    return () => {
+      ignore = true
+      clearTimeout(t)
+    }
+  }, [address, showSugg])
+
+  // Confirms the typed/selected address is actually inside the selected community — fixed
+  // per-community pricing only applies when that's true. Debounced so it doesn't fire per keystroke.
+  useEffect(() => {
+    const q = address.trim()
+    if (!community || q.length < 5) {
+      setAddrCheck(null)
+      return
+    }
+    let ignore = false
+    setAddrChecking(true)
+    const t = setTimeout(() => {
+      guest
+        .addressCheck({ address: q, lat: addressPoint?.lat, lon: addressPoint?.lon, community })
+        .then((res) => {
+          if (ignore) return
+          setAddrCheck(res)
+          // Clear a stale "address doesn't match" banner from an earlier Continue attempt once
+          // the address checks out again — the green inline note above already confirms it.
+          if (res?.ok) setError((prev) => (prev && prev.toLowerCase().includes('address') ? '' : prev))
+        })
+        .catch(() => {
+          if (!ignore) setAddrCheck(null)
+        })
+        .finally(() => {
+          if (!ignore) setAddrChecking(false)
+        })
+    }, 600)
+    return () => {
+      ignore = true
+      clearTimeout(t)
+    }
+  }, [address, community, addressPoint])
+
   const suggestions = [
-    savedAddress
-      ? { main: savedAddress, sub: `${community || 'Your stay'} · saved address`, full: savedAddress }
+    savedAddress && savedAddress !== address
+      ? { main: savedAddress, sub: `${community || 'Your stay'} · saved address`, full: savedAddress, lat: null, lon: null }
       : null,
-    address && address !== savedAddress
-      ? { main: address, sub: `${community || '30A'}, FL`, full: address }
-      : null,
+    ...liveSuggestions.map((s) => ({
+      main: s.address?.house_number && s.address?.road ? `${s.address.house_number} ${s.address.road}` : s.label,
+      sub: [s.address?.city || s.address?.town || s.address?.village || s.address?.hamlet, s.address?.state]
+        .filter(Boolean)
+        .join(', ') || '30A, FL',
+      full: s.label,
+      lat: s.lat,
+      lon: s.lon,
+    })),
   ].filter(Boolean)
 
   const onContinue = () => {
     setError('')
     if (!address.trim()) {
       setError('Please enter your 30A property address.')
+      return
+    }
+    if (!community) {
+      setError('Please select your community.')
+      return
+    }
+    if (addrCheck && addrCheck.ok === false) {
+      setError(addrCheck.message || `That address doesn’t look like it’s inside ${community}.`)
       return
     }
     if (!flight.trim() && tripType === 'arrival') {
@@ -226,6 +312,8 @@ export default function TransferBook() {
           airport,
           community: community || communities[0] || 'Rosemary Beach',
           address: address.trim(),
+          addressLat: addressPoint?.lat ?? null,
+          addressLon: addressPoint?.lon ?? null,
           date: fmtDate(date),
           time: fmtTime(time),
           scheduledAt: toIso(date, time),
@@ -267,7 +355,10 @@ export default function TransferBook() {
         placeholder="select your community"
         value={community}
         options={communities}
-        onChange={setCommunity}
+        onChange={(value) => {
+          communityTouched.current = true
+          setCommunity(value)
+        }}
       />
     </section>
   )
@@ -287,10 +378,13 @@ export default function TransferBook() {
               value={address}
               placeholder="Enter your address"
               onChange={(e) => {
+                addressTouched.current = true
                 setAddress(e.target.value)
+                setAddressPoint(null)
                 setShowSugg(true)
               }}
               onFocus={() => setShowSugg(true)}
+              onBlur={() => setTimeout(() => setShowSugg(false), 150)}
             />
           </span>
           <button
@@ -298,7 +392,9 @@ export default function TransferBook() {
             className="app-xfer-clear"
             aria-label="Clear address"
             onClick={() => {
+              addressTouched.current = true
               setAddress('')
+              setAddressPoint(null)
               setShowSugg(true)
             }}
           >
@@ -307,13 +403,17 @@ export default function TransferBook() {
         </label>
         {showSugg && suggestions.length ? (
           <div className="app-xfer-sugg">
+            {suggLoading ? <small className="app-xfer-sugg-loading">Searching…</small> : null}
             {suggestions.map((s, i) => (
               <button
                 key={i}
                 type="button"
                 className={`app-xfer-sugg-item${s.full === address ? ' is-on' : ''}`}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
+                  addressTouched.current = true
                   setAddress(s.full)
+                  setAddressPoint(s.lat != null && s.lon != null ? { lat: s.lat, lon: s.lon } : null)
                   setShowSugg(false)
                 }}
               >
@@ -322,6 +422,15 @@ export default function TransferBook() {
               </button>
             ))}
           </div>
+        ) : null}
+        {community && address.trim().length >= 5 ? (
+          addrChecking ? (
+            <p className="app-inline-muted">Checking address is inside {community}…</p>
+          ) : addrCheck?.ok === false ? (
+            <p className="app-inline-error">{addrCheck.message}</p>
+          ) : addrCheck?.ok === true ? (
+            <p className="app-inline-ok">This address is inside {community}.</p>
+          ) : null
         ) : null}
       </div>
     </section>

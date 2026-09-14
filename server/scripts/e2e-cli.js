@@ -477,14 +477,26 @@ async function main() {
   // documented way to exercise a real PaymentIntent confirmation from a script instead of the
   // Payment Element UI. See https://stripe.com/docs/testing.
   const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY)
-  await expect(
-    'POST /api/payments/webhook without signature → 200 skipped (no whsec_ configured yet)',
-    'POST',
-    '/api/payments/webhook',
-    { body: {} },
-    200,
-    (d) => d.skipped === true
-  )
+  // Once a real whsec_ is configured (it now is — see server/.env), a request with no
+  // stripe-signature header must be rejected, not silently skipped.
+  if (process.env.STRIPE_WEBHOOK_SECRET) {
+    await expect(
+      'POST /api/payments/webhook without signature → 400 rejected (whsec_ configured)',
+      'POST',
+      '/api/payments/webhook',
+      { body: {} },
+      400
+    )
+  } else {
+    await expect(
+      'POST /api/payments/webhook without signature → 200 skipped (no whsec_ configured yet)',
+      'POST',
+      '/api/payments/webhook',
+      { body: {} },
+      200,
+      (d) => d.skipped === true
+    )
+  }
 
   if (!stripeConfigured) {
     record(true, 'Stripe section skipped — STRIPE_SECRET_KEY not set', 'add test keys to server/.env to run this section')

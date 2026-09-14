@@ -393,6 +393,14 @@
   color: var(--xfer-faint);
 }
 
+.app-xfer-sugg-loading {
+  display: block;
+  padding: 6px 8px;
+  font-family: var(--app-body);
+  font-size: 12px;
+  color: var(--xfer-faint);
+}
+
 /* Trip type (Frame 2147230387: 48px, padding 14 12, gap 8) */
 .app-xfer-check {
   display: flex;

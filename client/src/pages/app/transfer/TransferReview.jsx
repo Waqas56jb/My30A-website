@@ -83,6 +83,8 @@ export default function TransferReview() {
       const transfer = await guest.createTransfer({
         ...quoteBody,
         address: booking.address,
+        lat: booking.addressLat ?? undefined,
+        lon: booking.addressLon ?? undefined,
         scheduled_at: booking.scheduledAt || new Date(Date.now() + 86400 * 1000).toISOString(),
         passengers: booking.passengers,
         bags: booking.bags,
