@@ -1,0 +1,14 @@
+1-each community address must belong to community otherwise show its not belong t community 
+2- it should must show in admin how many passengers he selected 
+
+
+remove rush and holiday from grocery 
+
+
+select address in grocery  location 
+
+also show posted image from grocery list items photos show in admin where he confirm and assign 
+
+
+in grocery   user need to pay grocery  fees  fees once order delivered 
+
