@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Check, Clock, Info, Mail, MapPin, Upload } from 'lucide-react'
+import { Calendar, Check, Clock, Info, Mail, MapPin, Upload, X } from 'lucide-react'
 import { errorText, guest } from '../../../lib/guestApi.js'
 import { Cta, TransferShell } from '../transfer/TransferShell.jsx'
 import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
@@ -22,6 +22,10 @@ export default function GroceryList() {
   const incoming = useGrocery()
   const [address, setAddress] = useState('')
   const [addressLoaded, setAddressLoaded] = useState(false)
+  const addressTouched = useRef(false)
+  const [showSugg, setShowSugg] = useState(false)
+  const [liveSuggestions, setLiveSuggestions] = useState([])
+  const [suggLoading, setSuggLoading] = useState(false)
   const [date, setDate] = useState(tomorrow())
   const [time, setTime] = useState('16:00')
   const [agree, setAgree] = useState(true)
@@ -37,7 +41,7 @@ export default function GroceryList() {
     guest
       .booking()
       .then((b) => {
-        if (!ignore && b?.property_address) setAddress(b.property_address)
+        if (!ignore && b?.property_address && !addressTouched.current) setAddress(b.property_address)
       })
       .catch(() => {})
       .finally(() => !ignore && setAddressLoaded(true))
@@ -45,6 +49,35 @@ export default function GroceryList() {
       ignore = true
     }
   }, [])
+
+  // Live "as you type" address suggestions (debounced), same 30A-corridor geocoder as transfers.
+  useEffect(() => {
+    const q = address.trim()
+    if (!showSugg || q.length < 3) {
+      setLiveSuggestions([])
+      setSuggLoading(false)
+      return
+    }
+    let ignore = false
+    setSuggLoading(true)
+    const t = setTimeout(() => {
+      guest
+        .addressAutocomplete(q)
+        .then((rows) => {
+          if (!ignore) setLiveSuggestions(rows || [])
+        })
+        .catch(() => {
+          if (!ignore) setLiveSuggestions([])
+        })
+        .finally(() => {
+          if (!ignore) setSuggLoading(false)
+        })
+    }, 350)
+    return () => {
+      ignore = true
+      clearTimeout(t)
+    }
+  }, [address, showSugg])
 
   const grocery = { ...incoming, date: fmtDate(date), time: fmtTime(time), deliveryAt: toIso(date, time) }
 
@@ -111,17 +144,66 @@ export default function GroceryList() {
             <h2 className="app-xfer-h">Delivery Address</h2>
             <p className="app-xfer-hint-addr">Where should we deliver and stock your groceries?</p>
           </div>
-          <label className="app-xfer-box app-xfer-addr">
-            <span className="app-xfer-box-l">
-              <MapPin size={16} strokeWidth={1.5} aria-hidden="true" />
-              <input
-                type="text"
-                value={address}
-                placeholder={addressLoaded ? 'Enter your delivery address' : 'Loading your address…'}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-            </span>
-          </label>
+          <div className="app-xfer-dd">
+            <label className="app-xfer-box app-xfer-addr">
+              <span className="app-xfer-box-l">
+                <MapPin size={16} strokeWidth={1.5} aria-hidden="true" />
+                <input
+                  type="text"
+                  value={address}
+                  placeholder={addressLoaded ? 'Enter your delivery address' : 'Loading your address…'}
+                  onChange={(e) => {
+                    addressTouched.current = true
+                    setAddress(e.target.value)
+                    setShowSugg(true)
+                  }}
+                  onFocus={() => setShowSugg(true)}
+                  onBlur={() => setTimeout(() => setShowSugg(false), 150)}
+                />
+              </span>
+              <button
+                type="button"
+                className="app-xfer-clear"
+                aria-label="Clear address"
+                onClick={() => {
+                  addressTouched.current = true
+                  setAddress('')
+                  setShowSugg(true)
+                }}
+              >
+                <X size={14} strokeWidth={1.5} aria-hidden="true" />
+              </button>
+            </label>
+            {showSugg && liveSuggestions.length ? (
+              <div className="app-xfer-sugg">
+                {suggLoading ? <small className="app-xfer-sugg-loading">Searching…</small> : null}
+                {liveSuggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`app-xfer-sugg-item${s.label === address ? ' is-on' : ''}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      addressTouched.current = true
+                      setAddress(s.label)
+                      setShowSugg(false)
+                    }}
+                  >
+                    <strong>
+                      {s.address?.house_number && s.address?.road
+                        ? `${s.address.house_number} ${s.address.road}`
+                        : s.label}
+                    </strong>
+                    <small>
+                      {[s.address?.city || s.address?.town || s.address?.village || s.address?.hamlet, s.address?.state]
+                        .filter(Boolean)
+                        .join(', ') || '30A, FL'}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </section>
 
         <section className="app-xfer-section">

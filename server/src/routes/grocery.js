@@ -5,7 +5,6 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { calculateGrocerySplit } from '../services/earnings.js'
 import { notify } from '../services/notifications.js'
 import {
-  capturePaymentIntent,
   chargeSavedCard,
   refundPaymentIntent,
   releasePaymentHold,
@@ -492,47 +491,30 @@ router.post(
       }
 
       if (payment_method === 'card_on_file') {
-        let capture
-        try {
-          capture = await capturePaymentIntent(order.stripe_payment_intent_id)
-        } catch (stripeError) {
-          return res.status(400).json({
-            error: `Card was not authorized (${stripeError.message}). Ask the guest to complete payment in the app before delivering.`,
-          })
-        }
-        if (capture?.skipped) {
+        // No hold was placed up front — the guest only saved a card (POST /guest/grocery/:id/pay
+        // creates a SetupIntent, not a PaymentIntent). Now that both the service fee and the
+        // exact Publix receipt are known, charge the combined total in one off-session charge.
+        const charge = await chargeSavedCard({
+          customerId: order.guest?.stripe_customer_id,
+          amount: updates.customer_charge,
+          metadata: { my30a_grocery_order_id: order.id, kind: 'grocery_total' },
+        })
+        if (charge?.skipped) {
           updates.payment_status = 'pending'
           updates.notes = appendNote(
             order.notes,
-            `Stripe capture skipped: ${capture.reason}`
+            `Card charge skipped: ${charge.reason}. Ask the guest to complete payment in the app, or collect payment in person.`
           )
         } else {
+          updates.stripe_payment_intent_id = charge.id
           updates.payment_status = 'captured'
+          updates.grocery_payment_status = 'captured'
         }
       } else if (['card', 'apple_pay', 'google_pay', 'cash'].includes(payment_method)) {
+        // Collected in person by the shopper — nothing to charge through Stripe.
         updates.payment_status = 'captured'
       } else {
         return res.status(400).json({ error: 'invalid payment_method' })
-      }
-
-      // The exact Publix total is only known now — charge it separately (off-session, on the
-      // guest's saved card) rather than as part of the up-front service-fee authorization.
-      if (grocery_total > 0 && order.guest?.stripe_customer_id) {
-        const groceryCharge = await chargeSavedCard({
-          customerId: order.guest.stripe_customer_id,
-          amount: grocery_total,
-          metadata: { my30a_grocery_order_id: order.id, kind: 'grocery_total' },
-        })
-        if (groceryCharge?.skipped) {
-          updates.grocery_payment_status = 'pending'
-          updates.notes = appendNote(
-            updates.notes ?? order.notes,
-            `Publix total charge skipped: ${groceryCharge.reason}`
-          )
-        } else {
-          updates.stripe_grocery_payment_intent_id = groceryCharge.id
-          updates.grocery_payment_status = 'captured'
-        }
       }
 
       const { data, error: updateError } = await supabase
@@ -647,6 +629,10 @@ router.post('/:id/refund', requireRole('admin'), async (req, res, next) => {
       const refund = await refundPaymentIntent(order.stripe_payment_intent_id)
       if (refund?.skipped) {
         updates.notes = appendNote(order.notes, `Stripe refund skipped: ${refund.reason}`)
+      } else if (order.grocery_payment_status === 'captured' && !order.stripe_grocery_payment_intent_id) {
+        // card_on_file orders charge the service fee + Publix total together in one intent (see
+        // /deliver) — refunding stripe_payment_intent_id above already covers both.
+        updates.grocery_payment_status = 'refunded'
       }
     }
 

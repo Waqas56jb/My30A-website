@@ -11,10 +11,9 @@ export const PACKAGES = [
   { key: 'bulk', name: 'Bulk Order', items: '121-200 items', price: 379, unit: '/ $1k block' },
 ]
 
-export const ADDONS = [
-  { key: 'rush', name: 'Rush', sub: 'Same-day service', price: 50, tone: 'green', icon: 'Zap' },
-  { key: 'holiday', name: 'Holiday', sub: 'Weekend', price: 50, tone: 'blue', icon: 'Calendar' },
-]
+// Rush/Holiday add-ons were removed from grocery (client request) — deactivated in service_catalog,
+// so the live catalog now returns none. No static fallback needed.
+export const ADDONS = []
 
 export const STOCKING = [
   { key: 'bags', name: 'Leave In Bags', desc: 'Everything left in bags by the kitchen', price: 0 },
@@ -37,7 +36,7 @@ export const addonIcon = (addon) => ICONS[addon.icon] || Zap
 
 export const DEFAULT_GROCERY = {
   pkg: 'full',
-  addons: { rush: false, holiday: false },
+  addons: {},
   stocking: 'full-kitchen',
   date: '',
   time: '',

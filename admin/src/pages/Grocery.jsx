@@ -331,13 +331,21 @@ export default function Grocery() {
                         </>
                       )}
                       <td data-label="Photos" className="photo-links" onClick={(event) => event.stopPropagation()}>
-                        {row.receipt_signed_url ? (
-                          <a href={row.receipt_signed_url} target="_blank" rel="noreferrer">
-                            Receipt
+                        {row.list_file_signed_url ? (
+                          <a href={row.list_file_signed_url} target="_blank" rel="noreferrer">
+                            List
                           </a>
                         ) : (
                           '—'
                         )}
+                        {row.receipt_signed_url ? (
+                          <>
+                            {' · '}
+                            <a href={row.receipt_signed_url} target="_blank" rel="noreferrer">
+                              Receipt
+                            </a>
+                          </>
+                        ) : null}
                         {row.kitchen_signed_url ? (
                           <>
                             {' · '}
@@ -389,14 +397,6 @@ export default function Grocery() {
                     {order.addons?.length
                       ? ` · add-ons: ${order.addons.map((addon) => addon.name).join(', ')}`
                       : ''}
-                    {order.list_file_signed_url ? (
-                      <>
-                        {' · '}
-                        <a href={order.list_file_signed_url} target="_blank" rel="noreferrer">
-                          Publix list screenshot
-                        </a>
-                      </>
-                    ) : null}
                   </span>
                 </>
               ) : null}
@@ -414,6 +414,14 @@ export default function Grocery() {
                   </>
                 ) : null}
               </span>
+              {order.payment_method === 'card_on_file' && order.status !== 'delivered' ? (
+                <>
+                  <span>Card on file</span>
+                  <span>
+                    {order.card_saved_at ? <Pill>Saved</Pill> : <Pill warn>Not saved yet</Pill>}
+                  </span>
+                </>
+              ) : null}
               {order.grocery_payment_status && order.grocery_payment_status !== 'pending' ? (
                 <>
                   <span>Publix total charge</span>
@@ -428,9 +436,19 @@ export default function Grocery() {
               <span>
                 {(order.items || [])
                   .map((item) => (item.qty ? `${item.qty} × ${item.name}` : item.name || item))
-                  .join(', ') || '—'}
+                  .join(', ') || (order.list_file_signed_url ? 'See Publix list screenshot below' : '—')}
               </span>
             </div>
+            {order.list_file_signed_url ? (
+              <div style={{ marginTop: 14 }}>
+                <b>Publix list screenshot</b>
+                <div className="drawer-photos" style={{ gridTemplateColumns: '1fr' }}>
+                  <a href={order.list_file_signed_url} target="_blank" rel="noreferrer">
+                    <img src={order.list_file_signed_url} alt="Publix cart / grocery list" style={{ height: 260 }} />
+                  </a>
+                </div>
+              </div>
+            ) : null}
             <div className="kv">
               <span>Service fee</span>
               <span className="num">{usd(order.service_fee)}</span>
@@ -444,17 +462,20 @@ export default function Grocery() {
               <span className="num total">{usd(order.my30ahost_amount, { empty: '—' })}</span>
             </div>
             {order.receipt_signed_url || order.kitchen_signed_url ? (
-              <div className="drawer-photos">
-                {order.receipt_signed_url ? (
-                  <a href={order.receipt_signed_url} target="_blank" rel="noreferrer">
-                    <img src={order.receipt_signed_url} alt="Receipt" />
-                  </a>
-                ) : null}
-                {order.kitchen_signed_url ? (
-                  <a href={order.kitchen_signed_url} target="_blank" rel="noreferrer">
-                    <img src={order.kitchen_signed_url} alt="Kitchen" />
-                  </a>
-                ) : null}
+              <div style={{ marginTop: 14 }}>
+                <b>Delivery photos</b>
+                <div className="drawer-photos">
+                  {order.receipt_signed_url ? (
+                    <a href={order.receipt_signed_url} target="_blank" rel="noreferrer">
+                      <img src={order.receipt_signed_url} alt="Receipt" />
+                    </a>
+                  ) : null}
+                  {order.kitchen_signed_url ? (
+                    <a href={order.kitchen_signed_url} target="_blank" rel="noreferrer">
+                      <img src={order.kitchen_signed_url} alt="Kitchen" />
+                    </a>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             <ul className="timeline">

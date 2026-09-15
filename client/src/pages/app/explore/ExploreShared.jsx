@@ -1,18 +1,21 @@
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
+  Bike,
+  Briefcase,
+  Camera,
   Compass,
   Heart,
   Info,
   Leaf,
   MapPin,
-  Mountain,
-  Paintbrush,
+  Palette,
   ShoppingBag,
   Star,
   Umbrella,
   Users,
   UtensilsCrossed,
+  Waves,
 } from 'lucide-react'
 import BottomNav from '../BottomNav.jsx'
 
@@ -20,11 +23,14 @@ import BottomNav from '../BottomNav.jsx'
 const ICONS = {
   UtensilsCrossed,
   Umbrella,
-  Mountain,
-  Leaf,
-  ShoppingBag,
+  Waves,
+  Bike,
   Users,
-  Paintbrush,
+  Leaf,
+  Camera,
+  ShoppingBag,
+  Palette,
+  Briefcase,
   Info,
 }
 
@@ -32,25 +38,19 @@ export function iconFor(name) {
   return ICONS[name] || Compass
 }
 
-// Static fallbacks (same values as the seeded database) used while the API loads.
+// Static fallback (mirrors the seeded database) used only while /api/guest/explore is loading.
 export const CATEGORIES = [
-  { key: 'restaurants', label: 'Restaurants', tone: 'sand', icon: 'UtensilsCrossed', to: '/app/explore/guide?c=restaurants' },
-  { key: 'beaches', label: 'Beaches', tone: 'sea', icon: 'Umbrella', to: '/app/explore/guide?c=beaches' },
-  { key: 'activities', label: 'Activities', tone: 'leaf', icon: 'Mountain', to: '/app/explore/guide?c=all' },
-  { key: 'wellness', label: 'Wellness', tone: 'olive', icon: 'Leaf', to: '/app/explore/guide?c=all' },
-  { key: 'shopping', label: 'Shopping', tone: 'pink', icon: 'ShoppingBag', to: '/app/explore/guide?c=shopping' },
-  { key: 'family', label: 'Family & Kids', tone: 'cyan', icon: 'Users', to: '/app/explore/guide?c=family' },
-  { key: 'essentials', label: 'Local Essentials', tone: 'lime', icon: 'Paintbrush', to: '/app/explore/guide?c=all' },
-  { key: 'info', label: 'Public Information', tone: 'peach', icon: 'Info', to: '/app/explore/info' },
-]
-
-export const FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'restaurants', label: 'Restaurants' },
-  { key: 'beaches', label: 'Beaches' },
-  { key: 'bikes', label: 'Bikes' },
-  { key: 'shopping', label: 'Shopping' },
-  { key: 'family', label: 'Family & Kids' },
+  { key: 'restaurants', label: 'Restaurants', tone: 'sand', icon: 'UtensilsCrossed', image_url: '/image7.png', coming_soon: true, to: '/app/explore/guide?c=restaurants' },
+  { key: 'beaches', label: 'Beaches', tone: 'sea', icon: 'Umbrella', image_url: '/image1.png', to: '/app/explore/info?focus=beach-access' },
+  { key: 'on-the-water', label: 'On The Water', tone: 'cyan', icon: 'Waves', image_url: '/image3.png', to: '/app/explore/guide?c=on-the-water' },
+  { key: 'golf-outdoor', label: 'Golf & Outdoor Rentals', tone: 'leaf', icon: 'Bike', image_url: '/image6.png', to: '/app/explore/guide?c=golf-outdoor' },
+  { key: 'family-kids', label: 'Family & Kids', tone: 'pink', icon: 'Users', image_url: '/cover.png', to: '/app/explore/guide?c=family-kids' },
+  { key: 'wellness-spa', label: 'Wellness & Spa', tone: 'olive', icon: 'Leaf', image_url: '/image5.png', to: '/app/explore/guide?c=wellness-spa' },
+  { key: 'weddings-photography', label: 'Weddings & Photography', tone: 'peach', icon: 'Camera', image_url: '/image2.png', to: '/app/explore/guide?c=weddings-photography' },
+  { key: 'shopping', label: 'Shopping', tone: 'lime', icon: 'ShoppingBag', image_url: '/homecover.png', to: '/app/explore/guide?c=shopping' },
+  { key: 'arts-culture', label: 'Arts & Culture', tone: 'violet', icon: 'Palette', image_url: '/image12.png', to: '/app/explore/guide?c=arts-culture' },
+  { key: 'local-essentials', label: 'Local Essentials', tone: 'slate', icon: 'Briefcase', image_url: '/image7.png', to: '/app/explore/guide?c=local-essentials' },
+  { key: 'info', label: 'Public Information', tone: 'teal', icon: 'Info', image_url: '/homecover.png', to: '/app/explore/info' },
 ]
 
 export function ExploreShell({ active = 'explore', nav = true, className = '', children }) {
@@ -169,6 +169,27 @@ export function Actions({ primary, secondary }) {
         {secondary.label}
       </a>
     </div>
+  )
+}
+
+export function CategoryTile({ category }) {
+  const Icon = iconFor(category.icon)
+  return (
+    <Link
+      to={category.to}
+      className={`app-exp-tile is-${category.tone}`}
+      style={{ backgroundImage: `url('${category.image_url}')` }}
+      state={{ label: category.label }}
+    >
+      {category.coming_soon ? <span className="app-exp-tile-soon">Coming Soon</span> : null}
+      <span className="app-exp-tile-ico" aria-hidden="true">
+        <Icon size={18} strokeWidth={1.5} />
+      </span>
+      <span className="app-exp-tile-text">
+        <strong>{category.label}</strong>
+        {!category.coming_soon && category.count ? <small>{category.count} places</small> : null}
+      </span>
+    </Link>
   )
 }
 

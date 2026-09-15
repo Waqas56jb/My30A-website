@@ -1,15 +1,17 @@
-import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { ExploreHead, ExploreShell, FILTERS, GuideCard, VendorCard } from './ExploreShared.jsx'
+import { ExploreHead, ExploreShell, GuideCard, VendorCard } from './ExploreShared.jsx'
 
 export default function LocalGuide() {
   const [params] = useSearchParams()
+  const { state } = useLocation()
   const q = (params.get('q') || '').trim()
-  const initial = FILTERS.some((f) => f.key === params.get('c')) ? params.get('c') : 'all'
-  const [filter, setFilter] = useState(initial)
+  const categoryKey = (params.get('c') || '').trim()
+  // The tile grid passes its label via router state (same-app navigation); a direct link or
+  // refresh falls back to a generic title rather than guessing.
+  const title = q ? `Results for “${q}”` : state?.label || 'Local Guide'
 
-  const guideQuery = useGuestQuery(() => guest.guide(filter), [filter], { enabled: !q })
+  const guideQuery = useGuestQuery(() => guest.guide(categoryKey), [categoryKey], { enabled: !q })
   const searchQuery = useGuestQuery(() => guest.search(q), [q], { enabled: Boolean(q) })
 
   const items = q ? searchQuery.data?.guides || [] : guideQuery.data?.items || []
@@ -19,29 +21,9 @@ export default function LocalGuide() {
 
   return (
     <ExploreShell>
-      <ExploreHead
-        title={q ? `Results for “${q}”` : 'Local Guide'}
-        sub="30A’s best - curated by Vitoria"
-        back="/app/explore"
-      />
+      <ExploreHead title={title} sub="30A’s best - curated by Vitoria" back="/app/explore" />
 
       <div className="app-exp-body">
-        {q ? null : (
-          <div className="app-exp-filters">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                className={`app-exp-filter${filter === f.key ? ' is-on' : ''}`}
-                aria-pressed={filter === f.key}
-                onClick={() => setFilter(f.key)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        )}
-
         {error ? <p className="app-inline-error">{errorText(error)}</p> : null}
 
         <div className="app-exp-cards">

@@ -95,83 +95,98 @@
   color: var(--xfer-faint);
 }
 
-/* Category grid (cards 100px, padding 10 14, radius 10, gap 16) */
+/* Category grid — photo tiles (real 30A imagery, one per real partner category) */
 .app-exp-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 14px;
 }
 
-.app-exp-cat {
+.app-exp-tile {
+  position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 20px;
-  min-height: 100px;
-  padding: 10px 14px;
-  border: 1px solid var(--xfer-line);
-  border-radius: 10px;
-  background: #ffffff;
-  font-family: var(--app-title);
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 100%;
-  text-transform: capitalize;
-  color: var(--xfer-muted);
+  justify-content: space-between;
+  min-height: 136px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #cccccc center / cover no-repeat;
   text-decoration: none;
+  overflow: hidden;
 }
 
-.app-exp-cat-ico {
+.app-exp-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 22, 40, 0.12) 0%, rgba(10, 22, 40, 0.74) 100%);
+}
+
+.app-exp-tile > * {
+  position: relative;
+}
+
+.app-exp-tile-ico {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 143px;
+  align-self: flex-start;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
 }
 
-.app-exp-cat-ico.is-sand { background: #fff1db; color: #f49300; }
-.app-exp-cat-ico.is-sea { background: #c6ebff; color: #005d92; }
-.app-exp-cat-ico.is-leaf { background: #e8ffeb; color: #1e864e; }
-.app-exp-cat-ico.is-olive { background: #ffffe8; color: #83861e; }
-.app-exp-cat-ico.is-pink { background: #ffe8fa; color: #861e75; }
-.app-exp-cat-ico.is-cyan { background: #e8faff; color: #1e7386; }
-.app-exp-cat-ico.is-lime { background: #fbffe8; color: #73861e; }
-.app-exp-cat-ico.is-peach { background: #ffeee8; color: #86361e; }
+.app-exp-tile.is-sand .app-exp-tile-ico { color: #f49300; }
+.app-exp-tile.is-sea .app-exp-tile-ico { color: #005d92; }
+.app-exp-tile.is-cyan .app-exp-tile-ico { color: #1e7386; }
+.app-exp-tile.is-leaf .app-exp-tile-ico { color: #1e864e; }
+.app-exp-tile.is-pink .app-exp-tile-ico { color: #861e75; }
+.app-exp-tile.is-olive .app-exp-tile-ico { color: #83861e; }
+.app-exp-tile.is-peach .app-exp-tile-ico { color: #86361e; }
+.app-exp-tile.is-lime .app-exp-tile-ico { color: #73861e; }
+.app-exp-tile.is-violet .app-exp-tile-ico { color: #6b21a8; }
+.app-exp-tile.is-slate .app-exp-tile-ico { color: #3d4a6b; }
+.app-exp-tile.is-teal .app-exp-tile-ico { color: #0f766e; }
 
-/* Local guide filters + cards */
-.app-exp-filters {
+.app-exp-tile-text {
   display: flex;
-  gap: 10px;
-  margin: 0 -20px;
-  padding: 0 20px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.app-exp-filters::-webkit-scrollbar {
-  display: none;
-}
-
-.app-exp-filter {
-  flex-shrink: 0;
-  padding: 10px 16px;
-  border: 0;
-  border-radius: 8px;
-  background: #ffffff;
-  font-family: var(--app-body);
+.app-exp-tile-text strong {
+  font-family: var(--app-title);
+  font-weight: 600;
   font-size: 16px;
   line-height: 120%;
-  color: var(--xfer-ink);
-  white-space: nowrap;
+  color: #ffffff;
 }
 
-.app-exp-filter.is-on {
-  background: #fff7ea;
-  color: #f49300;
+.app-exp-tile-text small {
+  font-family: var(--app-body);
+  font-size: 12px;
+  line-height: 120%;
+  color: rgba(255, 255, 255, 0.82);
 }
 
+.app-exp-tile-soon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 10px;
+  line-height: 100%;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #86361e;
+}
+
+/* Local guide cards */
 .app-exp-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -872,13 +887,8 @@
     padding-right: 16px;
   }
 
-  .app-exp-filters {
-    margin: 0 -16px;
-    padding: 0 16px;
-  }
-
-  .app-exp-cat {
-    font-size: 16px;
+  .app-exp-tile-text strong {
+    font-size: 15px;
   }
 
   .app-exp-actions {

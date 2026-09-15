@@ -18,8 +18,6 @@ import { Cta, DetailRow, TransferShell } from '../transfer/TransferShell.jsx'
 import StripePaymentForm from '../transfer/StripePaymentForm.jsx'
 import { useOrderId } from './GroceryShared.jsx'
 
-const PAID_STATUSES = ['authorized', 'captured']
-
 export default function GroceryPayment() {
   const navigate = useNavigate()
   const id = useOrderId()
@@ -32,12 +30,13 @@ export default function GroceryPayment() {
   const [setupError, setSetupError] = useState('')
   const [settling, setSettling] = useState(false)
 
-  const alreadyPaid = order && PAID_STATUSES.includes(order.payment_status)
+  const cardSaved = Boolean(order?.card_saved)
 
-  // Create (or reuse) the Stripe PaymentIntent for the flat service fee — the exact Publix
-  // total is charged separately, off-session, once the shopper delivers.
+  // Create (or reuse) a Stripe SetupIntent — no hold, no charge. We only save the card now; the
+  // exact total (service fee + Publix receipt) is charged in one off-session charge once the
+  // shopper actually delivers.
   useEffect(() => {
-    if (!order || alreadyPaid || clientSecret) return
+    if (!order || cardSaved || clientSecret) return
     let ignore = false
     setSetupError('')
     guest
@@ -52,21 +51,21 @@ export default function GroceryPayment() {
       ignore = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id, alreadyPaid])
+  }, [order?.id, cardSaved])
 
   const onSuccess = async () => {
     setSettling(true)
     try {
-      await guest.syncGroceryPayment(order.id)
+      await guest.markGroceryCardSaved(order.id)
     } catch {
-      /* the track screen polls anyway; a failed sync here isn't fatal */
+      /* the track screen still works even if this call fails — worst case it re-prompts */
     } finally {
       navigate(`/app/grocery/track?id=${order.id}`, { replace: true })
     }
   }
 
   const fee = order ? order.service_fee - order.addons_total : 0
-  const total = order ? order.service_fee : 0
+  const estimate = order ? order.service_fee : 0
 
   return (
     <TransferShell
@@ -76,11 +75,11 @@ export default function GroceryPayment() {
         <>
           <div className="app-xfer-auth">
             <div>
-              <strong>{alreadyPaid ? 'Payment authorized' : `Authorize $${total}`}</strong>
+              <strong>{cardSaved ? 'Card saved' : 'Save your card'}</strong>
               <em>
-                {alreadyPaid
-                  ? 'Your card is on hold until your order is delivered.'
-                  : 'This is an authorization hold, not a charge.'}
+                {cardSaved
+                  ? 'Nothing is charged until your order is delivered.'
+                  : 'No charge now — you only pay once your groceries are delivered.'}
               </em>
             </div>
             <span className="app-xfer-pill is-green">
@@ -88,11 +87,7 @@ export default function GroceryPayment() {
               Secure &amp; encrypted
             </span>
           </div>
-          {alreadyPaid ? <Cta to={`/app/grocery/track?id=${order.id}`}>Track Your Order</Cta> : null}
-          <p className="app-xfer-warn">
-            <Info size={16} strokeWidth={1.5} aria-hidden="true" />
-            Complete within 24 hours. Order auto-cancels otherwise.
-          </p>
+          {cardSaved ? <Cta to={`/app/grocery/track?id=${order.id}`}>Track Your Order</Cta> : null}
         </>
       }
     >
@@ -102,12 +97,12 @@ export default function GroceryPayment() {
             <Check size={22} strokeWidth={2} />
           </span>
           <h2 className="app-xfer-hero-title">
-            {alreadyPaid ? 'Your Grocery Order Is Confirmed' : 'Secure Your Grocery Order'}
+            {cardSaved ? 'Your Grocery Order Is Confirmed' : 'Save a Card for Your Grocery Order'}
           </h2>
           <p className="app-xfer-hero-sub">
-            {alreadyPaid
-              ? 'We’ll charge the exact Publix total once your shopper delivers.'
-              : 'Complete payment so we can begin shopping your order.'}
+            {cardSaved
+              ? 'We’ll charge the exact total once your shopper delivers.'
+              : 'We’ll shop and deliver first — you’re only charged once it arrives.'}
           </p>
         </div>
 
@@ -160,35 +155,35 @@ export default function GroceryPayment() {
                   <span>+${order.addons_total}</span>
                 </div>
                 <div className="app-xfer-price-row is-total">
-                  <span>Total charged today</span>
-                  <span>${total}</span>
+                  <span>Estimated total (charged after delivery)</span>
+                  <span>${estimate}+ Publix</span>
                 </div>
               </div>
             </section>
           </>
         ) : null}
 
-        {order && !alreadyPaid ? (
+        {order && !cardSaved ? (
           <section className="app-xfer-section">
             <h2 className="app-xfer-h is-icon">
               <CreditCard size={22} strokeWidth={1.5} className="is-orange" aria-hidden="true" />
-              Authorize Your Card
+              Save Your Card
             </h2>
             {setupError ? <p className="app-inline-error">{setupError}</p> : null}
             {settling ? (
-              <p className="app-empty">Confirming your payment…</p>
+              <p className="app-empty">Saving your card…</p>
             ) : (
               <StripePaymentForm
+                mode="setup"
                 clientSecret={clientSecret}
-                amountLabel={`$${total}`}
                 onSuccess={onSuccess}
               />
             )}
             <div className="app-xfer-note is-info">
               <Info size={20} strokeWidth={1.5} aria-hidden="true" />
               <span>
-                Your card is authorized now for the ${total} service fee. The exact Publix total
-                is charged separately once your order is delivered — no markup.
+                Nothing is charged today. We’ll charge the ${estimate} service fee plus the exact
+                Publix total together, in one charge, once your order is delivered — no markup.
               </span>
             </div>
           </section>

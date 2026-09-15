@@ -262,8 +262,18 @@ async function main() {
   await expect('GET /api/content/guides as guest → 403', 'GET', '/api/content/guides', G, 403)
 
   // ---------- 8. explore ----------
-  await expect('GET /api/guest/explore', 'GET', '/api/guest/explore', G, 200, (d) => d.categories.length === 8 && d.filters.length === 6)
-  await expect('GET /api/guest/explore/guide?c=beaches', 'GET', '/api/guest/explore/guide?c=beaches', G, 200, (d) => d.items.length >= 3 && d.items.every((i) => i.filters.includes('beaches')))
+  // 11 real-data-backed categories (redesigned from the original 8 — see the "coming_soon"
+  // Restaurants tile and category_key-scoped guides below). Beaches has no guides of its own
+  // (it routes to the real public beach-access list instead), so it's excluded from this count.
+  await expect('GET /api/guest/explore', 'GET', '/api/guest/explore', G, 200, (d) => d.categories.length === 11 && d.categories.find((c) => c.key === 'restaurants').coming_soon === true)
+  await expect(
+    'GET /api/guest/explore/guide?c=golf-outdoor (category_key scoping — the old bug showed all 20 guides here)',
+    'GET',
+    '/api/guest/explore/guide?c=golf-outdoor',
+    G,
+    200,
+    (d) => d.items.length === 4 && d.items.every((i) => ['Golf Cart Rentals', 'Bike Rentals', 'Golf Courses', 'Pickleball'].includes(i.title))
+  )
   await expect('GET /api/guest/explore/guide (all)', 'GET', '/api/guest/explore/guide', G, 200, (d) => d.items.length >= 6)
   await expect('GET /api/guest/explore/search?q=bonfire', 'GET', '/api/guest/explore/search?q=bonfire', G, 200, (d) => d.vendors.length >= 1)
   const bonfireList = await expect('GET /api/guest/explore/vendors/beach-bonfires (real partners)', 'GET', '/api/guest/explore/vendors/beach-bonfires', G, 200, (d) => d.count >= 9 && /Beach/.test(d.title))
@@ -304,16 +314,19 @@ async function main() {
   await expect('cancel again → 400', 'POST', `/api/guest/transfers/${t2.id}/cancel`, G, 400)
 
   // ---------- 10. guest grocery request ----------
-  await expect('POST /api/guest/grocery/quote', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'full', stocking: 'full-kitchen', addons: ['rush'] } }, 200, (d) => d.service_fee === 309 && d.addons_total === 50)
+  // Rush/Holiday add-ons were removed from grocery (client request, service_catalog rows
+  // deactivated) — quote with no add-ons selected should just be package + stocking.
+  await expect('POST /api/guest/grocery/quote', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'full', stocking: 'full-kitchen' } }, 200, (d) => d.service_fee === 259 && d.addons_total === 0)
+  await expect('POST /api/guest/grocery/quote deactivated add-on is ignored, not priced', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'full', stocking: 'full-kitchen', addons: ['rush'] } }, 200, (d) => d.service_fee === 259 && d.addons_total === 0 && d.addons.length === 0)
   await expect('POST /api/guest/grocery/quote bad package → 400', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'mega' } }, 400)
   const deliveryTime = isoPlusHours(28)
   const g1 = await expect(
     'POST /api/guest/grocery (G1 request)',
     'POST',
     '/api/guest/grocery',
-    { ...G, body: { package: 'full', stocking: 'full-kitchen', addons: { rush: true, holiday: false }, delivery_time: deliveryTime, items: ['Sparkling water 12-pack', 'Eggs', 'Avocados'], notes: 'Leave cold items in fridge', payment_method: 'card' } },
+    { ...G, body: { package: 'full', stocking: 'full-kitchen', delivery_time: deliveryTime, items: ['Sparkling water 12-pack', 'Eggs', 'Avocados'], notes: 'Leave cold items in fridge', payment_method: 'card' } },
     201,
-    (d) => d.status === 'requested' && d.service_fee === 309 && d.stocking === 'Full Kitchen Organization' && d.items.length === 3
+    (d) => d.status === 'requested' && d.service_fee === 259 && d.stocking === 'Full Kitchen Organization' && d.items.length === 3
   )
   await expect('GET /api/guest/grocery', 'GET', '/api/guest/grocery', G, 200, (d) => d.some((o) => o.id === g1.id))
   await expect('GET /api/guest/grocery/:id', 'GET', `/api/guest/grocery/${g1.id}`, G, 200, (d) => d.status_log.length === 1)
@@ -322,7 +335,24 @@ async function main() {
   const g2 = await expect('POST /api/guest/grocery (G2, to cancel)', 'POST', '/api/guest/grocery', { ...G, body: { package: 'large', delivery_time: isoPlusHours(40) } }, 201, (d) => d.service_fee === 379)
   await expect('POST /api/guest/grocery/:id/cancel (G2)', 'POST', `/api/guest/grocery/${g2.id}/cancel`, G, 200, (d) => d.status === 'cancelled')
 
-  await expect('GET /api/guest/home (active orders present)', 'GET', '/api/guest/home', G, 200, (d) => d.orders.length >= 2 && d.picks.length === 3 && d.explore.length === 8 && d.location_label === 'Rosemary Beach, FL' && /^Good/.test(d.greeting))
+  // "Vitoria's Pick" now highlights real, genuinely top-rated partners (not a curated category
+  // shortcut) — the client's data has real Google ratings for exactly 4 vendors, top 3 shown.
+  await expect(
+    'GET /api/guest/home (active orders present)',
+    'GET',
+    '/api/guest/home',
+    G,
+    200,
+    (d) =>
+      d.orders.length >= 2 &&
+      d.picks.length === 3 &&
+      d.picks[0].title === '30A Blaze Beach Bonfires' &&
+      d.picks[0].rating === 5 &&
+      d.picks[0].reviews === 1200 &&
+      d.explore.length === 11 &&
+      d.location_label === 'Rosemary Beach, FL' &&
+      /^Good/.test(d.greeting)
+  )
   await expect('GET /api/notifications/mine (guest)', 'GET', '/api/notifications/mine', G, 200, (d) => d.notifications.length >= 2)
 
   // ---------- 11. admin sees + assigns the requests ----------
@@ -334,7 +364,7 @@ async function main() {
   await expect('guest sees T1 confirmed with driver', 'GET', `/api/guest/transfers/${t1.id}`, G, 200, (d) => d.status === 'assigned' && d.driver?.name === 'Test' && d.vehicle_label?.includes('E2E-4PAX'))
 
   await expect('GET /api/grocery?status=requested', 'GET', '/api/grocery?status=requested', A, 200, (d) => d.some((o) => o.id === g1.id && o.guest_account?.email === GUEST.email && o.list_file_signed_url))
-  await expect('GET /api/grocery/:id (admin)', 'GET', `/api/grocery/${g1.id}`, A, 200, (d) => d.addons.length === 1 && d.stocking)
+  await expect('GET /api/grocery/:id (admin)', 'GET', `/api/grocery/${g1.id}`, A, 200, (d) => d.addons.length === 0 && d.stocking)
   await expect('PATCH /api/grocery/:id while requested', 'PATCH', `/api/grocery/${g1.id}`, { ...A, body: { notes: 'Gate code 1234' } }, 200, (d) => d.notes === 'Gate code 1234')
   await expect('POST /api/grocery/:id/assign', 'POST', `/api/grocery/${g1.id}/assign`, { ...A, body: { shopper_id: ids.shopper } }, 200, (d) => d.status === 'assigned' && d.shopper_id === ids.shopper)
   await expect('POST /api/grocery/:id/assign non-shopper → 400', 'POST', `/api/grocery/${g1.id}/assign`, { ...A, body: { shopper_id: ids.driver } }, 400)
@@ -399,7 +429,7 @@ async function main() {
   await expect('GET /api/grocery/mine/history (shopper)', 'GET', `/api/grocery/mine/history?month=${orderDate.slice(0, 7)}`, S, 200, (d) => d.some((o) => o.id === g1.id))
   await expect('GET /api/earnings/mine (shopper)', 'GET', '/api/earnings/mine?range=today', S, 200, (d) => d.trips_count >= 1 && d.trip_earnings >= 50)
   await expect('shopper cannot start transfers → 403', 'POST', `/api/transfers/${t1.id}/start`, S, 403)
-  await expect('POST /api/guest/grocery/:id/tip (guest, delivered)', 'POST', `/api/guest/grocery/${g1.id}/tip`, { ...G, body: { tip_amount: 12 } }, 200, (d) => d.tip_amount === 12 && d.total === 595.83)
+  await expect('POST /api/guest/grocery/:id/tip (guest, delivered)', 'POST', `/api/guest/grocery/${g1.id}/tip`, { ...G, body: { tip_amount: 12 } }, 200, (d) => d.tip_amount === 12 && d.total === 545.83)
   await expect('GET /api/guest/grocery/:id shows receipt + kitchen photo', 'GET', `/api/guest/grocery/${g1.id}`, G, 200, (d) => d.receipt_signed_url && d.kitchen_signed_url && d.grocery_total === 286.83)
 
   // ---------- 16. admin-created grocery: edit/cancel, deliver/refund, flag ----------
@@ -460,11 +490,20 @@ async function main() {
   await expect('DELETE /api/content/info/e2e', 'DELETE', '/api/content/info/e2e', A, 200)
 
   // ---------- 20. auth: change password (guest) ----------
+  // A password change can invalidate the session that made the request (Supabase's timing on
+  // this isn't guaranteed), so every step after a successful change re-logs in for a fresh token
+  // instead of reusing G's — reusing it intermittently 401'd the very next call.
   await expect('POST /api/auth/change-password wrong current → 400', 'POST', '/api/auth/change-password', { ...G, body: { current_password: 'wrong-wrong', new_password: 'Guest-New-2026!' } }, 400)
   await expect('POST /api/auth/change-password', 'POST', '/api/auth/change-password', { ...G, body: { current_password: TEST_PASSWORD, new_password: 'Guest-New-2026!' } }, 200, (d) => d.ok)
-  await expect('login with new password', 'POST', '/api/guest/login', { body: { email: GUEST.email, password: 'Guest-New-2026!' } }, 200)
-  await expect('restore demo password', 'POST', '/api/auth/change-password', { ...G, body: { current_password: 'Guest-New-2026!', new_password: TEST_PASSWORD } }, 200, (d) => d.ok)
-  // A password change invalidates the guest's other sessions (expected) — get a fresh token.
+  const afterChange = await expect('login with new password', 'POST', '/api/guest/login', { body: { email: GUEST.email, password: 'Guest-New-2026!' } }, 200, (d) => d.session?.access_token)
+  await expect(
+    'restore demo password',
+    'POST',
+    '/api/auth/change-password',
+    { token: afterChange.session.access_token, body: { current_password: 'Guest-New-2026!', new_password: TEST_PASSWORD } },
+    200,
+    (d) => d.ok
+  )
   const relogin = await expect('re-login after password change', 'POST', '/api/guest/login', { body: { email: GUEST.email, password: TEST_PASSWORD } }, 200, (d) => d.session?.access_token)
   G.token = relogin.session.access_token
 
@@ -504,6 +543,8 @@ async function main() {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     const confirmWithTestCard = (clientSecret) =>
       stripe.paymentIntents.confirm(clientSecret.split('_secret_')[0], { payment_method: 'pm_card_visa' })
+    const confirmSetupWithTestCard = (clientSecret) =>
+      stripe.setupIntents.confirm(clientSecret.split('_secret_')[0], { payment_method: 'pm_card_visa' })
 
     // --- 22a. transfer: authorize → admin assigns → driver completes → captured ---
     const t5 = await expect(
@@ -582,10 +623,10 @@ async function main() {
     )
     await expect('POST /api/transfers/:id/complete (T7) fall back to cash', 'POST', `/api/transfers/${t7.id}/complete`, { ...D, body: { payment_method: 'cash', cash_reported: 85 } }, 200, (d) => d.status === 'completed')
 
-    // --- 22d. grocery: service-fee authorization + capture, THEN a separate off-session charge
-    //          for the exact Publix total once it's known — the two-charge design this app needs.
+    // --- 22d. grocery: save a card up front (no hold — a SetupIntent), THEN one combined
+    //          off-session charge for service fee + exact Publix total, only once delivered.
     const g5 = await expect(
-      'POST /api/guest/grocery (G5, for Stripe capture + off-session Publix charge)',
+      'POST /api/guest/grocery (G5, for save-card + combined off-session charge at delivery)',
       'POST',
       '/api/guest/grocery',
       { ...G, body: { package: 'full', delivery_time: isoPlusHours(85) } },
@@ -593,51 +634,46 @@ async function main() {
       (d) => d.service_fee === 229
     )
     const g5pay = await expect(
-      'POST /api/guest/grocery/:id/pay (G5) authorizes the $229 service fee only',
+      'POST /api/guest/grocery/:id/pay (G5) saves a card — no hold, nothing charged',
       'POST',
       `/api/guest/grocery/${g5.id}/pay`,
       { ...G, body: { payment_method: 'card_on_file' } },
       200,
-      (d) => Boolean(d.client_secret)
+      (d) => Boolean(d.client_secret) && d.setup_intent_status === 'requires_payment_method'
     )
-    const g5PiId = g5pay.client_secret.split('_secret_')[0]
-    const g5confirm = await confirmWithTestCard(g5pay.client_secret)
-    record(g5confirm.status === 'requires_capture', 'stripe.paymentIntents.confirm (G5 service fee) → requires_capture', g5confirm.status)
-    await expect('POST /api/guest/grocery/:id/sync-payment (G5)', 'POST', `/api/guest/grocery/${g5.id}/sync-payment`, G, 200, (d) => d.payment_status === 'authorized')
+    const g5confirm = await confirmSetupWithTestCard(g5pay.client_secret)
+    record(g5confirm.status === 'succeeded', 'stripe.setupIntents.confirm (G5 save card) → succeeded', g5confirm.status)
+    await expect('POST /api/guest/grocery/:id/card-saved (G5)', 'POST', `/api/guest/grocery/${g5.id}/card-saved`, G, 200, (d) => d.card_saved === true)
     await expect('POST /api/grocery/:id/assign (G5)', 'POST', `/api/grocery/${g5.id}/assign`, { ...A, body: { shopper_id: ids.shopper } }, 200, (d) => d.status === 'assigned')
     await expect('POST /api/grocery/:id/shopping (G5)', 'POST', `/api/grocery/${g5.id}/shopping`, S, 200)
     await expect('POST /api/grocery/:id/on-the-way (G5)', 'POST', `/api/grocery/${g5.id}/on-the-way`, S, 200)
     const g5delivered = await expect(
-      'POST /api/grocery/:id/deliver (G5) captures service fee AND charges the Publix total off-session',
+      'POST /api/grocery/:id/deliver (G5) charges service fee + Publix total together, off-session',
       'POST',
       `/api/grocery/${g5.id}/deliver`,
       { ...S, form: pngForm({ grocery_total: 214.37, payment_method: 'card_on_file' }, { receipt: 'r.png', kitchen_photo: 'k.png' }) },
       200,
       (d) => d.status === 'delivered'
     )
-    const g5Intent = await stripe.paymentIntents.retrieve(g5PiId)
-    record(g5Intent.status === 'succeeded', 'Stripe confirms G5 service-fee PaymentIntent captured', g5Intent.status)
     const g5Admin = await expect(
-      'GET /api/grocery/:id (G5) admin sees both charges captured',
+      'GET /api/grocery/:id (G5) admin sees the combined charge captured',
       'GET',
       `/api/grocery/${g5.id}`,
       A,
       200,
-      (d) => d.payment_status === 'captured' && d.grocery_payment_status === 'captured' && d.stripe_grocery_payment_intent_id
+      (d) => d.payment_status === 'captured' && d.grocery_payment_status === 'captured' && d.stripe_payment_intent_id
     )
-    const g5GroceryIntent = await stripe.paymentIntents.retrieve(g5Admin.stripe_grocery_payment_intent_id)
+    const g5Intent = await stripe.paymentIntents.retrieve(g5Admin.stripe_payment_intent_id)
     record(
-      g5GroceryIntent.status === 'succeeded' && g5GroceryIntent.amount === 21437,
-      'Stripe confirms the off-session Publix charge amount matches the receipt exactly ($214.37)',
-      `${g5GroceryIntent.status} / $${g5GroceryIntent.amount / 100}`
+      g5Intent.status === 'succeeded' && g5Intent.amount === 44337,
+      'Stripe confirms the combined charge amount is exactly $229 service fee + $214.37 Publix = $443.37',
+      `${g5Intent.status} / $${g5Intent.amount / 100}`
     )
 
-    // --- 22e. admin refund on a delivered order refunds BOTH Stripe charges ---
+    // --- 22e. admin refund on a delivered order refunds the one combined charge ---
     await expect('POST /api/grocery/:id/refund (G5)', 'POST', `/api/grocery/${g5.id}/refund`, A, 200, (d) => d.status === 'refunded' && d.grocery_payment_status === 'refunded')
-    const g5ServiceRefunds = await stripe.refunds.list({ payment_intent: g5PiId, limit: 1 })
-    const g5GroceryRefunds = await stripe.refunds.list({ payment_intent: g5GroceryIntent.id, limit: 1 })
-    record(g5ServiceRefunds.data.length === 1, 'Stripe confirms the service-fee charge was refunded')
-    record(g5GroceryRefunds.data.length === 1, 'Stripe confirms the Publix-total charge was refunded too')
+    const g5Refunds = await stripe.refunds.list({ payment_intent: g5Intent.id, limit: 1 })
+    record(g5Refunds.data.length === 1, 'Stripe confirms the combined charge was refunded')
   }
 
   // ---------- 23. Trip flow v2: statuses, fees, no-show, chat, SMS log, public links, tips, round trip, jobs ----------

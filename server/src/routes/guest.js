@@ -15,6 +15,7 @@ import { chatCompletion } from '../lib/openai.js'
 import { cleanConciergeText } from '../lib/textFormat.js'
 import {
   createPaymentIntent,
+  createSetupIntent,
   ensureStripeCustomer,
   getPublishableKey,
   mapIntentStatus,
@@ -72,14 +73,6 @@ const ORDER_LABELS = {
   cancelled: 'Cancelled',
   refunded: 'Refunded',
 }
-const FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'restaurants', label: 'Restaurants' },
-  { key: 'beaches', label: 'Beaches' },
-  { key: 'bikes', label: 'Bikes' },
-  { key: 'shopping', label: 'Shopping' },
-  { key: 'family', label: 'Family & Kids' },
-]
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const TRANSFER_SELECT = `
@@ -457,6 +450,7 @@ function orderView(order, extra = {}) {
     payment_method: order.payment_method,
     payment_status: order.payment_status,
     grocery_payment_status: order.grocery_payment_status,
+    card_saved: Boolean(order.card_saved_at),
     shopper: order.shopper ? { id: order.shopper.id, name: order.shopper.name } : null,
     notes: order.notes,
     list_file_url: order.list_file_url,
@@ -626,6 +620,28 @@ function paymentIntentView(result) {
   return {
     client_secret: result.intent.client_secret,
     payment_intent_status: result.intent.status,
+    stripe_publishable_key: getPublishableKey(),
+  }
+}
+
+// Grocery /pay: saves a card (SetupIntent, no hold) rather than authorizing an amount — the exact
+// total (service fee + Publix receipt) is only known at delivery, so that's when it's charged,
+// in one off-session charge against this saved card (see chargeSavedCard in grocery.js /deliver).
+async function saveCardOnFile({ user }) {
+  const customerId = await ensureStripeCustomer({ userId: user.id, email: user.email, name: user.name })
+  if (customerId?.skipped) return customerId
+  const intent = await createSetupIntent({ customerId })
+  if (intent?.skipped) return intent
+  return { intent }
+}
+
+function setupIntentView(result) {
+  if (!result || result.skipped) {
+    return { stripe_skipped: true, stripe_skip_reason: result?.reason || 'STRIPE_NOT_CONFIGURED' }
+  }
+  return {
+    client_secret: result.intent.client_secret,
+    setup_intent_status: result.intent.status,
     stripe_publishable_key: getPublishableKey(),
   }
 }
@@ -909,12 +925,17 @@ router.get('/home', guestOnly, async (req, res, next) => {
         .order('delivery_time', { ascending: true })
         .limit(3),
       supabase.from('explore_categories').select('*').eq('is_active', true).order('sort_order'),
+      // "Vitoria's Pick" highlights real, genuinely well-reviewed partners (not a curated
+      // category shortcut) — the client's own data only has real ratings for a handful of
+      // vendors, so that's the actual pool, ranked by rating then review count.
       supabase
-        .from('explore_guides')
-        .select('*')
+        .from('explore_vendors')
+        .select('slug, name, place, rating, review_count, image_url')
         .eq('is_active', true)
-        .eq('is_pick', true)
-        .order('sort_order')
+        .eq('kind', 'vendor')
+        .not('rating', 'is', null)
+        .order('rating', { ascending: false })
+        .order('review_count', { ascending: false })
         .limit(3),
       supabase
         .from('notifications')
@@ -922,12 +943,6 @@ router.get('/home', guestOnly, async (req, res, next) => {
         .eq('user_id', req.user.id)
         .eq('is_read', false),
     ])
-
-    const detailSlugs = (picks.data || []).map((guide) => guide.detail_slug).filter(Boolean)
-    const { data: pickVendors } = detailSlugs.length
-      ? await supabase.from('explore_vendors').select('slug, rating, review_count').in('slug', detailSlugs)
-      : { data: [] }
-    const ratingBySlug = new Map((pickVendors || []).map((row) => [row.slug, row]))
 
     const activeOrders = [
       ...(orders.data || []).map((order) => ({
@@ -967,13 +982,15 @@ router.get('/home', guestOnly, async (req, res, next) => {
         icon: category.icon,
         to: category.target === 'info' ? '/app/explore/info' : `/app/explore/${category.target}`,
       })),
-      picks: (picks.data || []).map((guide) => {
-        const vendor = ratingBySlug.get(guide.detail_slug)
-        return guideView(guide, {
-          rating: vendor?.rating === undefined || vendor?.rating === null ? 5.0 : Number(vendor.rating),
-          reviews: vendor?.review_count ?? 0,
-        })
-      }),
+      picks: (picks.data || []).map((vendor) => ({
+        key: vendor.slug,
+        title: vendor.name,
+        image: vendor.image_url,
+        place: vendor.place,
+        to: `/app/explore/vendor/${vendor.slug}`,
+        rating: Number(vendor.rating),
+        reviews: vendor.review_count,
+      })),
     })
   } catch (error) {
     next(error)
@@ -984,21 +1001,43 @@ router.get('/home', guestOnly, async (req, res, next) => {
 
 router.get('/explore', async (_req, res, next) => {
   try {
-    const { data, error } = await supabase
+    const { data: categories, error } = await supabase
       .from('explore_categories')
       .select('*')
       .eq('is_active', true)
       .order('sort_order')
     if (error) return res.status(400).json({ error: error.message })
+
+    // Each guide belongs to exactly one tile (category_key) — count real active vendors per
+    // tile so the grid shows an honest "N places" instead of a hand-typed number that can drift.
+    const { data: guides } = await supabase
+      .from('explore_guides')
+      .select('slug, category_key')
+      .eq('is_active', true)
+      .not('category_key', 'is', null)
+    const categoryForSlug = Object.fromEntries((guides || []).map((g) => [g.slug, g.category_key]))
+    const { data: vendors } = await supabase
+      .from('explore_vendors')
+      .select('guide_slug')
+      .eq('is_active', true)
+      .eq('kind', 'vendor')
+    const counts = {}
+    for (const vendor of vendors || []) {
+      const key = categoryForSlug[vendor.guide_slug]
+      if (key) counts[key] = (counts[key] || 0) + 1
+    }
+
     res.json({
-      categories: (data || []).map((category) => ({
+      categories: categories.map((category) => ({
         key: category.key,
         label: category.label,
         tone: category.tone,
         icon: category.icon,
+        image_url: category.image_url,
+        coming_soon: category.coming_soon,
+        count: counts[category.key] || 0,
         to: category.target === 'info' ? '/app/explore/info' : `/app/explore/${category.target}`,
       })),
-      filters: FILTERS,
     })
   } catch (error) {
     next(error)
@@ -1007,15 +1046,12 @@ router.get('/explore', async (_req, res, next) => {
 
 router.get('/explore/guide', async (req, res, next) => {
   try {
-    const filter = FILTERS.some((f) => f.key === req.query.c) ? req.query.c : 'all'
-    const { data, error } = await supabase
-      .from('explore_guides')
-      .select('*')
-      .eq('is_active', true)
-      .contains('filters', [filter])
-      .order('sort_order')
+    const categoryKey = String(req.query.c || '').trim()
+    let query = supabase.from('explore_guides').select('*').eq('is_active', true).order('sort_order')
+    if (categoryKey) query = query.eq('category_key', categoryKey)
+    const { data, error } = await query
     if (error) return res.status(400).json({ error: error.message })
-    res.json({ filter, filters: FILTERS, items: (data || []).map((guide) => guideView(guide)) })
+    res.json({ category: categoryKey || null, items: (data || []).map((guide) => guideView(guide)) })
   } catch (error) {
     next(error)
   }
@@ -1085,7 +1121,7 @@ router.get('/explore/vendor/:key', async (req, res, next) => {
 
     let back = '/app/explore'
     if (vendor.kind === 'restaurant') back = '/app/explore/guide?c=restaurants'
-    else if (vendor.kind === 'beach') back = '/app/explore/guide?c=beaches'
+    else if (vendor.kind === 'beach') back = '/app/explore/info?focus=beach-access'
     else if (vendor.guide_slug) back = `/app/explore/vendors/${vendor.guide_slug}`
 
     res.json(vendorView(vendor, { saved, back }))
@@ -1687,32 +1723,29 @@ router.post(
   }
 )
 
+// Saves the guest's card (no hold, no charge) for 'card_on_file' orders — the full total is
+// charged off-session once the order is delivered (see /deliver in routes/grocery.js). 'cash'
+// needs nothing here since the shopper collects payment in person at delivery.
 router.post('/grocery/:id/pay', guestOnly, async (req, res, next) => {
   try {
     const order = await loadOrder(req.params.id, req.user.id)
     if (!order) return res.status(404).json({ error: 'Order not found' })
     if (!['requested', 'assigned'].includes(order.status)) {
-      return res.status(400).json({ error: 'Payment can only be set before shopping starts' })
+      return res.status(400).json({ error: 'Payment method can only be set before shopping starts' })
     }
     const payment_method = req.body?.payment_method || 'card_on_file'
     if (!PAYMENT_METHODS.includes(payment_method)) {
       return res.status(400).json({ error: 'invalid payment_method' })
     }
 
-    const updates = { payment_method, payment_status: 'pending' }
-    let extra = { authorized: true }
+    const updates = { payment_method }
+    let extra = {}
 
     if (payment_method === 'cash') {
-      // Collected in person; nothing to authorize with Stripe.
+      // Collected in person; nothing to save with Stripe.
     } else {
-      const result = await authorizeCardPayment({
-        user: req.user,
-        amount: money(order.service_fee),
-        existingPaymentIntentId: order.stripe_payment_intent_id,
-        metadata: { my30a_grocery_order_id: order.id, kind: 'grocery' },
-      })
-      if (!result.skipped) updates.stripe_payment_intent_id = result.intent.id
-      extra = { ...extra, ...paymentIntentView(result) }
+      const result = await saveCardOnFile({ user: req.user })
+      extra = { ...extra, ...setupIntentView(result) }
     }
 
     const { data, error } = await supabase
@@ -1723,6 +1756,25 @@ router.post('/grocery/:id/pay', guestOnly, async (req, res, next) => {
       .single()
     if (error) return res.status(400).json({ error: error.message })
     res.json(orderView(data, extra))
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Called once Stripe Elements confirms the SetupIntent client-side — marks the card as saved so
+// the guest app can stop prompting and the order is ready for its off-session charge at delivery.
+router.post('/grocery/:id/card-saved', guestOnly, async (req, res, next) => {
+  try {
+    const order = await loadOrder(req.params.id, req.user.id)
+    if (!order) return res.status(404).json({ error: 'Order not found' })
+    const { data, error } = await supabase
+      .from('grocery_orders')
+      .update({ card_saved_at: new Date().toISOString() })
+      .eq('id', order.id)
+      .select(ORDER_SELECT)
+      .single()
+    if (error) return res.status(400).json({ error: error.message })
+    res.json(orderView(data))
   } catch (error) {
     next(error)
   }

@@ -66,6 +66,20 @@ export async function createPaymentIntent({ amount, customerId, metadata }) {
   })
 }
 
+// Saves a card for later, off-session use — no hold, no charge, just tokenizes the payment method
+// against the customer. Used by grocery orders: the guest saves a card up front and the full
+// total (service fee + exact Publix receipt) is charged in one off-session charge once the order
+// is actually delivered — see chargeSavedCard below.
+export async function createSetupIntent({ customerId }) {
+  const stripe = await getStripe()
+  if (!stripe) return notConfigured
+  return stripe.setupIntents.create({
+    customer: customerId,
+    usage: 'off_session',
+    automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+  })
+}
+
 // Charges the guest's most recently saved card without them present in the app — used once the
 // exact Publix receipt total is known at grocery delivery. Never throws: a decline or missing
 // saved card comes back as { skipped: true, reason } so delivery is never blocked on payment.

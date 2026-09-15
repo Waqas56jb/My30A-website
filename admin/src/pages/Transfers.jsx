@@ -112,6 +112,10 @@ function AssignTrip({ trip, drivers, vehicles, working, onAssign }) {
       }}
     >
       <b>Guest request · confirm driver &amp; vehicle</b>
+      <div className="sub">
+        {trip.passengers || 0} passenger{trip.passengers === 1 ? '' : 's'}
+        {trip.bags ? ` · ${trip.bags} bags` : ''}
+      </div>
       <div className="row2">
         <div className="field">
           <label>Driver</label>
@@ -445,6 +449,10 @@ export default function Transfers() {
                       </td>
                       <td data-label="Route">
                         <Clip>{transferRoute(row)}</Clip>
+                        <br />
+                        <small className="muted">
+                          {row.passengers || 0} pax{row.bags ? ` · ${row.bags} bags` : ''}
+                        </small>
                       </td>
                       <td data-label="Driver">
                         {row.driver_name || 'Unassigned'}

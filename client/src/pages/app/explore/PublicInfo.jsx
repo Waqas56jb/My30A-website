@@ -1,23 +1,33 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import { ExploreHead, ExploreShell } from './ExploreShared.jsx'
 
+const BEACH_ACCESS_KEYS = ['beach-access-parking', 'beach-access-walk']
+
 export default function PublicInfo() {
+  const [params] = useSearchParams()
+  const isBeachFocus = params.get('focus') === 'beach-access'
   const { data, loading, error } = useGuestQuery(guest.info, [])
   // Text sections (rules/parking/…) plus the free public layer (beach accesses, parks, emergency).
-  const sections = [
+  const allSections = [
     ...(data?.sections || []),
     ...(data?.places || []).map((s) => ({ key: s.key, title: s.title, places: s.places, items: [] })),
   ]
+  const sections = isBeachFocus ? allSections.filter((s) => BEACH_ACCESS_KEYS.includes(s.key)) : allSections
   const [open, setOpen] = useState(null)
   const openKey = open === null ? sections[0]?.key || null : open
 
   return (
     <ExploreShell nav={false}>
       <ExploreHead
-        title="Public Information"
-        sub="Official resources, helpful local information for your stay"
+        title={isBeachFocus ? 'Beaches' : 'Public Information'}
+        sub={
+          isBeachFocus
+            ? 'Every public beach access point along 30A, straight from Walton County'
+            : 'Official resources, helpful local information for your stay'
+        }
         back="/app/explore"
       />
 
@@ -61,6 +71,10 @@ export default function PublicInfo() {
             )
           })}
         </div>
+
+        {!loading && !error && isBeachFocus && sections.length === 0 ? (
+          <p className="app-empty">Beach access info isn’t available right now.</p>
+        ) : null}
 
         <div className="app-xfer-note is-info is-lg">
           <Info size={22} strokeWidth={1.5} aria-hidden="true" />

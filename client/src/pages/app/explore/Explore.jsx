@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { BackButton, CATEGORIES, ExploreShell, iconFor } from './ExploreShared.jsx'
+import { BackButton, CATEGORIES, CategoryTile, ExploreShell } from './ExploreShared.jsx'
 
 export default function Explore() {
   const navigate = useNavigate()
@@ -43,17 +43,9 @@ export default function Explore() {
         </form>
 
         <div className="app-exp-grid">
-          {categories.map(({ key, label, tone, icon, to }) => {
-            const Icon = iconFor(icon)
-            return (
-              <Link key={key} to={to} className="app-exp-cat">
-                <span className={`app-exp-cat-ico is-${tone}`} aria-hidden="true">
-                  <Icon size={20} strokeWidth={1.5} />
-                </span>
-                <span>{label}</span>
-              </Link>
-            )
-          })}
+          {categories.map((category) => (
+            <CategoryTile key={category.key} category={category} />
+          ))}
         </div>
       </div>
     </ExploreShell>

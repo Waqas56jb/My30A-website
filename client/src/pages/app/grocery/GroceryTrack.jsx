@@ -105,8 +105,9 @@ export default function GroceryTrack() {
             <Cta to={`/app/grocery/tip?id=${order.id}`}>Leave a Tip for Your Shopper</Cta>
           ) : null}
           {['requested', 'assigned'].includes(order.status) &&
-          !['authorized', 'captured'].includes(order.payment_status) ? (
-            <Cta to={`/app/grocery/payment?id=${order.id}`}>Authorize Payment</Cta>
+          order.payment_method !== 'cash' &&
+          !order.card_saved ? (
+            <Cta to={`/app/grocery/payment?id=${order.id}`}>Save Card for Delivery</Cta>
           ) : null}
           {order.status === 'requested' ? (
             <Cta onClick={cancel} ghost disabled={busy}>

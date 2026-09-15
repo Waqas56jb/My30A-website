@@ -97,6 +97,7 @@ export const guest = {
   payGrocery: (id, payment_method) =>
     api(`/api/guest/grocery/${id}/pay`, { method: 'POST', body: { payment_method } }),
   syncGroceryPayment: (id) => api(`/api/guest/grocery/${id}/sync-payment`, { method: 'POST' }),
+  markGroceryCardSaved: (id) => api(`/api/guest/grocery/${id}/card-saved`, { method: 'POST' }),
   cancelGrocery: (id) => api(`/api/guest/grocery/${id}/cancel`, { method: 'POST' }),
   tipGrocery: (id, tip_amount) =>
     api(`/api/guest/grocery/${id}/tip`, { method: 'POST', body: { tip_amount } }),
