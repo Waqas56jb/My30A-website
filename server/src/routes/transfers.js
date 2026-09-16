@@ -1081,6 +1081,53 @@ router.patch('/:id', requireRole('admin'), async (req, res, next) => {
   }
 })
 
+// Admin-only: guests can no longer self-select a holiday/peak-date surcharge in the app — only
+// staff add it (after confirming the date actually qualifies), and it just shows up as a fee.
+router.post('/:id/holiday-fee', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { transfer, error } = await loadTransfer(req.params.id)
+    if (error || !transfer) return res.status(404).json({ error: 'Transfer not found' })
+    if (!['requested', 'assigned'].includes(transfer.status)) {
+      return res.status(400).json({ error: 'Holiday fee can only be changed while requested or assigned' })
+    }
+
+    const apply = Boolean(req.body?.apply)
+    const { data: addon, error: catalogError } = await supabase
+      .from('service_catalog')
+      .select('key, name, price')
+      .eq('kind', 'transfer_addon')
+      .eq('key', 'transfer-holiday')
+      .eq('is_active', true)
+      .maybeSingle()
+    if (catalogError) return res.status(400).json({ error: catalogError.message })
+    if (!addon) return res.status(400).json({ error: 'Holiday add-on is not configured' })
+
+    const otherAddons = (transfer.addons || []).filter((row) => row.key !== addon.key)
+    const addons = apply ? [...otherAddons, { key: addon.key, name: addon.name, price: Number(addon.price) }] : otherAddons
+
+    // Recompute from the same stored inputs quoteTransfer used at booking time (base_price +
+    // addons, then the round-trip discount) — matches existing custom_price behavior above in
+    // not touching any Stripe hold the guest may have already authorized for the old amount.
+    const basePrice = Number(transfer.base_price) || 0
+    const addonsTotal = addons.reduce((sum, row) => sum + Number(row.price), 0)
+    const discountPercent = Number(transfer.discount_percent) || 0
+    const listTotal = Number((basePrice + addonsTotal).toFixed(2))
+    const customerCharge = Number((listTotal * (1 - discountPercent / 100)).toFixed(2))
+
+    const { data, error: updateError } = await supabase
+      .from('transfers')
+      .update({ addons, customer_charge: customerCharge, cash_expected: customerCharge })
+      .eq('id', transfer.id)
+      .select(TRANSFER_SELECT)
+      .single()
+    if (updateError) return res.status(400).json({ error: updateError.message })
+
+    res.json(adminView(data))
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.get('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const { transfer, error } = await loadTransfer(req.params.id)

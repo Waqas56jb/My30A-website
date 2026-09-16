@@ -282,8 +282,10 @@ async function main() {
   const bonfireSlug = bonfireList.vendors[0].slug
   const bonfire = await expect('GET /api/guest/explore/vendor/:slug (real partner)', 'GET', `/api/guest/explore/vendor/${bonfireSlug}`, G, 200, (d) => d.name === bonfireList.vendors[0].name && d.saved === false && d.website_url !== undefined)
   await expect('GET /api/guest/explore/vendor/:uuid', 'GET', `/api/guest/explore/vendor/${bonfire.id}`, G, 200, (d) => d.slug === bonfireSlug)
-  await expect('GET /api/guest/explore/vendor/pescado (restaurant)', 'GET', '/api/guest/explore/vendor/pescado', G, 200, (d) => d.kind === 'restaurant' && d.tags.length === 5 && d.hours_today)
-  await expect('GET /api/guest/explore/vendor/rosemary (beach)', 'GET', '/api/guest/explore/vendor/rosemary', G, 200, (d) => d.kind === 'beach' && d.amenities.length === 6 && d.rules.length === 5)
+  // The mockup-era placeholder restaurant/beach rows are retired (never client data) — they
+  // must be unreachable, not just delisted.
+  await expect('GET /api/guest/explore/vendor/pescado (retired placeholder) → 404', 'GET', '/api/guest/explore/vendor/pescado', G, 404)
+  await expect('GET /api/guest/explore/vendor/rosemary (retired placeholder) → 404', 'GET', '/api/guest/explore/vendor/rosemary', G, 404)
   await expect('GET /api/guest/explore/info', 'GET', '/api/guest/explore/info', G, 200, (d) => d.sections.length === 8 && d.sections[0].items.length === 6)
   await expect('POST /api/guest/saved/:slug', 'POST', `/api/guest/saved/${bonfireSlug}`, G, 201, (d) => d.saved === true)
   await expect('GET /api/guest/saved', 'GET', '/api/guest/saved', G, 200, (d) => d.some((v) => v.slug === bonfireSlug))
@@ -292,7 +294,17 @@ async function main() {
   await expect('POST /api/guest/saved/unknown → 404', 'POST', '/api/guest/saved/does-not-exist', G, 404)
 
   // ---------- 9. guest transfer request ----------
-  await expect('POST /api/guest/transfers/quote', 'POST', '/api/guest/transfers/quote', { ...G, body: { airport: 'ECP', vehicle_type: '4pax', holiday: true } }, 200, (d) => d.base_price === 85 && d.total === 125 && d.community.name === 'Rosemary Beach')
+  // Holiday/peak-date surcharge is staff-only now (client request) — a guest sending
+  // holiday:true (or addons directly) is silently ignored, not applied.
+  await expect('POST /api/guest/transfers/quote', 'POST', '/api/guest/transfers/quote', { ...G, body: { airport: 'ECP', vehicle_type: '4pax' } }, 200, (d) => d.base_price === 85 && d.total === 85 && d.community.name === 'Rosemary Beach')
+  await expect(
+    'POST /api/guest/transfers/quote holiday:true is ignored (guest can no longer self-select it)',
+    'POST',
+    '/api/guest/transfers/quote',
+    { ...G, body: { airport: 'ECP', vehicle_type: '4pax', holiday: true, addons: ['transfer-holiday'] } },
+    200,
+    (d) => d.total === 85 && d.addons.length === 0
+  )
   await expect('POST /api/guest/transfers/quote bad airport → 400', 'POST', '/api/guest/transfers/quote', { ...G, body: { airport: 'JFK' } }, 400)
   const scheduled = isoPlusHours(30)
   const t1 = await expect(
@@ -301,7 +313,7 @@ async function main() {
     '/api/guest/transfers',
     { ...G, body: { trip_type: 'arrival', airport: 'ECP', vehicle_type: '4pax', scheduled_at: scheduled, passengers: 2, bags: 3, flight_number: 'WN 0987', holiday: true, payment_method: 'card' } },
     201,
-    (d) => d.status === 'requested' && d.total === 125 && d.trip_type === 'arrival' && d.pickup_address.startsWith('ECP')
+    (d) => d.status === 'requested' && d.total === 85 && d.trip_type === 'arrival' && d.pickup_address.startsWith('ECP')
   )
   await expect('POST /api/guest/transfers missing date → 400', 'POST', '/api/guest/transfers', { ...G, body: { airport: 'ECP' } }, 400)
   await expect('GET /api/guest/transfers', 'GET', '/api/guest/transfers', G, 200, (d) => d.some((t) => t.id === t1.id))
@@ -309,6 +321,26 @@ async function main() {
   await expect('GET /api/guest/transfers/:id', 'GET', `/api/guest/transfers/${t1.id}`, G, 200, (d) => d.status_log.length === 1 && d.status_log[0].status === 'requested')
   await expect('POST /api/guest/transfers/:id/pay', 'POST', `/api/guest/transfers/${t1.id}/pay`, { ...G, body: { payment_method: 'apple_pay' } }, 200, (d) => d.payment_method === 'apple_pay')
   await expect('POST /api/guest/transfers/:id/tip before completion → 400', 'POST', `/api/guest/transfers/${t1.id}/tip`, { ...G, body: { tip_amount: 5 } }, 400)
+
+  // Admin-only holiday fee toggle (POST /api/transfers/:id/holiday-fee)
+  await expect(
+    'POST /api/transfers/:id/holiday-fee apply=true adds the $40 fee',
+    'POST',
+    `/api/transfers/${t1.id}/holiday-fee`,
+    { ...A, body: { apply: true } },
+    200,
+    (d) => d.customer_charge === 125 && d.addons.some((addon) => addon.key === 'transfer-holiday' && addon.price === 40)
+  )
+  await expect('GET /api/guest/transfers/:id sees the admin-added holiday fee', 'GET', `/api/guest/transfers/${t1.id}`, G, 200, (d) => d.total === 125 && d.addons.some((addon) => addon.key === 'transfer-holiday'))
+  await expect(
+    'POST /api/transfers/:id/holiday-fee apply=false removes it again',
+    'POST',
+    `/api/transfers/${t1.id}/holiday-fee`,
+    { ...A, body: { apply: false } },
+    200,
+    (d) => d.customer_charge === 85 && !d.addons.some((addon) => addon.key === 'transfer-holiday')
+  )
+  await expect('POST /api/transfers/:id/holiday-fee as guest → 403', 'POST', `/api/transfers/${t1.id}/holiday-fee`, { ...G, body: { apply: true } }, 403)
   const t2 = await expect('POST /api/guest/transfers (T2 departure, to cancel)', 'POST', '/api/guest/transfers', { ...G, body: { trip_type: 'departure', airport: 'VPS', vehicle_type: '6pax', scheduled_at: isoPlusHours(50), passengers: 4, bags: 4 } }, 201, (d) => d.direction === 'to_airport' && d.dropoff_address.startsWith('VPS'))
   await expect('POST /api/guest/transfers/:id/cancel (T2)', 'POST', `/api/guest/transfers/${t2.id}/cancel`, G, 200, (d) => d.status === 'cancelled')
   await expect('cancel again → 400', 'POST', `/api/guest/transfers/${t2.id}/cancel`, G, 400)
@@ -356,8 +388,10 @@ async function main() {
   await expect('GET /api/notifications/mine (guest)', 'GET', '/api/notifications/mine', G, 200, (d) => d.notifications.length >= 2)
 
   // ---------- 11. admin sees + assigns the requests ----------
+  // T1's addons are empty here — its holiday fee was added then removed again above, proving
+  // the admin-only toggle works both ways (guest-side holiday:true on creation was ignored).
   await expect('GET /api/transfers?status=requested', 'GET', '/api/transfers?status=requested', A, 200, (d) => d.some((t) => t.id === t1.id && t.is_guest_request && t.guest_account?.email === GUEST.email))
-  await expect('GET /api/transfers/:id (admin)', 'GET', `/api/transfers/${t1.id}`, A, 200, (d) => d.addons.length === 1 && d.base_price === 85)
+  await expect('GET /api/transfers/:id (admin)', 'GET', `/api/transfers/${t1.id}`, A, 200, (d) => d.addons.length === 0 && d.base_price === 85)
   await expect('PATCH /api/transfers/:id while requested', 'PATCH', `/api/transfers/${t1.id}`, { ...A, body: { notes: 'Guest arrives Terminal B' } }, 200, (d) => d.notes === 'Guest arrives Terminal B')
   await expect('POST /api/transfers/:id/assign missing → 400', 'POST', `/api/transfers/${t1.id}/assign`, { ...A, body: {} }, 400)
   await expect('POST /api/transfers/:id/assign', 'POST', `/api/transfers/${t1.id}/assign`, { ...A, body: { driver_id: ids.driver, vehicle_id: vehicle.id } }, 200, (d) => d.status === 'assigned' && d.driver_id === ids.driver && d.vehicle_owner_id === ids.partner)
@@ -467,7 +501,7 @@ async function main() {
   // ---------- 18. Vitoria ----------
   await expect('DELETE /api/guest/vitoria/messages (reset)', 'DELETE', '/api/guest/vitoria/messages', G, 200)
   await expect('GET /api/guest/vitoria/messages (empty)', 'GET', '/api/guest/vitoria/messages', G, 200, (d) => d.messages.length === 0 && d.greeting.includes('Alex'))
-  const chat1 = await expect('POST /api/guest/vitoria/messages "Best beach today"', 'POST', '/api/guest/vitoria/messages', { ...G, body: { content: 'Best beach today' } }, 201, (d) => d.assistant?.content?.length > 20)
+  const chat1 = await expect('POST /api/guest/vitoria/messages "Best beach today" (real AI, not fallback)', 'POST', '/api/guest/vitoria/messages', { ...G, body: { content: 'Best beach today' } }, 201, (d) => d.assistant?.content?.length > 20 && d.model !== 'fallback')
   console.log(`      Vitoria (${chat1.model}${chat1.skipped_reason ? `, fallback because: ${chat1.skipped_reason}` : ''}): ${chat1.assistant.content.slice(0, 160)}…`)
   const chat2 = await expect('POST /api/guest/vitoria/messages "Dinner tonight"', 'POST', '/api/guest/vitoria/messages', { ...G, body: { content: 'Dinner tonight' } }, 201, (d) => d.assistant?.content?.length > 20)
   console.log(`      Vitoria (${chat2.model}): ${chat2.assistant.content.slice(0, 160)}…`)

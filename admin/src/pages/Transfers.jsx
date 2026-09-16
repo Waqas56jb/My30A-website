@@ -543,12 +543,7 @@ export default function Transfers() {
               {trip.is_guest_request ? (
                 <>
                   <span>Guest app</span>
-                  <span>
-                    {trip.guest_account?.email || '—'}
-                    {trip.addons?.length
-                      ? ` · add-ons: ${trip.addons.map((addon) => addon.name).join(', ')}`
-                      : ''}
-                  </span>
+                  <span>{trip.guest_account?.email || '—'}</span>
                 </>
               ) : null}
               <span>Pickup</span>
@@ -579,16 +574,21 @@ export default function Transfers() {
                 ) : null}
                 {trip.cash_reported != null ? ` · reported ${usd(trip.cash_reported)}` : ''}
               </span>
-              {trip.cancellation_fee || trip.no_show_fee || trip.discount_percent ? (
-                <>
-                  <span>Fees</span>
-                  <span>
-                    {trip.no_show_fee ? `No-show $${trip.no_show_fee}` : ''}
-                    {trip.cancellation_fee ? `Cancellation $${trip.cancellation_fee}` : ''}
-                    {trip.discount_percent ? `Round trip −${trip.discount_percent}%` : ''}
-                  </span>
-                </>
-              ) : null}
+              {(() => {
+                const holidayFee = (trip.addons || []).find((addon) => addon.key === 'transfer-holiday')
+                const parts = [
+                  trip.no_show_fee ? `No-show $${trip.no_show_fee}` : null,
+                  trip.cancellation_fee ? `Cancellation $${trip.cancellation_fee}` : null,
+                  trip.discount_percent ? `Round trip −${trip.discount_percent}%` : null,
+                  holidayFee ? `Holiday fee $${holidayFee.price}` : null,
+                ].filter(Boolean)
+                return parts.length ? (
+                  <>
+                    <span>Fees</span>
+                    <span>{parts.join(' · ')}</span>
+                  </>
+                ) : null
+              })()}
               {trip.guest_links ? (
                 <>
                   <span>Guest links</span>
@@ -730,6 +730,26 @@ export default function Transfers() {
                   Flag
                 </Button>
               )}
+              {['requested', 'assigned'].includes(trip.status) ? (
+                (() => {
+                  const hasHolidayFee = (trip.addons || []).some((addon) => addon.key === 'transfer-holiday')
+                  return (
+                    <Button
+                      className="btn quiet"
+                      pending={working === `/api/transfers/${trip.id}/holiday-fee`}
+                      onClick={() =>
+                        act(
+                          `/api/transfers/${trip.id}/holiday-fee`,
+                          { apply: !hasHolidayFee },
+                          hasHolidayFee ? 'Holiday fee removed' : 'Holiday fee added'
+                        )
+                      }
+                    >
+                      {hasHolidayFee ? 'Remove Holiday Fee' : 'Add Holiday Fee'}
+                    </Button>
+                  )
+                })()
+              ) : null}
               {['requested', 'assigned', 'started', 'arrived', 'picked_up'].includes(trip.status) ? (
                 <>
                   <Button

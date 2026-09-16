@@ -25,6 +25,7 @@ import {
 import { maskedCallNumber } from '../lib/sms.js'
 import { geocodeQuery } from '../lib/nominatim.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
+import { loadVitoriaKnowledge, vitoriaFallback, vitoriaSystemPrompt } from '../services/vitoria.js'
 import {
   ROUND_TRIP_DISCOUNT_PERCENT,
   availableCredit,
@@ -502,14 +503,11 @@ async function quoteTransfer(body, booking) {
 
   const priced = await getBasePrice({ community_id: community.id, airport, vehicle_type })
   const catalog = await loadCatalog()
-  const requested = Array.isArray(body.addons)
-    ? body.addons
-    : body.holiday
-      ? ['transfer-holiday']
-      : []
-  const addons = catalog.transfer.addons
-    .filter((addon) => requested.includes(addon.key))
-    .map((addon) => ({ key: addon.key, name: addon.name, price: addon.price }))
+  // Transfer add-ons (currently just the holiday/peak-date surcharge) are staff-only now — a
+  // guest can no longer self-select one at booking time; admin adds it after the fact via
+  // POST /api/transfers/:id/holiday-fee once the request is in. See quoteGrocery below for the
+  // (still guest-selectable) grocery add-ons, which are a separate, unrelated catalog.
+  const addons = []
   const base_price = round2(priced.base_price)
   const addons_total = round2(addons.reduce((sum, addon) => sum + addon.price, 0))
   const list_total = round2(base_price + addons_total)
@@ -1873,8 +1871,9 @@ router.post('/grocery/:id/tip', guestOnly, async (req, res, next) => {
 
 // ---------- Vitoria concierge ----------
 
+// Per-guest tail of Vitoria's prompt (the big stable knowledge pack lives in services/vitoria.js).
 async function vitoriaContext(userId) {
-  const [profile, booking, trips, orders, guides, restaurants, info] = await Promise.all([
+  const [profile, booking, trips, orders, beaches] = await Promise.all([
     loadProfile(userId),
     loadBooking(userId),
     supabase
@@ -1891,14 +1890,12 @@ async function vitoriaContext(userId) {
       .in('status', ACTIVE_ORDER)
       .order('delivery_time')
       .limit(3),
-    supabase.from('explore_guides').select('title, kind, place, price_from, filters').eq('is_active', true).order('sort_order'),
     supabase
-      .from('explore_vendors')
-      .select('name, kind, place, cuisine, hours, description, price_from')
+      .from('public_places')
+      .select('name, community, details')
       .eq('is_active', true)
-      .order('sort_order')
-      .limit(40),
-    supabase.from('public_info_sections').select('title, items').eq('is_active', true).order('sort_order'),
+      .like('section_key', 'beach-access%')
+      .order('sort_order'),
   ])
   return {
     profile,
@@ -1906,99 +1903,9 @@ async function vitoriaContext(userId) {
     booking: bookingView(booking),
     trips: trips.data || [],
     orders: orders.data || [],
-    guides: guides.data || [],
-    vendors: restaurants.data || [],
-    info: info.data || [],
+    beachAccesses: beaches.data || [],
+    formatWhen,
   }
-}
-
-function systemPrompt(ctx) {
-  const lines = [
-    'You are Vitoria, the elegant AI concierge inside the My30A Host guest app for vacation rentals on Scenic Highway 30A, Florida.',
-    'Voice: warm, confident, effortlessly polished — like a five-star hotel concierge texting a guest. Never robotic, never salesy, never gushing.',
-    '',
-    'Formatting rules — follow exactly, no exceptions:',
-    '- Plain text only. Never use markdown: no **bold**, no _italics_, no # headings, no [links](url), no backticks.',
-    '- Never use dashes, bullets or asterisks as list markers. If you mention more than one option, put each on its own line as a short natural phrase — no symbol in front of it.',
-    '- Keep replies short: 2-4 sentences total, or 2-4 short lines when naming multiple places.',
-    '- Separate distinct ideas with one blank line (a real paragraph break). Never run them together in one dense block.',
-    '- Say a place’s name plainly — never bold it, quote it, or capitalize it for emphasis.',
-    '- End with at most one short, warm follow-up question, on its own line — and only when it genuinely helps.',
-    'Recommend only places from the data below. Never invent phone numbers or prices.',
-    'Airport transfers and Publix grocery delivery are booked in the Services tab of the app; point guests there when relevant.',
-    '',
-    `Guest: ${ctx.profile?.name || 'Guest'} (${ctx.firstName}).`,
-  ]
-  if (ctx.booking) {
-    lines.push(
-      `Stay: ${ctx.booking.community_name || 'a 30A community'}${ctx.booking.property_address ? `, ${ctx.booking.property_address}` : ''}${ctx.booking.check_in ? ` · ${ctx.booking.check_in} to ${ctx.booking.check_out || '?'}` : ''}.`
-    )
-  }
-  if (ctx.trips.length) {
-    lines.push(
-      'Active transfers: ' +
-        ctx.trips.map((t) => `#${t.trip_number} ${t.status} ${formatWhen(t.scheduled_at)} ${t.airport}`).join('; ')
-    )
-  }
-  if (ctx.orders.length) {
-    lines.push(
-      'Active grocery orders: ' +
-        ctx.orders.map((o) => `#${o.order_number} ${o.status} ${o.package} ${formatWhen(o.delivery_time)}`).join('; ')
-    )
-  }
-  lines.push('', 'Local guide (title · kind · place · from):')
-  for (const g of ctx.guides) lines.push(`- ${g.title} · ${g.kind} · ${g.place || ''} · ${g.price_from || ''}`)
-  lines.push('', 'Places (name · kind · place · details):')
-  for (const v of ctx.vendors) {
-    lines.push(`- ${v.name} · ${v.kind} · ${v.place || ''} · ${[v.cuisine, v.hours, v.description].filter(Boolean).join(' · ')}`)
-  }
-  lines.push('', 'Public information:')
-  for (const s of ctx.info) lines.push(`- ${s.title}: ${(s.items || []).join(' ')}`)
-  return lines.join('\n').slice(0, 12000)
-}
-
-// Used only when the AI is unavailable — same voice and layout rules as the system prompt:
-// plain text, one idea per line, real paragraph breaks (\n\n), no bullet symbols.
-function fallbackReply(text, ctx) {
-  const q = String(text || '').toLowerCase()
-  const name = ctx.firstName
-  const byKind = (kind) => ctx.vendors.filter((v) => v.kind === kind)
-  const guidesOf = (kind) => ctx.guides.filter((g) => g.kind === kind)
-  const namedLines = (rows, pick) => rows.slice(0, 3).map(pick).join('\n')
-
-  if (/beach|sunset|swim/.test(q)) {
-    const beaches = byKind('beach')
-    if (!beaches.length) {
-      return `The beaches along 30A are all public access — look for the blue access signs.\n\nWould you like me to suggest a spot near your stay?`
-    }
-    return `For today, I’d recommend:\n\n${namedLines(beaches, (b) => `${b.name}, ${b.place}`)}\n\nCheck the beach flags before swimming — double red means the water is closed.`
-  }
-  if (/dinner|restaurant|eat|food|lunch|breakfast|top 5/.test(q)) {
-    const spots = byKind('restaurant')
-    if (!spots.length) {
-      return `Open Explore → Restaurants to see tonight’s dining picks near ${ctx.booking?.community_name || '30A'}.`
-    }
-    return `For dinner tonight, I’d book:\n\n${namedLines(spots, (r) => `${r.name}, ${r.place}${r.hours ? ` — ${r.hours}` : ''}`)}\n\nReservations are recommended in season. Tap the restaurant in Explore to book directly.`
-  }
-  if (/things to do|activit|fun|golf|bike|boat|kayak|paddle|photo|spa|massage|bonfire/.test(q)) {
-    const fun = guidesOf('vendors')
-    return `Here’s what’s popular this week, ${name}:\n\n${namedLines(fun, (g) => `${g.title}${g.price_from ? ` — ${g.price_from}` : ''}`)}\n\nOpen Explore → Local Guide to see vetted vendors and book directly with them.`
-  }
-  if (/grocer|publix|food delivery|stock/.test(q)) {
-    return `You can order groceries from the Services tab.\n\nPick a package, choose how you’d like the kitchen stocked, and upload your Publix cart screenshot.\n\nYou pay our flat service fee plus the exact Publix receipt — no markup.`
-  }
-  if (/airport|transfer|ride|pickup|pick up|drop|flight|shuttle|driver/.test(q)) {
-    return `Airport transfers to and from ECP, VPS and PNS are booked in the Services tab.\n\nAdd your flight number and we’ll track it and confirm your driver — you’ll get a notification as soon as it’s assigned.`
-  }
-  if (/rule|parking|park|weather|emergency|911|helpline|safety|flag/.test(q)) {
-    const section = ctx.info.find((s) => new RegExp(s.title.split(' ')[0].toLowerCase()).test(q)) || ctx.info[0]
-    if (!section) return `Open Explore → Public Information for beach rules, parking, safety and emergency helplines.`
-    return `${section.title}:\n\n${(section.items || []).slice(0, 3).join('\n')}\n\nYou’ll find the full list under Explore → Public Information.`
-  }
-  if (/hello|hi|hey|good (morning|afternoon|evening)/.test(q)) {
-    return `Hi ${name}. I can help with the best beach today, dinner tonight, things to do, groceries or airport transfers.\n\nWhat sounds good?`
-  }
-  return `Happy to help, ${name}.\n\nI can suggest beaches, dinner spots, activities and local essentials near ${ctx.booking?.community_name || '30A'}, or set you up with groceries and airport transfers from the Services tab.\n\nWhat would you like?`
 }
 
 router.get('/vitoria/messages', guestOnly, async (req, res, next) => {
@@ -2032,23 +1939,28 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
       .single()
     if (insertError) return res.status(400).json({ error: insertError.message })
 
-    const [ctx, history] = await Promise.all([
+    const [ctx, knowledge, history] = await Promise.all([
       vitoriaContext(req.user.id),
+      loadVitoriaKnowledge(),
       supabase
         .from('vitoria_messages')
         .select('role, content')
         .eq('guest_id', req.user.id)
         .order('created_at', { ascending: false })
-        .limit(12),
+        .limit(16),
     ])
     const recent = (history.data || []).reverse().map((m) => ({ role: m.role, content: m.content }))
 
     const completion = await chatCompletion({
-      messages: [{ role: 'system', content: systemPrompt(ctx) }, ...recent],
+      messages: [{ role: 'system', content: vitoriaSystemPrompt(knowledge, ctx) }, ...recent],
+      maxTokens: 700,
+      timeoutMs: 40000,
     })
     // Sanitized regardless of source — a stray "**" or "- " from the model must never reach
     // the guest, since the chat bubble renders plain text, not markdown.
-    const reply = cleanConciergeText(completion.skipped ? fallbackReply(content, ctx) : completion.content)
+    const reply = cleanConciergeText(
+      completion.skipped ? vitoriaFallback(content, ctx, ctx.beachAccesses) : completion.content
+    )
     const model = completion.skipped ? 'fallback' : completion.model
 
     const { data: assistantMessage, error: replyError } = await supabase

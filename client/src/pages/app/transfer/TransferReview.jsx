@@ -39,7 +39,6 @@ export default function TransferReview() {
   const booking = useBooking()
   const [agree, setAgree] = useState(true)
   const [policyOpen, setPolicyOpen] = useState(true)
-  const [holiday, setHoliday] = useState(Boolean(booking.holiday))
   const [roundTrip, setRoundTrip] = useState(false)
   const [returnDate, setReturnDate] = useState(tomorrow())
   const [returnTime, setReturnTime] = useState('11:00')
@@ -54,7 +53,6 @@ export default function TransferReview() {
     airport: booking.airport,
     community: booking.community,
     vehicle_type: booking.vehicleType,
-    holiday,
     round_trip: roundTrip,
   }
 
@@ -70,7 +68,7 @@ export default function TransferReview() {
       ignore = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking.tripType, booking.airport, booking.community, booking.vehicleType, holiday, roundTrip])
+  }, [booking.tripType, booking.airport, booking.community, booking.vehicleType, roundTrip])
 
   const submit = async () => {
     setError('')
@@ -95,7 +93,7 @@ export default function TransferReview() {
       })
       navigate('/app/transfer/pending', {
         replace: true,
-        state: { booking: { ...booking, holiday }, transfer },
+        state: { booking, transfer },
       })
     } catch (err) {
       setError(errorText(err))
@@ -199,20 +197,6 @@ export default function TransferReview() {
               />
             </label>
           </section>
-        ) : null}
-
-        {quote?.available_addons?.length ? (
-          <button
-            type="button"
-            className="app-xfer-agree"
-            aria-pressed={holiday}
-            onClick={() => setHoliday((h) => !h)}
-          >
-            <span className={`app-xfer-cb${holiday ? ' is-on' : ''}`} aria-hidden="true">
-              {holiday ? <Check size={12} strokeWidth={3} /> : null}
-            </span>
-            Add {quote.available_addons[0].name} (+${quote.available_addons[0].price}) — holiday / peak date
-          </button>
         ) : null}
 
         <section className="app-xfer-card">
