@@ -11,6 +11,7 @@ import {
   recommendDining,
   understandDining,
 } from './dining.js'
+import { beachCard, distinctPhotos, recommendBeaches } from './beaches.js'
 
 const low = (s) => String(s || '').toLowerCase()
 const TRIP_STATUS = {
@@ -122,38 +123,29 @@ async function answerNamedPlace(rows, ctx) {
   }
 }
 
-// 30A communities west → east; "nearest" beach access = fewest steps along the highway.
-const ALONG_30A = [
-  'miramar', 'topsail', 'dune allen', 'santa rosa', 'gulf place', 'blue mountain', 'grayton', 'watercolor',
-  'seaside', 'seagrove', 'watersound', 'prominence', 'alys', 'seacrest', 'rosemary', 'inlet',
-]
-const stepOf = (label) => {
-  const l = low(label)
-  const inner = l.match(/\(([^)]+)\)/)?.[1] || l
-  return ALONG_30A.findIndex((k) => inner.includes(k))
-}
-
-function answerBeach(ctx, community) {
-  const accesses = ctx.beachAccesses || []
-  if (!accesses.length) return 'Every beach along 30A has public accesses — look for the blue access signs.'
-  const home = community ? stepOf(community) : -1
-  let picks = accesses.slice(0, 3)
-  if (home >= 0) {
-    picks = accesses
-      .map((p, i) => ({ p, d: stepOf(p.community) < 0 ? 99 : Math.abs(stepOf(p.community) - home), i }))
-      .sort((x, y) => x.d - y.d || x.i - y.i)
-      .slice(0, 3)
-      .map((x) => x.p)
+async function answerBeach(text, ctx, community) {
+  const q = low(text)
+  const { picks, exact } = await recommendBeaches({
+    community,
+    parking: /park|car|drive/.test(q),
+    accessible: /wheelchair|accessible|stroller|mobi/.test(q),
+    dogs: /dog|pet/.test(q),
+  })
+  if (!picks.length) {
+    return { reply: 'Every beach along 30A has public accesses — look for the blue access signs.', places: [] }
   }
-  const exact = home >= 0 && picks.some((p) => stepOf(p.community) === home)
+  const cards = distinctPhotos(picks.map((b) => beachCard(b)))
+  const top = cards[0]
   const head = community
     ? exact
-      ? `Closest public beach accesses in ${community}:`
-      : `${community} doesn’t have a county access of its own — these are the closest public ones:`
-    : 'A few popular public beach accesses:'
-  const lines = picks.map((p) => `${p.name} (${p.community})${p.details ? ` — ${p.details}` : ''}`).join('\n')
-  const ask = community ? '' : '\n\nWhich community are you staying in? I’ll find the closest accesses.'
-  return `${head}\n\n${lines}\n\nCheck the flags when you arrive — double red means the water is closed.${ask}`
+      ? `Here are the best public beach accesses in and around ${community}, ${ctx.firstName}.`
+      : `These are the closest county public beach accesses to ${community}, ${ctx.firstName}.`
+    : `Here are three of the best-equipped public beaches along 30A, ${ctx.firstName}.`
+  const topLine = `My pick is ${top.name} in ${top.area}${top.facts.length ? ` (${top.facts.slice(0, 2).join(', ').toLowerCase()})` : ''}.`
+  const tail = community
+    ? 'Check the flags when you arrive: double red means the water is closed.'
+    : 'Which community are you staying in? I’ll find the closest accesses.'
+  return { reply: `${head}\n\n${topLine}\n\n${tail}`, places: cards }
 }
 
 function answerTrips(ctx) {
@@ -191,7 +183,7 @@ export async function vitoriaOffline(text, ctx, recent = []) {
   if (DINING_INTENT.test(q) || (placeOnly && topic !== 'beach')) return answerDining(text, userTexts, ctx)
 
   if (isBeachAsk(text) || (placeOnly && topic === 'beach')) {
-    return { reply: answerBeach(ctx, community), places: [] }
+    return answerBeach(text, ctx, community)
   }
   if (/saved|favou?rites|hearted/.test(q)) return { reply: answerSaved(ctx), places: [] }
   if (/airport|transfer|ride|pick ?up|drop ?off|flight|shuttle|driver|trip/.test(q)) return { reply: answerTrips(ctx), places: [] }

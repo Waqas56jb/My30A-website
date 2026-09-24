@@ -5,6 +5,7 @@
 // only the short per-guest tail changes between calls.
 import { supabase } from '../lib/supabase.js'
 import { diningCard, findDining } from './dining.js'
+import { beachCard, distinctPhotos, findBeach } from './beaches.js'
 
 const TIME_ZONE = 'America/Chicago'
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -298,6 +299,11 @@ export async function enrichPlaces(places) {
         if (!card.hours && p.hours) card.hours = String(p.hours).replace(/\*\*/g, '')
         return card
       }
+      // Beach accesses / state parks from the county list: photo, parking + restroom facts, directions.
+      if (/beach|access|park|rba|inlet|dune|lake/i.test(`${p.name} ${p.category}`)) {
+        const beach = await findBeach(p.name)
+        if (beach) return beachCard(beach, p.why)
+      }
       const vendor = byName.get(normalize(p.name))
       const query = encodeURIComponent([p.name, p.area || '30A', 'FL'].filter(Boolean).join(' '))
       return {
@@ -321,7 +327,7 @@ export async function enrichPlaces(places) {
   )
   // The model sometimes names the same place twice in different words — one card each.
   const seen = new Set()
-  return cards.filter((c) => {
+  return distinctPhotos(cards).filter((c) => {
     const key = c.slug || normalize(c.name)
     if (seen.has(key)) return false
     seen.add(key)

@@ -100,6 +100,11 @@ function PlaceCard({ place }) {
             <BadgeCheck size={12} strokeWidth={2} aria-hidden="true" />
             My30A Partner
           </span>
+        ) : place.kind === 'beach' ? (
+          <span className="app-vit-card-badge is-beach">
+            <Umbrella size={12} strokeWidth={2} aria-hidden="true" />
+            Public Access
+          </span>
         ) : place.in_guide ? (
           <span className="app-vit-card-badge is-fav">
             <Star size={12} strokeWidth={2} aria-hidden="true" />
@@ -113,6 +118,13 @@ function PlaceCard({ place }) {
           <MapPin size={12} strokeWidth={1.8} aria-hidden="true" />
           {[place.area, place.category].filter(Boolean).join(' · ')}
         </p>
+        {place.facts?.length ? (
+          <div className="app-vit-card-facts">
+            {place.facts.map((f) => (
+              <span key={f}>{f}</span>
+            ))}
+          </div>
+        ) : null}
         {place.why ? <p className="app-vit-card-why">{place.why}</p> : null}
         {hours && (!hasStatus || rest.length) ? (
           <p className="app-vit-card-hours">
@@ -141,12 +153,12 @@ function PlaceCard({ place }) {
           ) : null}
           <a href={place.directions} target="_blank" rel="noreferrer" className={`app-vit-card-btn${tel || place.booking ? '' : ' is-primary'}`}>
             <Navigation size={13} strokeWidth={1.8} aria-hidden="true" />
-            Map
+            {place.kind === 'beach' ? 'Directions' : 'Map'}
           </a>
         </div>
         {place.to || place.slug ? (
           <Link to={place.to || `/app/explore/vendor/${place.slug}`} className="app-vit-card-more">
-            View full profile
+            {place.kind === 'beach' ? 'All beach accesses' : 'View full profile'}
           </Link>
         ) : null}
       </div>
