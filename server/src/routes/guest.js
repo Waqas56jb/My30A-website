@@ -11,7 +11,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
 import { notify } from '../services/notifications.js'
 import { getSignedUrl, uploadFile } from '../lib/storage.js'
-import { chatCompletion } from '../lib/openai.js'
+import { chatCompletion, webResponse } from '../lib/openai.js'
 import { cleanConciergeText } from '../lib/textFormat.js'
 import {
   createPaymentIntent,
@@ -25,7 +25,7 @@ import {
 import { maskedCallNumber } from '../lib/sms.js'
 import { geocodeQuery } from '../lib/nominatim.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
-import { loadVitoriaKnowledge, vitoriaFallback, vitoriaSystemPrompt } from '../services/vitoria.js'
+import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaFallback, vitoriaSystemPrompt } from '../services/vitoria.js'
 import {
   ROUND_TRIP_DISCOUNT_PERCENT,
   availableCredit,
@@ -1912,7 +1912,7 @@ router.get('/vitoria/messages', guestOnly, async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('vitoria_messages')
-      .select('id, role, content, model, created_at')
+      .select('id, role, content, model, places, created_at')
       .eq('guest_id', req.user.id)
       .order('created_at', { ascending: true })
       .limit(200)
@@ -1935,7 +1935,7 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
     const { data: userMessage, error: insertError } = await supabase
       .from('vitoria_messages')
       .insert({ guest_id: req.user.id, role: 'user', content })
-      .select('id, role, content, model, created_at')
+      .select('id, role, content, model, places, created_at')
       .single()
     if (insertError) return res.status(400).json({ error: insertError.message })
 
@@ -1951,22 +1951,47 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
     ])
     const recent = (history.data || []).reverse().map((m) => ({ role: m.role, content: m.content }))
 
-    const completion = await chatCompletion({
-      messages: [{ role: 'system', content: vitoriaSystemPrompt(knowledge, ctx) }, ...recent],
-      maxTokens: 700,
-      timeoutMs: 40000,
+    const instructions = vitoriaSystemPrompt(knowledge, ctx)
+    // Preferred: live web search (today's hours, phones) + structured place cards. If that path
+    // fails, plain chat with the same knowledge; if OpenAI is down entirely, the offline reply.
+    let rawReply = null
+    let rawPlaces = []
+    let model = 'fallback'
+    let skippedReason = null
+    const web = await webResponse({
+      instructions,
+      input: recent,
+      schema: VITORIA_SCHEMA,
+      location: { country: 'US', region: 'Florida', city: ctx.booking?.community_name || 'Santa Rosa Beach' },
     })
-    // Sanitized regardless of source — a stray "**" or "- " from the model must never reach
-    // the guest, since the chat bubble renders plain text, not markdown.
+    if (!web.skipped && web.data?.reply) {
+      rawReply = web.data.reply
+      rawPlaces = web.data.places || []
+      model = `${web.model}+web`
+    } else {
+      const completion = await chatCompletion({
+        messages: [{ role: 'system', content: instructions.replace(/Output: respond with JSON[\s\S]*?Never put URLs, citations or source markers in "reply"\.\n/, '') }, ...recent],
+        maxTokens: 700,
+        timeoutMs: 40000,
+      })
+      if (!completion.skipped) {
+        rawReply = completion.content
+        model = completion.model
+      } else {
+        skippedReason = completion.reason
+      }
+    }
+    // Sanitized regardless of source — a stray "**", "- " or citation link from the model must
+    // never reach the guest, since the chat bubble renders plain text, not markdown.
     const reply = cleanConciergeText(
-      completion.skipped ? vitoriaFallback(content, ctx, ctx.beachAccesses) : completion.content
+      (rawReply ?? vitoriaFallback(content, ctx, ctx.beachAccesses)).replace(/\s*\(\[[^\]]*\]\([^)]*\)\)/g, '')
     )
-    const model = completion.skipped ? 'fallback' : completion.model
+    const places = await enrichPlaces(rawPlaces)
 
     const { data: assistantMessage, error: replyError } = await supabase
       .from('vitoria_messages')
-      .insert({ guest_id: req.user.id, role: 'assistant', content: reply, model })
-      .select('id, role, content, model, created_at')
+      .insert({ guest_id: req.user.id, role: 'assistant', content: reply, model, places: places.length ? places : null })
+      .select('id, role, content, model, places, created_at')
       .single()
     if (replyError) return res.status(400).json({ error: replyError.message })
 
@@ -1974,7 +1999,7 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
       user: userMessage,
       assistant: assistantMessage,
       model,
-      ...(completion.skipped ? { skipped_reason: completion.reason } : {}),
+      ...(skippedReason ? { skipped_reason: skippedReason } : {}),
     })
   } catch (error) {
     next(error)

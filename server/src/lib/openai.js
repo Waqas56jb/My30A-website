@@ -17,6 +17,52 @@ function candidateModels(model) {
   return [...new Set(list)]
 }
 
+// Responses API with OpenAI's hosted web_search tool + a strict JSON schema for the final
+// answer. Used by Vitoria so she can look up live facts (today's restaurant hours) and return
+// structured place cards. Same { skipped, reason } contract as chatCompletion.
+export async function webResponse({ instructions, input, schema, model, location, timeoutMs = 60000 }) {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return NOT_CONFIGURED
+
+  let lastReason = 'OPENAI_FAILED'
+  for (const candidate of candidateModels(model)) {
+    try {
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: candidate,
+          instructions,
+          input,
+          tools: [{ type: 'web_search', ...(location ? { user_location: { type: 'approximate', ...location } } : {}) }],
+          text: { format: { type: 'json_schema', name: schema.name, strict: true, schema: schema.schema } },
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+      const json = await response.json().catch(() => null)
+      if (!response.ok) {
+        lastReason = json?.error?.message || `${response.status} ${response.statusText}`
+        if (response.status === 401 || response.status === 403) break
+        continue
+      }
+      const text = (json?.output || [])
+        .filter((item) => item.type === 'message')
+        .flatMap((item) => item.content || [])
+        .filter((part) => part.type === 'output_text')
+        .map((part) => part.text)
+        .join('')
+      try {
+        return { data: JSON.parse(text), model: candidate }
+      } catch {
+        lastReason = 'OPENAI_BAD_JSON'
+      }
+    } catch (error) {
+      lastReason = error?.name === 'TimeoutError' ? 'OPENAI_TIMEOUT' : error.message
+    }
+  }
+  return { skipped: true, reason: lastReason }
+}
+
 export function isOpenAiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY)
 }

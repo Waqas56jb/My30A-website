@@ -146,9 +146,10 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
     '',
     'What you know and how to use it:',
     '1. The MY30A HOST VETTED LOCAL GUIDE below is your first source. When it covers the request, recommend those partners by name with their real details (where they are, what they do, their phone or website when the guest wants to book or call). Never invent details for them.',
-    '2. When the guide has nothing for a request — restaurants and bars are the main example, no restaurant partners are listed yet — answer from your own knowledge of the 30A / South Walton area with real, well-known places, and say in one short phrase that these are general suggestions rather than My30A Host partners. Never refuse or say you can’t help just because something isn’t in the guide. For places outside the guide, don’t state exact prices, phone numbers or hours; suggest confirming hours before going.',
+    '2. When the guide has nothing for a request — restaurants and bars are the main example, no restaurant partners are listed yet — recommend real, well-known places in the 30A / South Walton area, and say in one short phrase that these are local favorites rather than My30A Host partners. Never refuse or say you can’t help just because something isn’t in the guide.',
+    '2b. You have a web_search tool. Use it whenever the guest asks about hours, whether a place is open, phone numbers, menus, events or anything time-sensitive, and whenever you recommend restaurants, so the hours you give are today’s real hours. Give hours confidently in a friendly form (e.g. “open today 11 AM–3:30 PM and 4:30–10 PM”). Never say you lack internet or Google access. If a search genuinely finds nothing, say hours weren’t listed and suggest calling.',
     '3. For beach access points, parks, playgrounds, safety, rules and emergency contacts, use the OFFICIAL PUBLIC INFORMATION. Match the guest to accesses in or next to their community. Beach flag colours and conditions change daily and you cannot see them live — tell guests to check the flags on arrival.',
-    '4. For airport transfers and Publix grocery delivery, quote from the price tables. Both are booked in the Services tab of the app; you cannot book on the guest’s behalf, so point them there.',
+    '4. For airport transfers and Publix grocery delivery, quote from the price tables. Those two — and only those two — are booked in the Services tab of the app. Everything else (partners, restaurants, rentals, tours) the guest books directly with the business using the Call / Website buttons on the cards; never say those are booked in the Services tab.',
     '5. Use the guest’s stay (community, address, dates) and today’s date to tailor every answer: “tonight”, “this weekend”, “near me” should reflect where and when they are.',
     '6. If the guest asks about something unrelated to 30A or their stay, help briefly and steer back to their trip.',
     '',
@@ -159,6 +160,12 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
     '- Separate distinct ideas with one blank line (a real paragraph break). Never run everything together in one dense block.',
     '- Say a place’s name plainly — never bold it, quote it, or capitalize it for emphasis.',
     '- End with at most one short, warm follow-up question, on its own line, and only when it genuinely helps.',
+    '',
+    'Output: respond with JSON matching the schema.',
+    '- "reply": your message to the guest, following the formatting rules above. When you recommend specific places, keep the reply to at most two short paragraphs (an intro plus one closing tip or question) — names, hours, phones and details go in the cards, not the text.',
+    '- "places": one card per specific place you recommend or are asked about (restaurants, partners, beach accesses, parks, pharmacies, etc.), in the order you recommend them, max 6. Empty array when the answer is not about specific places.',
+    '  name: exact business/place name. area: community or town. category: short type, e.g. "Seafood · Waterfront", "Golf cart rental", "Beach access". why: one short sentence on why it fits. hours: today’s hours from your web search, or "" if unknown. phone: real phone or "". website: bare domain or URL, or "". partner: true only if it appears in the MY30A HOST VETTED LOCAL GUIDE.',
+    '- Never put URLs, citations or source markers in "reply".',
     '',
     knowledge,
     '',
@@ -180,6 +187,82 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
     head.push('Their active grocery orders: ' + ctx.orders.map((o) => `#${o.order_number} ${o.status}, ${o.package}, delivery ${ctx.formatWhen(o.delivery_time)}`).join('; '))
   }
   return head.join('\n')
+}
+
+export const VITORIA_SCHEMA = {
+  name: 'vitoria_reply',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['reply', 'places'],
+    properties: {
+      reply: { type: 'string' },
+      places: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['name', 'area', 'category', 'why', 'hours', 'phone', 'website', 'partner'],
+          properties: {
+            name: { type: 'string' },
+            area: { type: 'string' },
+            category: { type: 'string' },
+            why: { type: 'string' },
+            hours: { type: 'string' },
+            phone: { type: 'string' },
+            website: { type: 'string' },
+            partner: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  },
+}
+
+const normalize = (s) =>
+  String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+const cleanUrl = (url) => {
+  const raw = String(url || '').trim().replace(/[?&]utm_source=openai/, '')
+  if (!raw) return ''
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+}
+
+// Turns the model's place list into render-ready cards: partners are matched against the DB so
+// the card gets the real photo, the Explore link and DB phone/website (never a guessed one).
+export async function enrichPlaces(places) {
+  const list = (Array.isArray(places) ? places : []).slice(0, 6)
+  if (!list.length) return []
+  const { data: vendors } = await supabase
+    .from('explore_vendors')
+    .select('slug, name, place, phone, website_url, image_url, rating, review_count')
+    .eq('is_active', true)
+    .eq('kind', 'vendor')
+  const byName = new Map((vendors || []).map((v) => [normalize(v.name), v]))
+  return list.map((p) => {
+    const vendor = byName.get(normalize(p.name))
+    const query = encodeURIComponent([p.name, p.area || '30A', 'FL'].filter(Boolean).join(' '))
+    return {
+      name: p.name,
+      area: p.area || vendor?.place || '',
+      category: p.category || '',
+      why: p.why || '',
+      hours: String(p.hours || '').replace(/\*\*/g, ''),
+      phone: vendor?.phone || p.phone || '',
+      website: cleanUrl(vendor?.website_url || p.website),
+      partner: Boolean(vendor),
+      slug: vendor?.slug || null,
+      image: vendor?.image_url || null,
+      rating: vendor?.rating != null ? Number(vendor.rating) : null,
+      reviews: vendor?.review_count || 0,
+      directions: `https://www.google.com/maps/search/?api=1&query=${query}`,
+    }
+  })
 }
 
 // Only when the AI is unreachable — same voice and layout rules, plain text, real paragraph breaks.

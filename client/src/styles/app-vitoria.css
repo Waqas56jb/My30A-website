@@ -349,3 +349,172 @@
     padding: 0 16px;
   }
 }
+
+/* Place cards under Vitoria's reply — swipeable carousel */
+.app-vitoria-bubbles {
+  max-width: 100%;
+}
+
+.app-vit-cards {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: calc(100vw - 80px);
+  margin-top: 2px;
+  padding: 2px 2px 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.app-vit-cards::-webkit-scrollbar {
+  display: none;
+}
+
+.app-vit-card {
+  flex: 0 0 232px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e6edf2;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(12, 67, 85, 0.08);
+  overflow: hidden;
+  scroll-snap-align: start;
+}
+
+.app-vit-card-top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92px;
+  background: #cccccc center / cover no-repeat;
+  color: #ffffff;
+}
+
+.app-vit-card-top.is-dine { background: linear-gradient(135deg, #3a2418 0%, #b8743d 100%); }
+.app-vit-card-top.is-beach { background: linear-gradient(135deg, #0f7fb5 0%, #7fd3e8 100%); }
+.app-vit-card-top.is-water { background: linear-gradient(135deg, #0b4f6c 0%, #20a4c3 100%); }
+.app-vit-card-top.is-ride { background: linear-gradient(135deg, #1e6b46 0%, #6cc494 100%); }
+.app-vit-card-top.is-well { background: linear-gradient(135deg, #6b5b3e 0%, #c9b27c 100%); }
+.app-vit-card-top.is-shop { background: linear-gradient(135deg, #7a2e5f 0%, #e08bb5 100%); }
+.app-vit-card-top.is-misc { background: linear-gradient(135deg, #1a6ebb 0%, #0c4355 100%); }
+
+.app-vit-card-top.has-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+.app-vit-card-badge {
+  position: absolute;
+  z-index: 1;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 10px;
+  color: #0c4355;
+}
+
+.app-vit-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+}
+
+.app-vit-card-body h3 {
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 120%;
+  color: #0a1628;
+}
+
+.app-vit-card-meta,
+.app-vit-card-hours {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 0;
+  font-family: var(--app-body);
+  font-size: 11px;
+  line-height: 135%;
+  color: #5b6b7a;
+}
+
+.app-vit-card-meta svg,
+.app-vit-card-hours svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.app-vit-card-hours {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #ecf8f1;
+  color: #16704a;
+  font-weight: 500;
+}
+
+.app-vit-card-why {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--app-body);
+  font-size: 11.5px;
+  line-height: 140%;
+  color: #2d3b48;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.app-vit-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.app-vit-card-btn {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 30px;
+  border: 1px solid #dfe7ee;
+  border-radius: 999px;
+  background: #f6f9fb;
+  font-family: var(--app-body);
+  font-weight: 500;
+  font-size: 11px;
+  color: #0c4355;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-vit-card-btn.is-primary {
+  border-color: transparent;
+  background: linear-gradient(180deg, #1a6ebb -8.82%, #0c4355 135.29%);
+  color: #ffffff;
+}
+
+.app-vit-card-more {
+  align-self: flex-start;
+  font-family: var(--app-body);
+  font-size: 11px;
+  color: #f49300;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

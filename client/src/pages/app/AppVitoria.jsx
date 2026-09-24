@@ -1,6 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowUp, Bell, Mic, Plus } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft,
+  ArrowUp,
+  BadgeCheck,
+  Bell,
+  Car,
+  Clock,
+  Globe,
+  Leaf,
+  MapPin,
+  Mic,
+  Navigation,
+  Phone,
+  Plus,
+  ShoppingBag,
+  Sparkles,
+  Umbrella,
+  UtensilsCrossed,
+  Waves,
+} from 'lucide-react'
 import { errorText, guest } from '../../lib/guestApi.js'
 
 const CHIPS = ['Best beach today', 'Dinner tonight', 'Things to do', 'Top 5 Restaurants']
@@ -23,17 +42,92 @@ function mergeById(base, extra) {
   return [...base, ...extra.filter((m) => m && !seen.has(m.id))]
 }
 
-// Collapse consecutive messages from the same side into one bubble group.
+// Collapse consecutive messages from the same side into one bubble group; place cards attached to
+// an assistant message ride along with its group and render under its bubbles.
 function groupMessages(messages) {
   const groups = []
   for (const m of messages) {
     const from = m.role === 'assistant' ? 'vitoria' : 'user'
     const last = groups[groups.length - 1]
     const paragraphs = paragraphsOf(m.content)
-    if (last && last.from === from) last.lines.push(...paragraphs)
-    else groups.push({ from, lines: paragraphs, key: m.id })
+    const places = Array.isArray(m.places) ? m.places : []
+    if (last && last.from === from) {
+      last.lines.push(...paragraphs)
+      last.places.push(...places)
+    } else groups.push({ from, lines: paragraphs, places, key: m.id })
   }
   return groups
+}
+
+// Card header: a real partner photo when we have one, otherwise a themed gradient + icon —
+// never a mismatched stock photo (a beach picture on a restaurant).
+const THEMES = [
+  { test: /restaurant|dining|seafood|sushi|italian|grill|bar|cafe|café|pizza|tapas|brunch|breakfast|bistro|steak|food|wine|cocktail/i, Icon: UtensilsCrossed, tone: 'is-dine' },
+  { test: /beach|access|bonfire|chair|umbrella/i, Icon: Umbrella, tone: 'is-beach' },
+  { test: /water|boat|kayak|paddle|charter|fishing|jet|yacht|surf/i, Icon: Waves, tone: 'is-water' },
+  { test: /golf|cart|bike|rental/i, Icon: Car, tone: 'is-ride' },
+  { test: /spa|yoga|wellness|massage|pilates|fitness/i, Icon: Leaf, tone: 'is-well' },
+  { test: /shop|boutique|market|gallery|store/i, Icon: ShoppingBag, tone: 'is-shop' },
+]
+const themeFor = (place) =>
+  THEMES.find((t) => t.test.test(`${place.category} ${place.name}`)) || { Icon: Sparkles, tone: 'is-misc' }
+
+function PlaceCard({ place }) {
+  const { Icon, tone } = themeFor(place)
+  const tel = place.phone ? `tel:${place.phone.replace(/[^\d+]/g, '')}` : null
+  return (
+    <article className="app-vit-card">
+      <div
+        className={`app-vit-card-top ${place.image ? 'has-photo' : tone}`}
+        style={place.image ? { backgroundImage: `url('${place.image}')` } : undefined}
+      >
+        {place.image ? null : <Icon size={26} strokeWidth={1.4} aria-hidden="true" />}
+        {place.partner ? (
+          <span className="app-vit-card-badge">
+            <BadgeCheck size={12} strokeWidth={2} aria-hidden="true" />
+            My30A Partner
+          </span>
+        ) : null}
+      </div>
+      <div className="app-vit-card-body">
+        <h3>{place.name}</h3>
+        <p className="app-vit-card-meta">
+          <MapPin size={12} strokeWidth={1.8} aria-hidden="true" />
+          {[place.area, place.category].filter(Boolean).join(' · ')}
+        </p>
+        {place.why ? <p className="app-vit-card-why">{place.why}</p> : null}
+        {place.hours ? (
+          <p className="app-vit-card-hours">
+            <Clock size={12} strokeWidth={1.8} aria-hidden="true" />
+            {place.hours}
+          </p>
+        ) : null}
+        <div className="app-vit-card-actions">
+          {tel ? (
+            <a href={tel} className="app-vit-card-btn">
+              <Phone size={13} strokeWidth={1.8} aria-hidden="true" />
+              Call
+            </a>
+          ) : null}
+          {place.website ? (
+            <a href={place.website} target="_blank" rel="noreferrer" className="app-vit-card-btn">
+              <Globe size={13} strokeWidth={1.8} aria-hidden="true" />
+              Website
+            </a>
+          ) : null}
+          <a href={place.directions} target="_blank" rel="noreferrer" className="app-vit-card-btn is-primary">
+            <Navigation size={13} strokeWidth={1.8} aria-hidden="true" />
+            Map
+          </a>
+        </div>
+        {place.slug ? (
+          <Link to={`/app/explore/vendor/${place.slug}`} className="app-vit-card-more">
+            View in Explore
+          </Link>
+        ) : null}
+      </div>
+    </article>
+  )
 }
 
 export default function AppVitoria() {
@@ -130,7 +224,7 @@ export default function AppVitoria() {
 
   const groups = groupMessages(messages)
   const thread = messages.length
-    ? [{ from: 'vitoria', lines: [greeting || 'Hello', FOLLOW_UP], key: 'greeting' }, ...groups]
+    ? [{ from: 'vitoria', lines: [greeting || 'Hello', FOLLOW_UP], places: [], key: 'greeting' }, ...groups]
     : []
 
   return (
@@ -191,6 +285,13 @@ export default function AppVitoria() {
                           {line}
                         </p>
                       ))}
+                      {m.places?.length ? (
+                        <div className="app-vit-cards" role="list" aria-label="Recommended places">
+                          {m.places.map((place, i) => (
+                            <PlaceCard key={`${m.key}-p${i}`} place={place} />
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))}
