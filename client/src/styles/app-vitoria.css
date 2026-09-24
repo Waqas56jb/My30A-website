@@ -518,3 +518,7 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.app-vit-card-badge.is-fav {
+  color: #b4610a;
+}

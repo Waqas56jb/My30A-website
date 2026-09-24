@@ -335,6 +335,40 @@ function vendorPath(vendor) {
   return `/app/explore/vendor/${vendor.slug}`
 }
 
+// Dining hours come from 30a.com's structured opening hours ({ mon: [["17:00","21:00"]], … }),
+// evaluated in 30A's own time zone so "Open now" is right whatever the server's clock says.
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const clockLabel = (t) => {
+  const [h, m] = String(t).split(':').map(Number)
+  const suffix = h >= 12 && h < 24 ? 'pm' : 'am'
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''}${suffix}`
+}
+function openStatus(openingHours) {
+  if (!openingHours || typeof openingHours !== 'object') return { open_now: null, today: null }
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date())
+      .map((part) => [part.type, part.value])
+  )
+  const day = parts.weekday.slice(0, 3).toLowerCase()
+  const now = Number(parts.hour) * 60 + Number(parts.minute)
+  const minutes = (t) => {
+    const [h, m] = String(t).split(':').map(Number)
+    return h * 60 + (m || 0)
+  }
+  const spans = openingHours[day] || []
+  const yesterday = openingHours[DAY_KEYS[(DAY_KEYS.indexOf(day) + 6) % 7]] || []
+  const open =
+    spans.some(([o, c]) => {
+      const [a, b] = [minutes(o), minutes(c)]
+      return b > a ? now >= a && now < b : now >= a // closes after midnight
+    }) || yesterday.some(([o, c]) => minutes(c) < minutes(o) && now < minutes(c))
+  return {
+    open_now: open,
+    today: spans.length ? spans.map(([o, c]) => `${clockLabel(o)}–${clockLabel(c)}`).join(', ') : 'Closed today',
+  }
+}
+
 function vendorView(vendor, extra = {}) {
   return {
     id: vendor.id,
@@ -355,7 +389,13 @@ function vendorView(vendor, extra = {}) {
     amenities: vendor.amenities || [],
     rules: vendor.rules || [],
     hours: vendor.hours,
-    hours_today: vendor.hours_today,
+    ...(() => {
+      const status = openStatus(vendor.opening_hours)
+      return { hours_today: status.today || vendor.hours_today, open_now: status.open_now }
+    })(),
+    venue_type: vendor.venue_type || null,
+    address: vendor.address || null,
+    price_range: vendor.price_range || null,
     map: vendor.map_name
       ? { name: vendor.map_name, line1: vendor.map_line1, line2: vendor.map_line2 }
       : null,
@@ -1008,12 +1048,13 @@ function exploreCategories() {
     // tile so the grid shows an honest "N places" instead of a hand-typed number that can drift.
     const [{ data: guides }, { data: vendors }] = await Promise.all([
       supabase.from('explore_guides').select('slug, category_key').eq('is_active', true).not('category_key', 'is', null),
-      supabase.from('explore_vendors').select('guide_slug').eq('is_active', true).eq('kind', 'vendor'),
+      supabase.from('explore_vendors').select('guide_slug, kind, venue_type').eq('is_active', true).in('kind', ['vendor', 'restaurant']),
     ])
     const categoryForSlug = Object.fromEntries((guides || []).map((g) => [g.slug, g.category_key]))
     const counts = {}
+    const DINING_TILE = { restaurant: 'restaurants', bar: 'bars', coffee: 'coffee' }
     for (const vendor of vendors || []) {
-      const key = categoryForSlug[vendor.guide_slug]
+      const key = vendor.kind === 'restaurant' ? DINING_TILE[vendor.venue_type] : categoryForSlug[vendor.guide_slug]
       if (key) counts[key] = (counts[key] || 0) + 1
     }
     return categories.map((category) => ({
@@ -1102,6 +1143,54 @@ router.get('/explore/vendors/:slug', async (req, res, next) => {
   }
 })
 
+// Dining guide: every real restaurant, bar and coffee & breakfast spot from the client's list, with
+// the facets the Dining screen filters on (type → community → cuisine/features). 246 compact rows,
+// cached; "open now" is recomputed per request from each place's structured hours.
+const DINING_FIELDS =
+  'id, slug, name, venue_type, community, cuisine, tags, image_url, price_range, hours, opening_hours, rating, review_count, website_url, booking_url, phone'
+
+router.get('/explore/dining', async (_req, res, next) => {
+  try {
+    const rows = await memo('explore:dining', async () => {
+      const { data, error } = await supabase
+        .from('explore_vendors')
+        .select(DINING_FIELDS)
+        .eq('is_active', true)
+        .eq('kind', 'restaurant')
+        .not('venue_type', 'is', null)
+        .order('sort_order')
+      if (error) throw httpError(400, error.message)
+      return data || []
+    })
+    const places = rows
+      .map((row) => {
+        const status = openStatus(row.opening_hours)
+        return {
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          type: row.venue_type,
+          community: row.community,
+          cuisine: row.cuisine,
+          tags: row.tags || [],
+          image: row.image_url,
+          price: row.price_range,
+          rating: row.rating === null ? null : Number(row.rating),
+          reviews: row.review_count,
+          open_now: status.open_now,
+          today: status.today,
+          reservable: Boolean(row.booking_url),
+          to: `/app/explore/restaurant/${row.slug}`,
+        }
+      })
+      // Photos first, then places with hours — the richest cards lead each list.
+      .sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image)) || Number(b.today !== null) - Number(a.today !== null))
+    res.json({ places })
+  } catch (error) {
+    sendError(res, next, error)
+  }
+})
+
 router.get('/explore/vendor/:key', async (req, res, next) => {
   try {
     const vendor = await findVendor(req.params.key)
@@ -1119,7 +1208,7 @@ router.get('/explore/vendor/:key', async (req, res, next) => {
     }
 
     let back = '/app/explore'
-    if (vendor.kind === 'restaurant') back = '/app/explore/guide?c=restaurants'
+    if (vendor.kind === 'restaurant') back = `/app/explore/dining?type=${vendor.venue_type || 'restaurant'}`
     else if (vendor.kind === 'beach') back = '/app/explore/info?focus=beach-access'
     else if (vendor.guide_slug) back = `/app/explore/vendors/${vendor.guide_slug}`
 

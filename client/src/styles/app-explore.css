@@ -1328,3 +1328,385 @@ img.app-exp-hero-img:not(.is-loaded) {
   }
 }
 
+
+/* ——— Dining guide (restaurants / bars / coffee) ——— */
+.app-dine-body-wrap {
+  gap: 18px;
+}
+
+.app-dine-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 22, 40, 0.06);
+}
+
+.app-dine-tab-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border-radius: 999px;
+  background: var(--xfer-ink);
+  box-shadow: 0 8px 18px -10px rgba(10, 22, 40, 0.7);
+  transform: translateX(calc(var(--tab, 0) * 100%));
+  transition: transform 0.38s var(--ease-spring);
+}
+
+.app-dine-tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 42px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--xfer-muted);
+  cursor: pointer;
+  transition: color 0.25s var(--ease-std);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-dine-tab small {
+  font-weight: 600;
+  font-size: 10.5px;
+  opacity: 0.7;
+}
+
+.app-dine-tab.is-on {
+  color: #ffffff;
+}
+
+.app-dine-tab.is-on svg {
+  color: #f5b547;
+}
+
+.app-dine-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(10, 22, 40, 0.06);
+  color: var(--xfer-muted);
+}
+
+.app-dine-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-dine-h {
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xfer-faint);
+}
+
+.app-dine-chips {
+  display: flex;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 2px 20px 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-dine-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.app-dine-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(10, 22, 40, 0.1);
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--xfer-ink);
+  white-space: nowrap;
+  scroll-snap-align: start;
+  cursor: pointer;
+  transition:
+    background-color 0.2s var(--ease-std),
+    border-color 0.2s var(--ease-std),
+    color 0.2s var(--ease-std),
+    transform 0.2s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-dine-chip small {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--xfer-faint);
+}
+
+.app-dine-chip:active {
+  transform: scale(0.95);
+}
+
+.app-dine-chip.is-soft {
+  background: #fff7ea;
+  border-color: rgba(244, 147, 0, 0.18);
+}
+
+.app-dine-chip.is-green {
+  color: #13804a;
+  background: #ecfbf2;
+  border-color: rgba(19, 128, 74, 0.2);
+}
+
+.app-dine-chip.is-on {
+  border-color: var(--xfer-ink);
+  background: var(--xfer-ink);
+  color: #ffffff;
+}
+
+.app-dine-chip.is-on small {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.app-dine-chip.is-green.is-on {
+  border-color: #13804a;
+  background: #13804a;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-dine-chip:not(.is-on):hover {
+    border-color: rgba(244, 147, 0, 0.55);
+  }
+
+  .app-dine-tab:not(.is-on):hover {
+    color: var(--xfer-ink);
+  }
+}
+
+.app-dine-count {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.app-dine-count strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--xfer-ink);
+}
+
+.app-dine-count button {
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: #c46f00;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.app-dine-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+
+.app-dine-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-dine-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px -18px rgba(10, 22, 40, 0.55);
+  transition:
+    transform 0.28s var(--ease-out),
+    box-shadow 0.28s var(--ease-out);
+}
+
+.app-dine-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition:
+    opacity 0.45s var(--ease-std),
+    transform 0.9s var(--ease-out);
+}
+
+.app-dine-card:active .app-dine-media {
+  transform: scale(0.97);
+  transition-duration: 0.1s;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-dine-card:hover .app-dine-media {
+    transform: translateY(-3px);
+    box-shadow: 0 22px 34px -20px rgba(10, 22, 40, 0.6);
+  }
+
+  .app-dine-card:hover .app-dine-media img.is-loaded {
+    transform: scale(1.07);
+  }
+}
+
+.app-dine-open,
+.app-dine-price {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 10.5px;
+  line-height: 100%;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.app-dine-open {
+  top: 8px;
+  left: 8px;
+  background: rgba(10, 22, 40, 0.55);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.app-dine-open.is-open {
+  background: rgba(255, 255, 255, 0.94);
+  color: #13804a;
+}
+
+.app-dine-price {
+  right: 8px;
+  bottom: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--xfer-ink);
+}
+
+.app-dine-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.app-dine-body strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 120%;
+  color: var(--xfer-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.app-dine-meta,
+.app-dine-sub,
+.app-dine-hours {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-family: var(--app-body);
+  font-size: 12px;
+  line-height: 125%;
+  color: var(--xfer-muted);
+}
+
+.app-dine-meta > span,
+.app-dine-sub > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-dine-meta > svg,
+.app-dine-sub > svg,
+.app-dine-hours > svg {
+  flex-shrink: 0;
+}
+
+.app-dine-sub b {
+  font-weight: 700;
+  color: var(--xfer-ink);
+}
+
+.app-dine-sub i {
+  font-style: normal;
+  color: var(--xfer-faint);
+}
+
+.app-dine-hours {
+  color: #13804a;
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+.app-dine-card.is-skel .app-dine-media {
+  box-shadow: none;
+}
+
+.app-dine-sentinel {
+  display: block;
+  height: 1px;
+}
+
+@media (max-width: 380px) {
+  .app-dine-tab {
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .app-dine-tab small {
+    display: none;
+  }
+
+  .app-dine-chips {
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

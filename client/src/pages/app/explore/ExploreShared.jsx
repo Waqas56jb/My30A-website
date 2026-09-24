@@ -32,6 +32,8 @@ import {
   Users,
   UtensilsCrossed,
   Waves,
+  Wine,
+  Coffee,
 } from 'lucide-react'
 import BottomNav from '../BottomNav.jsx'
 
@@ -48,6 +50,8 @@ const ICONS = {
   Palette,
   Briefcase,
   Info,
+  Wine,
+  Coffee,
 }
 
 export function iconFor(name) {
@@ -147,6 +151,9 @@ const GUIDE_THEMES = {
   'pet-services': ['slate', PawPrint],
   medical: ['teal', Stethoscope],
   'real-estate': ['slate', House],
+  'dining-restaurant': ['sand', UtensilsCrossed],
+  'dining-bar': ['violet', Wine],
+  'dining-coffee': ['peach', Coffee],
 }
 
 export function themeOf(guideSlug) {
@@ -249,6 +256,9 @@ export function Actions({ primary, secondary }) {
   )
 }
 
+// Dining tiles list local favorites from the client's list, not paid partners.
+export const DINING_KEYS = new Set(['restaurants', 'bars', 'coffee'])
+
 export function CategoryTile({ category, featured = false, index = 0 }) {
   const Icon = iconFor(category.icon)
   return (
@@ -273,7 +283,7 @@ export function CategoryTile({ category, featured = false, index = 0 }) {
           {category.coming_soon
             ? 'Curated list on the way'
             : category.count
-              ? `${category.count} local partners`
+              ? `${category.count} ${DINING_KEYS.has(category.key) ? 'places' : 'local partners'}`
               : 'Explore'}
           {category.coming_soon ? null : <ChevronRight size={13} strokeWidth={2} aria-hidden="true" />}
         </small>

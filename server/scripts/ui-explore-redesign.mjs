@@ -36,7 +36,7 @@ try {
   ok(true, 'On The Water tile shows the real vendor count (34 local partners)')
 
   const tileCount = await g.locator('.app-exp-tile:not(.app-skel)').count()
-  ok(tileCount === 11, 'grid shows all 11 real categories', `${tileCount} tiles`)
+  ok(tileCount === 13, 'grid shows all 13 real categories (incl. 3 dining tiles)', `${tileCount} tiles`)
   await shot(g, 'explore-grid-redesigned')
 
   const shopping = g.locator('.app-exp-tile', { hasText: 'Shopping' })
@@ -44,7 +44,8 @@ try {
   ok(true, 'Shopping tile shows the real vendor count (39 local partners)')
 
   const soonBadge = await g.locator('.app-exp-tile', { hasText: 'Restaurants' }).locator('.app-exp-tile-soon').count()
-  ok(soonBadge > 0, 'Restaurants tile shows a "Coming Soon" badge (no fake data)')
+  const restaurantsCount = await g.locator('.app-exp-tile', { hasText: 'Restaurants' }).locator('small').textContent()
+  ok(soonBadge === 0 && /\d+ places/.test(restaurantsCount), 'Restaurants tile is live with the real restaurant count', restaurantsCount)
 
   // ---------- The core bug fix: tapping "Golf & Outdoor Rentals" shows ONLY its 4 real guides ----------
   await g.locator('.app-exp-tile', { hasText: 'Golf & Outdoor Rentals' }).click()

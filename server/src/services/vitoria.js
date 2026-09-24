@@ -19,7 +19,7 @@ let cached = { at: 0, text: '' }
 const bare = (url) => String(url || '').replace(/^https?:\/\//i, '').replace(/\/$/, '')
 
 async function buildKnowledge() {
-  const [categories, guides, vendors, places, info, communities, pricing, catalog] = await Promise.all([
+  const [categories, guides, vendors, places, info, communities, pricing, catalog, dining] = await Promise.all([
     supabase.from('explore_categories').select('key, label, coming_soon, sort_order').eq('is_active', true).order('sort_order'),
     supabase.from('explore_guides').select('slug, title, category_key, sort_order').eq('is_active', true).order('sort_order'),
     supabase
@@ -33,6 +33,13 @@ async function buildKnowledge() {
     supabase.from('communities').select('id, name, zone, default_airport').eq('is_active', true).order('name'),
     supabase.from('transfer_pricing').select('community_id, airport, vehicle_type, base_price'),
     supabase.from('service_catalog').select('kind, name, sub, price, unit').eq('is_active', true).order('sort_order'),
+    supabase
+      .from('explore_vendors')
+      .select('name, venue_type, community, cuisine, tags, hours, price_range, phone, website_url')
+      .eq('is_active', true)
+      .eq('kind', 'restaurant')
+      .not('venue_type', 'is', null)
+      .order('sort_order'),
   ])
 
   const lines = []
@@ -69,6 +76,30 @@ async function buildKnowledge() {
           bare(v.website_url),
         ].filter(Boolean)
         lines.push(`- ${v.name} — ${extras.join(' · ')}`)
+      }
+    }
+  }
+
+  // ---- Dining guide: the client's curated list of local favorites, by community then type ----
+  const diningRows = dining.data || []
+  if (diningRows.length) {
+    lines.push(
+      `\n30A DINING GUIDE — ${diningRows.length} local favorite restaurants, bars and coffee & breakfast spots curated by My30A Host (not paid partners), grouped by community. [R]=restaurant [B]=bar [C]=coffee & breakfast. Hours come from their listings and can change:`
+    )
+    const TYPE_ORDER = ['restaurant', 'bar', 'coffee']
+    const TYPE_MARK = { restaurant: 'R', bar: 'B', coffee: 'C' }
+    const byCommunity = new Map()
+    for (const r of diningRows) {
+      if (!byCommunity.has(r.community)) byCommunity.set(r.community, [])
+      byCommunity.get(r.community).push(r)
+    }
+    for (const [community, rows] of [...byCommunity.entries()].sort((a, b) => b[1].length - a[1].length)) {
+      lines.push(`\n## ${String(community).toUpperCase()} (${rows.length})`)
+      rows.sort((a, b) => TYPE_ORDER.indexOf(a.venue_type) - TYPE_ORDER.indexOf(b.venue_type))
+      for (const r of rows) {
+        const vibe = (r.tags || []).filter((t) => t !== r.cuisine).slice(0, 4).join('/')
+        const extras = [r.cuisine, vibe, r.price_range, r.hours, r.phone, bare(r.website_url)].filter(Boolean)
+        lines.push(`- [${TYPE_MARK[r.venue_type]}] ${r.name}${extras.length ? ` — ${extras.join(' · ')}` : ''}`)
       }
     }
   }
@@ -146,7 +177,7 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
     '',
     'What you know and how to use it:',
     '1. The MY30A HOST VETTED LOCAL GUIDE below is your first source. When it covers the request, recommend those partners by name with their real details (where they are, what they do, their phone or website when the guest wants to book or call). Never invent details for them.',
-    '2. When the guide has nothing for a request — restaurants and bars are the main example, no restaurant partners are listed yet — recommend real, well-known places in the 30A / South Walton area, and say in one short phrase that these are local favorites rather than My30A Host partners. Never refuse or say you can’t help just because something isn’t in the guide.',
+    '2. For food and drink (dinner, lunch, breakfast, brunch, coffee, bars, cocktails, “top 5 restaurants”), the 30A DINING GUIDE below is your source: recommend from it by name, matching what the guest wants (cuisine, vibe such as rooftop / waterfront / live music / family, price) and favouring their own community first, then the neighbouring ones. Mention in a short phrase that these are local favorites (not paid partners). Only go beyond the dining guide when nothing in it fits, and say so. For anything else no guide covers, recommend real, well-known places in the 30A / South Walton area as local favorites. Never refuse or say you can’t help just because something isn’t in a guide.',
     '2b. You have a web_search tool. Use it whenever the guest asks about hours, whether a place is open, phone numbers, menus, events or anything time-sensitive, and whenever you recommend restaurants, so the hours you give are today’s real hours. Give hours confidently in a friendly form (e.g. “open today 11 AM–3:30 PM and 4:30–10 PM”). Never say you lack internet or Google access. If a search genuinely finds nothing, say hours weren’t listed and suggest calling.',
     '3. For beach access points, parks, playgrounds, safety, rules and emergency contacts, use the OFFICIAL PUBLIC INFORMATION. Match the guest to accesses in or next to their community. Beach flag colours and conditions change daily and you cannot see them live — tell guests to check the flags on arrival.',
     '4. For airport transfers and Publix grocery delivery, quote from the price tables. Those two — and only those two — are booked in the Services tab of the app. Everything else (partners, restaurants, rentals, tours) the guest books directly with the business using the Call / Website buttons on the cards; never say those are booked in the Services tab.',
@@ -164,7 +195,7 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
     'Output: respond with JSON matching the schema.',
     '- "reply": your message to the guest, following the formatting rules above. When you recommend specific places, keep the reply to at most two short paragraphs (an intro plus one closing tip or question) — names, hours, phones and details go in the cards, not the text.',
     '- "places": one card per specific place you recommend or are asked about (restaurants, partners, beach accesses, parks, pharmacies, etc.), in the order you recommend them, max 6. Empty array when the answer is not about specific places.',
-    '  name: exact business/place name. area: community or town. category: short type, e.g. "Seafood · Waterfront", "Golf cart rental", "Beach access". why: one short sentence on why it fits. hours: today’s hours from your web search, or "" if unknown. phone: real phone or "". website: bare domain or URL, or "". partner: true only if it appears in the MY30A HOST VETTED LOCAL GUIDE.',
+    '  name: exact business/place name. area: community or town. category: short type, e.g. "Seafood · Waterfront", "Golf cart rental", "Beach access". why: one short sentence on why it fits. hours: today’s hours from your web search, or "" if unknown. phone: real phone or "". website: bare domain or URL, or "". partner: true only if it appears in the MY30A HOST VETTED LOCAL GUIDE (dining-guide places are local favorites: partner false).',
     '- Never put URLs, citations or source markers in "reply".',
     '',
     knowledge,
@@ -240,9 +271,9 @@ export async function enrichPlaces(places) {
   if (!list.length) return []
   const { data: vendors } = await supabase
     .from('explore_vendors')
-    .select('slug, name, place, phone, website_url, image_url, rating, review_count')
+    .select('slug, kind, name, place, phone, website_url, image_url, rating, review_count')
     .eq('is_active', true)
-    .eq('kind', 'vendor')
+    .in('kind', ['vendor', 'restaurant'])
   const byName = new Map((vendors || []).map((v) => [normalize(v.name), v]))
   return list.map((p) => {
     const vendor = byName.get(normalize(p.name))
@@ -255,8 +286,10 @@ export async function enrichPlaces(places) {
       hours: String(p.hours || '').replace(/\*\*/g, ''),
       phone: vendor?.phone || p.phone || '',
       website: cleanUrl(vendor?.website_url || p.website),
-      partner: Boolean(vendor),
+      partner: vendor?.kind === 'vendor',
+      in_guide: Boolean(vendor),
       slug: vendor?.slug || null,
+      to: vendor ? `/app/explore/${vendor.kind === 'restaurant' ? 'restaurant' : 'vendor'}/${vendor.slug}` : null,
       image: vendor?.image_url || null,
       rating: vendor?.rating != null ? Number(vendor.rating) : null,
       reviews: vendor?.review_count || 0,
@@ -278,7 +311,7 @@ export function vitoriaFallback(text, ctx, beachAccesses = []) {
     return `Closest public beach access${community ? ` to ${community}` : ''}:\n\n${picks.map((p) => `${p.name}${p.details ? ` — ${p.details}` : ''}`).join('\n')}\n\nCheck the flags when you arrive — double red means the water is closed.`
   }
   if (/dinner|restaurant|eat|food|lunch|breakfast|brunch|bar|top 5/.test(q)) {
-    return `Restaurant partners aren’t in the vetted guide yet, ${name}, so I can’t vouch for one right now.\n\nFor tonight, Seaside’s town square and Rosemary Beach’s Main Street have the widest choice within a short walk, and reservations are wise in season.\n\nWant me to help with anything else for your stay?`
+    return `I can’t pull up live picks this second, ${name}, but the full dining guide is in Explore under Restaurants, Bars and Coffee & Breakfast, sorted by community${community ? ` (start with ${community})` : ''}.\n\nReservations are wise in season. Want help with anything else for your stay?`
   }
   if (/grocer|publix|stock/.test(q)) {
     return `Groceries are ordered from the Services tab.\n\nPick a package, choose how you’d like the kitchen stocked, and upload your Publix cart screenshot.\n\nYou pay the flat service fee plus the exact Publix receipt, charged only once it’s delivered.`

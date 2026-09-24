@@ -262,10 +262,23 @@ async function main() {
   await expect('GET /api/content/guides as guest → 403', 'GET', '/api/content/guides', G, 403)
 
   // ---------- 8. explore ----------
-  // 11 real-data-backed categories (redesigned from the original 8 — see the "coming_soon"
-  // Restaurants tile and category_key-scoped guides below). Beaches has no guides of its own
-  // (it routes to the real public beach-access list instead), so it's excluded from this count.
-  await expect('GET /api/guest/explore', 'GET', '/api/guest/explore', G, 200, (d) => d.categories.length === 11 && d.categories.find((c) => c.key === 'restaurants').coming_soon === true)
+  // 13 real-data-backed categories: the 3 dining tiles (the client's list of restaurants, bars and
+  // coffee & breakfast spots, migration 023) plus the partner categories and the public-info tiles.
+  await expect('GET /api/guest/explore', 'GET', '/api/guest/explore', G, 200, (d) =>
+    d.categories.length === 13 &&
+    ['restaurants', 'bars', 'coffee'].every((k) => {
+      const c = d.categories.find((x) => x.key === k)
+      return c && !c.coming_soon && c.count > 0 && c.to.startsWith('/app/explore/dining?type=')
+    })
+  )
+  await expect('GET /api/guest/explore/dining (real client list, typed + by community)', 'GET', '/api/guest/explore/dining', G, 200, (d) =>
+    d.places.length > 200 &&
+    ['restaurant', 'bar', 'coffee'].every((t) => d.places.some((p) => p.type === t)) &&
+    d.places.every((p) => p.community && p.to.startsWith('/app/explore/restaurant/'))
+  )
+  await expect('GET /api/guest/explore/vendor/borago (dining detail: hours, open-now, address)', 'GET', '/api/guest/explore/vendor/borago', G, 200, (d) =>
+    d.kind === 'restaurant' && d.venue_type === 'restaurant' && Boolean(d.hours) && typeof d.open_now === 'boolean' && Boolean(d.address) && d.back.startsWith('/app/explore/dining')
+  )
   await expect(
     'GET /api/guest/explore/guide?c=golf-outdoor (category_key scoping — the old bug showed all 20 guides here)',
     'GET',

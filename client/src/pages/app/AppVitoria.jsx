@@ -16,6 +16,7 @@ import {
   Plus,
   ShoppingBag,
   Sparkles,
+  Star,
   Umbrella,
   UtensilsCrossed,
   Waves,
@@ -87,6 +88,11 @@ function PlaceCard({ place }) {
             <BadgeCheck size={12} strokeWidth={2} aria-hidden="true" />
             My30A Partner
           </span>
+        ) : place.in_guide ? (
+          <span className="app-vit-card-badge is-fav">
+            <Star size={12} strokeWidth={2} aria-hidden="true" />
+            Local Favorite
+          </span>
         ) : null}
       </div>
       <div className="app-vit-card-body">
@@ -121,7 +127,7 @@ function PlaceCard({ place }) {
           </a>
         </div>
         {place.slug ? (
-          <Link to={`/app/explore/vendor/${place.slug}`} className="app-vit-card-more">
+          <Link to={place.to || `/app/explore/vendor/${place.slug}`} className="app-vit-card-more">
             View in Explore
           </Link>
         ) : null}

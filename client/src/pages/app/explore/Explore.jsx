@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { BackButton, CategoryTile, ExploreShell, TileSkeleton } from './ExploreShared.jsx'
+import { BackButton, CategoryTile, DINING_KEYS, ExploreShell, TileSkeleton } from './ExploreShared.jsx'
 
 // Live categories first; the photo grid only renders once real data (with real photos and
 // partner counts) is here — a shimmer grid holds the space on a cold load.
@@ -19,7 +19,8 @@ export default function Explore() {
   const [q, setQ] = useState('')
   const { data } = useGuestQuery(guest.explore, [])
   const categories = data?.categories ? ordered(data.categories) : null
-  const partners = categories?.reduce((sum, c) => sum + (c.coming_soon ? 0 : c.count || 0), 0)
+  const partners = categories?.reduce((sum, c) => sum + (c.coming_soon || DINING_KEYS.has(c.key) ? 0 : c.count || 0), 0)
+  const dining = categories?.reduce((sum, c) => sum + (DINING_KEYS.has(c.key) ? c.count || 0 : 0), 0)
 
   const onSearch = (e) => {
     e.preventDefault()
@@ -40,7 +41,7 @@ export default function Explore() {
           <h2>Browse by Category</h2>
           <p>
             {partners
-              ? `${partners} vetted local partners — dining, beaches, activities and essentials`
+              ? `${dining ? `${dining} restaurants, bars & cafés · ` : ''}${partners} vetted local partners`
               : 'Dining, beaches, activities and local essentials'}
           </p>
         </div>
