@@ -496,6 +496,7 @@ router.post(
         // exact Publix receipt are known, charge the combined total in one off-session charge.
         const charge = await chargeSavedCard({
           customerId: order.guest?.stripe_customer_id,
+          paymentMethodId: order.stripe_payment_method_id || undefined,
           amount: updates.customer_charge,
           metadata: { my30a_grocery_order_id: order.id, kind: 'grocery_total' },
         })

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ChevronRight, MapPin, MessageSquare, Package } from 'lucide-react'
+import { Check, ChevronRight, MapPin, MessageSquare, Package, ShieldCheck } from 'lucide-react'
 import { errorText, guest } from '../../../lib/guestApi.js'
 import { Cta, TransferShell, clock } from '../transfer/TransferShell.jsx'
 import { useOrderId } from './GroceryShared.jsx'
@@ -103,6 +103,12 @@ export default function GroceryTrack() {
         <>
           {order.status === 'delivered' && !order.tip_amount ? (
             <Cta to={`/app/grocery/tip?id=${order.id}`}>Leave a Tip for Your Shopper</Cta>
+          ) : null}
+          {order.card_label && order.status !== 'cancelled' ? (
+            <p className="app-co-onfile">
+              <ShieldCheck size={15} strokeWidth={2} aria-hidden="true" />
+              {order.card_label} · {order.payment_status === 'captured' ? 'paid' : 'charged once, after delivery'}
+            </p>
           ) : null}
           {['requested', 'assigned'].includes(order.status) &&
           order.payment_method !== 'cash' &&

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Check, Clock, Info, Mail, MapPin, Upload, X } from 'lucide-react'
-import { errorText, guest } from '../../../lib/guestApi.js'
-import { Cta, TransferShell } from '../transfer/TransferShell.jsx'
+import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
+import CheckoutPayment from '../../../components/CheckoutPayment.jsx'
+import { TransferShell } from '../transfer/TransferShell.jsx'
 import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
-import { SummaryFooter, useGrocery } from './GroceryShared.jsx'
+import { SummaryFooter, addonTotal, serviceFee, useGrocery } from './GroceryShared.jsx'
 
 const STEPS = [
   <>Open the Publix app or website</>,
@@ -31,7 +32,6 @@ export default function GroceryList() {
   const [agree, setAgree] = useState(true)
   const [file, setFile] = useState(null)
   const [notes, setNotes] = useState('')
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   // Prefill from the guest's saved stay, same as the transfer flow — but always editable, since
@@ -81,41 +81,35 @@ export default function GroceryList() {
 
   const grocery = { ...incoming, date: fmtDate(date), time: fmtTime(time), deliveryAt: toIso(date, time) }
 
-  const submit = async () => {
+  const { data: me } = useGuestQuery(guest.me, [])
+  const fee = serviceFee(grocery) + addonTotal(grocery)
+
+  // Checkout: the card is verified and saved first; only then is the order placed with it. Nothing
+  // is charged now — the service fee + the exact Publix receipt are charged once, after delivery.
+  const placeOrder = async (paymentMethodId) => {
     setError('')
-    if (!address.trim()) {
-      setError('Please enter your delivery address.')
-      return
-    }
-    if (!agree) {
-      setError('Please agree to the cancellation policy to continue.')
-      return
-    }
-    setBusy(true)
-    try {
-      let order = await guest.createGrocery({
-        delivery_address: address.trim(),
-        package: grocery.pkg,
-        stocking: grocery.stocking,
-        addons: Object.keys(grocery.addons || {}).filter((key) => grocery.addons[key]),
-        delivery_time: grocery.deliveryAt,
-        items: [],
-        notes: notes.trim() || undefined,
-      })
-      if (file) {
-        try {
-          order = await guest.uploadList(order.id, file)
-        } catch (err) {
-          // The order exists; the screenshot can be re-sent by email.
-          setError(`Order created, but the screenshot upload failed: ${errorText(err)}`)
-        }
+    if (!address.trim()) throw new Error('Please enter your delivery address.')
+    if (!agree) throw new Error('Please agree to the cancellation policy to continue.')
+    let order = await guest.createGrocery({
+      delivery_address: address.trim(),
+      package: grocery.pkg,
+      stocking: grocery.stocking,
+      addons: Object.keys(grocery.addons || {}).filter((key) => grocery.addons[key]),
+      delivery_time: grocery.deliveryAt,
+      items: [],
+      notes: notes.trim() || undefined,
+      payment_method: 'card_on_file',
+      payment_method_id: paymentMethodId,
+    })
+    if (file) {
+      try {
+        order = await guest.uploadList(order.id, file)
+      } catch (err) {
+        // The order exists; the screenshot can be re-sent by email.
+        setError(`Order placed, but the screenshot upload failed: ${errorText(err)}`)
       }
-      navigate('/app/grocery/pending', { replace: true, state: { grocery, order } })
-    } catch (err) {
-      setError(errorText(err))
-    } finally {
-      setBusy(false)
     }
+    navigate('/app/grocery/pending', { replace: true, state: { grocery, order } })
   }
 
   return (
@@ -127,14 +121,6 @@ export default function GroceryList() {
       footer={
         <>
           <SummaryFooter grocery={grocery} />
-          {error ? <p className="app-inline-error">{error}</p> : null}
-          <Cta onClick={submit} disabled={busy}>
-            {busy ? 'Sending…' : 'Continue to Proceed'}
-          </Cta>
-          <p className="app-xfer-warn">
-            <Info size={16} strokeWidth={1.5} aria-hidden="true" />
-            No payment is taken yet. We’ll confirm your exact total before payment.
-          </p>
         </>
       }
     >
@@ -293,6 +279,17 @@ export default function GroceryList() {
             I understand and agree to the cancellation policy.
           </button>
         </section>
+
+        {error ? <p className="app-inline-error">{error}</p> : null}
+        <CheckoutPayment
+          title="Payment"
+          amountLabel={`$${fee} + Publix receipt`}
+          note="Nothing is charged today. Your card is saved securely and charged once — the service fee plus your exact Publix receipt, no markup — after your groceries are delivered."
+          submitLabel="Place Order"
+          disabled={!address.trim() || !agree}
+          onPay={placeOrder}
+          profile={me}
+        />
       </div>
     </TransferShell>
   )

@@ -72,6 +72,10 @@ export const guest = {
   save: (key) => api(`/api/guest/saved/${encodeURIComponent(key)}`, { method: 'POST' }),
   unsave: (key) => api(`/api/guest/saved/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 
+  // checkout (card on file)
+  paymentMethods: () => api('/api/guest/payment-methods'),
+  checkoutSetup: () => api('/api/guest/checkout/setup', { method: 'POST' }),
+
   // airport transfers
   transferQuote: (body) => api('/api/guest/transfers/quote', { method: 'POST', body }),
   createTransfer: (body) => api('/api/guest/transfers', { method: 'POST', body }),

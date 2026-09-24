@@ -16,9 +16,16 @@ import { getSignedUrl, uploadFile } from '../lib/storage.js'
 import { chatCompletion, createRealtimeSession, webResponse } from '../lib/openai.js'
 import { cleanConciergeText } from '../lib/textFormat.js'
 import {
+  cancelIntentSafe,
+  detachCardSafe,
   createPaymentIntent,
   createSetupIntent,
   ensureStripeCustomer,
+  holdSavedCard,
+  isStripeConfigured,
+  listCards,
+  retrieveIntentSafe,
+  verifyCustomerCard,
   getPublishableKey,
   mapIntentStatus,
   releasePaymentHold,
@@ -422,6 +429,8 @@ function transferView(transfer, extra = {}) {
     tip_amount: money(transfer.tip_amount) || 0,
     payment_method: transfer.payment_method,
     payment_status: transfer.payment_status,
+    card_label: transfer.card_label || null,
+    card_on_file: Boolean(transfer.stripe_payment_method_id),
     driver: transfer.driver ? { id: transfer.driver.id, name: tripFirstName(transfer.driver.name) } : null,
     vehicle_label: vehicleGuestLabel(transfer.vehicle),
     call_number: transfer.driver_id && ACTIVE_TRIP.includes(transfer.status) ? maskedCallNumber() : null,
@@ -466,6 +475,7 @@ function orderView(order, extra = {}) {
     payment_status: order.payment_status,
     grocery_payment_status: order.grocery_payment_status,
     card_saved: Boolean(order.card_saved_at),
+    card_label: order.card_label || null,
     shopper: order.shopper ? { id: order.shopper.id, name: order.shopper.name } : null,
     notes: order.notes,
     list_file_url: order.list_file_url,
@@ -1348,6 +1358,44 @@ router.post('/transfers/quote', guestOnly, async (req, res, next) => {
   }
 })
 
+// ---------- checkout (card on file) ----------
+// E-commerce style: the guest's card is verified and saved (Stripe SetupIntent — 3-D Secure when the
+// bank asks) as the LAST step of booking, and only then is the transfer / grocery order created,
+// with that card attached. Transfers within HOLD_WINDOW_DAYS also get an authorization hold for the
+// exact amount right away (captured after the ride); later ones are held 5 days before by the daily
+// job. A decline means nothing is booked.
+const HOLD_WINDOW_DAYS = 6
+
+router.get('/payment-methods', guestOnly, async (req, res, next) => {
+  try {
+    const { data: profile } = await supabase.from('profiles').select('stripe_customer_id').eq('id', req.user.id).maybeSingle()
+    const cards = profile?.stripe_customer_id ? await listCards(profile.stripe_customer_id) : []
+    res.json({ configured: isStripeConfigured(), publishable_key: getPublishableKey(), cards })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/checkout/setup', guestOnly, async (req, res, next) => {
+  try {
+    const result = await saveCardOnFile({ user: req.user })
+    if (result?.skipped) return res.status(503).json({ error: 'Card payments are unavailable right now. Please try again shortly.' })
+    res.json(setupIntentView(result))
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Verifies the card the app sent belongs to this guest; returns the Stripe customer + label.
+async function checkoutCard(user, paymentMethodId) {
+  const customerId = await ensureStripeCustomer({ userId: user.id, email: user.email, name: user.name })
+  if (customerId?.skipped) throw httpError(503, 'Card payments are unavailable right now.')
+  const check = await verifyCustomerCard(customerId, paymentMethodId)
+  if (check?.skipped) throw httpError(503, 'Card payments are unavailable right now.')
+  if (!check.ok) throw httpError(400, check.reason)
+  return { customerId, label: check.label }
+}
+
 router.post('/transfers', guestOnly, async (req, res, next) => {
   try {
     const body = req.body || {}
@@ -1431,11 +1479,80 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
       })
     }
 
+    // Card checkout: attach the verified card and place holds BEFORE anything is created.
+    const placedHolds = []
+    if (body.payment_method_id) {
+      const card = await checkoutCard(req.user, String(body.payment_method_id))
+      const checkoutKey = String(body.checkout_key || crypto.randomUUID())
+      const confirmed = body.payment_intents && typeof body.payment_intents === 'object' ? body.payment_intents : {}
+      for (const [leg, row] of rows.entries()) {
+        Object.assign(row, {
+          payment_method: 'card_on_file',
+          stripe_payment_method_id: String(body.payment_method_id),
+          card_label: card.label,
+          payment_status: 'pending',
+        })
+        const charge = money(row.customer_charge)
+        const soon = new Date(row.scheduled_at).getTime() - Date.now() < HOLD_WINDOW_DAYS * 86400000
+        if (!soon || !(charge > 0)) continue
+        // Already confirmed by the guest after a bank check (3-D Secure) on a previous attempt.
+        if (confirmed[leg]) {
+          const intent = await retrieveIntentSafe(String(confirmed[leg]))
+          const valid =
+            intent &&
+            intent.status === 'requires_capture' &&
+            intent.customer === card.customerId &&
+            intent.amount === Math.round(charge * 100) &&
+            intent.metadata?.checkout_key === checkoutKey
+          if (!valid) {
+            for (const h of placedHolds) await cancelIntentSafe(h)
+            return res.status(402).json({ error: 'Your card authorization could not be confirmed. Please try again.' })
+          }
+          row.stripe_payment_intent_id = intent.id
+          row.payment_status = 'authorized'
+          placedHolds.push(intent.id)
+          continue
+        }
+        const hold = await holdSavedCard({
+          customerId: card.customerId,
+          paymentMethodId: String(body.payment_method_id),
+          amount: charge,
+          metadata: { kind: 'transfer', checkout_key: checkoutKey, leg: String(leg) },
+        })
+        if (hold.skipped) {
+          return res.status(503).json({ error: 'Card payments are unavailable right now. Please try again shortly.' })
+        }
+        if (hold.intent?.status === 'requires_action') {
+          // The bank wants the guest to approve (3-D Secure) — the app shows it, then resubmits.
+          return res.status(402).json({
+            requires_action: true,
+            client_secret: hold.intent.client_secret,
+            leg,
+            checkout_key: checkoutKey,
+            payment_intents: Object.fromEntries(placedHolds.map((id, i) => [i, id])),
+            error: 'Your bank needs you to approve this payment.',
+          })
+        }
+        if (hold.error || hold.intent?.status !== 'requires_capture') {
+          for (const h of placedHolds) await cancelIntentSafe(h)
+          if (hold.intent?.id) await cancelIntentSafe(hold.intent.id)
+          await detachCardSafe(String(body.payment_method_id))
+          return res.status(402).json({ error: hold.error ? (/declin/i.test(hold.error) ? `${hold.error} Please try another card.` : `Your card was declined: ${hold.error}`) : 'Your card could not be authorized. Please try another card.' })
+        }
+        row.stripe_payment_intent_id = hold.intent.id
+        row.payment_status = 'authorized'
+        placedHolds.push(hold.intent.id)
+      }
+    }
+
     const { data: created, error } = await supabase
       .from('transfers')
       .insert(rows)
       .select(TRANSFER_SELECT)
-    if (error) return res.status(400).json({ error: error.message })
+    if (error) {
+      for (const h of placedHolds) await cancelIntentSafe(h)
+      return res.status(400).json({ error: error.message })
+    }
     const data = created[0]
     const returnLeg = created[1] || null
     if (credit.total > 0) await consumeCredits(credit.ids, data.id)
@@ -1450,7 +1567,7 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
     await notify({
       user_id: req.user.id,
       transfer_id: data.id,
-      message: `We received your airport transfer request #${data.trip_number}${returnLeg ? ` and return #${returnLeg.trip_number}` : ''}. We’ll confirm your driver shortly.`,
+      message: `We received your airport transfer request #${data.trip_number}${returnLeg ? ` and return #${returnLeg.trip_number}` : ''}.${data.card_label ? ` ${data.card_label} is on file — ${data.payment_status === 'authorized' ? `$${money(data.customer_charge)} is authorized and` : 'you’re'} charged only after your ride.` : ''} We’ll confirm your driver shortly.`,
     })
 
     res.status(201).json(
@@ -1729,6 +1846,18 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
       status: 'requested',
       notes: body.notes ? String(body.notes).trim() : null,
       created_by: req.user.id,
+    }
+
+    // Card checkout: the verified, saved card is charged once — after delivery (service fee + the
+    // exact Publix receipt).
+    if (body.payment_method_id) {
+      const card = await checkoutCard(req.user, String(body.payment_method_id))
+      Object.assign(insert, {
+        payment_method: 'card_on_file',
+        stripe_payment_method_id: String(body.payment_method_id),
+        card_label: card.label,
+        card_saved_at: new Date().toISOString(),
+      })
     }
 
     const { data, error } = await supabase

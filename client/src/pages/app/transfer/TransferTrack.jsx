@@ -14,6 +14,7 @@ import {
   Send,
   TreePalm,
   Users,
+  ShieldCheck,
 } from 'lucide-react'
 import { errorText, guest } from '../../../lib/guestApi.js'
 import { Cta, TransferShell, clock, useTransferId } from './TransferShell.jsx'
@@ -220,7 +221,19 @@ export default function TransferTrack() {
           {transfer.status === 'completed' && !transfer.tip_amount ? (
             <Cta to={`/app/transfer/tip?id=${transfer.id}`}>Leave a Tip for Your Driver</Cta>
           ) : null}
+          {transfer.card_label && !['cancelled', 'no_show'].includes(transfer.status) ? (
+            <p className="app-co-onfile">
+              <ShieldCheck size={15} strokeWidth={2} aria-hidden="true" />
+              {transfer.card_label} ·{' '}
+              {transfer.payment_status === 'captured'
+                ? 'paid'
+                : transfer.payment_status === 'authorized'
+                  ? 'authorized, charged after your ride'
+                  : 'on file, charged after your ride'}
+            </p>
+          ) : null}
           {['requested', 'assigned'].includes(transfer.status) &&
+          !transfer.card_on_file &&
           !['authorized', 'captured'].includes(transfer.payment_status) ? (
             <Cta to={`/app/transfer/payment?id=${transfer.id}`}>Authorize Payment</Cta>
           ) : null}

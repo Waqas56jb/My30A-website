@@ -9,6 +9,7 @@ import {
 import { notify } from '../services/notifications.js'
 import {
   capturePaymentIntent,
+  collectFromHoldOrCard,
   createCheckoutSession,
   refundPaymentIntent,
   retrieveCheckoutSession,
@@ -36,7 +37,7 @@ const TRANSFER_SELECT = `
   *,
   driver:profiles!driver_id (id, name, email, roles, is_active),
   vehicle_owner:profiles!vehicle_owner_id (id, name, email, roles),
-  guest:profiles!guest_id (id, name, email, phone),
+  guest:profiles!guest_id (id, name, email, phone, stripe_customer_id),
   vehicle:vehicles!vehicle_id (id, make, model, year, plate, vehicle_type, owner_id, owner_fee_percent, capacity, show_name),
   community:communities!community_id (id, name)
 `
@@ -766,7 +767,27 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
       reasons.push('NEGATIVE_PLATFORM_AMOUNT')
     }
 
-    if (payment_method === 'card_on_file') {
+    if (payment_method === 'card_on_file' && transfer.stripe_payment_method_id) {
+      // Checkout card on file: capture the authorization hold, and charge the saved card for
+      // anything the hold doesn't cover (no hold yet, expired hold, holiday fee added later).
+      const collected = await collectFromHoldOrCard({
+        intentId: transfer.stripe_payment_intent_id,
+        customerId: transfer.guest?.stripe_customer_id,
+        paymentMethodId: transfer.stripe_payment_method_id,
+        amount: money(transfer.customer_charge),
+        metadata: { my30a_transfer_id: transfer.id, kind: 'transfer' },
+      })
+      if (collected?.skipped || ['failed', 'partial'].includes(collected.action)) {
+        return res.status(400).json({
+          error: `The guest’s card (${transfer.card_label || 'on file'}) could not be charged${collected.reason ? `: ${collected.reason}` : ''}. Collect payment another way (payment link, cash or Zelle).`,
+        })
+      }
+      updates.payment_status = 'captured'
+      if (!transfer.stripe_payment_intent_id && collected.charge_intent_id) updates.stripe_payment_intent_id = collected.charge_intent_id
+      if (collected.charge_intent_id && transfer.stripe_payment_intent_id) {
+        updates.notes = appendNote(transfer.notes, `Card: hold captured + extra charged (${collected.charge_intent_id})`)
+      }
+    } else if (payment_method === 'card_on_file') {
       let capture
       try {
         capture = await capturePaymentIntent(transfer.stripe_payment_intent_id)

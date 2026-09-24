@@ -677,10 +677,17 @@ export default function Home() {
             <div className="mkt-footer-social" aria-label="Social media">
               <a href="https://www.instagram.com/my30a_host/" target="_blank" rel="noreferrer" aria-label="My30A Host on Instagram">
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 2.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zM17.4 6.5a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"
-                  />
+                  <path fill="currentColor" d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 2.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zM17.4 6.5a1 1 0 1 1-1 1 1 1 0 0 1 1-1z" />
+                </svg>
+              </a>
+              <a href="https://www.facebook.com/share/1KWYNPbK31/" target="_blank" rel="noreferrer" aria-label="My30A Host on Facebook">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path fill="currentColor" d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v2H6v4h3v9h4v-9h3.2l.8-4H13V9c0-.6.4-1 1-1z" />
+                </svg>
+              </a>
+              <a href="https://www.tiktok.com/@my30ahost1" target="_blank" rel="noreferrer" aria-label="My30A Host on TikTok">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path fill="currentColor" d="M16.6 3c.4 2.1 1.7 3.6 3.9 3.9v3.2c-1.4.1-2.7-.3-3.9-1v6.3c0 3.5-2.6 5.8-5.8 5.6-3-.2-5.2-2.9-4.9-5.9.3-2.8 2.8-5 5.6-4.7v3.3c-1.2-.3-2.5.5-2.6 1.8-.2 1.4.9 2.5 2.2 2.4 1.2 0 2.1-1 2.1-2.2V3h3.4z" />
                 </svg>
               </a>
             </div>
@@ -727,6 +734,14 @@ export default function Home() {
 
           <div className="mkt-footer-col">
             <h3 className="mkt-footer-heading">Contact Info</h3>
+            <a className="mkt-footer-email" href="tel:+18509554577">
+              <span className="mkt-footer-email-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="14" height="14">
+                  <path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" />
+                </svg>
+              </span>
+              (850) 955-4577
+            </a>
             <a className="mkt-footer-email" href="mailto:my30ahost@gmail.com">
               <span className="mkt-footer-email-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="14" height="14">

@@ -2,7 +2,7 @@
 // guest-facing labels, fee windows, cancellations, no-shows, tip requests and the 24h
 // auto-cancel job. Keeping them here means every entry point applies exactly the same rules.
 import { supabase } from '../lib/supabase.js'
-import { capturePaymentIntent, releasePaymentHold, retrievePaymentIntent } from '../lib/stripe.js'
+import { capturePaymentIntent, chargeCard, holdSavedCard, releasePaymentHold, retrievePaymentIntent } from '../lib/stripe.js'
 import { maskedCallNumber, sendSms } from '../lib/sms.js'
 import { notify } from './notifications.js'
 import { pickPublicUrl } from '../lib/urls.js'
@@ -118,6 +118,12 @@ export function statusSms(transfer, status) {
 // amount is 0. Never throws — returns what happened so the caller can record it in notes.
 async function settleHold(transfer, amount) {
   const id = transfer.stripe_payment_intent_id
+  // Card saved at checkout but no hold yet (trip was far out): charge a fee straight to that card.
+  if (!id && transfer.stripe_payment_method_id && amount > 0) {
+    const customerId = transfer.guest?.stripe_customer_id || (await guestCustomerId(transfer.guest_id))
+    const charge = await chargeCard({ customerId, paymentMethodId: transfer.stripe_payment_method_id, amount, metadata: { my30a_transfer_id: transfer.id, kind: 'transfer_fee' } })
+    return charge?.skipped ? { action: 'error', reason: charge.reason } : { action: 'charged', amount }
+  }
   if (!id) return { action: 'none', reason: 'NO_PAYMENT_INTENT' }
   try {
     const intent = await retrievePaymentIntent(id)
@@ -270,6 +276,8 @@ export async function expireUnauthorizedHolds({ select = '*' } = {}) {
     .eq('status', 'assigned')
     .eq('payment_status', 'pending')
     .not('guest_id', 'is', null)
+    // Bookings made through checkout already have a card on file — nothing to expire.
+    .is('stripe_payment_method_id', null)
     // NULL payment_method (guest hasn't chosen yet) must be included: `!= 'cash'` alone drops NULLs.
     .or('payment_method.is.null,payment_method.neq.cash')
   if (error) throw error
@@ -333,4 +341,47 @@ export async function recordTip({ transfer, tip_amount, via, select }) {
     await notify({ user_id: data.driver_id, transfer_id: data.id, message: `Trip #${data.trip_number} · guest left a $${tip} tip` })
   }
   return data
+}
+
+async function guestCustomerId(guestId) {
+  if (!guestId) return null
+  const { data } = await supabase.from('profiles').select('stripe_customer_id').eq('id', guestId).maybeSingle()
+  return data?.stripe_customer_id || null
+}
+
+// Card holds only last ~7 days, so checkout bookings further out than that are held here, 5 days
+// before pickup (daily cron). A decline alerts the guest and the admins in time to fix it.
+export async function authorizeUpcomingHolds() {
+  const horizon = new Date(Date.now() + 5 * 86400000).toISOString()
+  const { data: rows, error } = await supabase
+    .from('transfers')
+    .select('id, trip_number, guest_id, guest_phone, guest_email, notes, customer_charge, card_label, scheduled_at, stripe_payment_method_id')
+    .in('status', ['requested', 'assigned'])
+    .eq('payment_status', 'pending')
+    .not('stripe_payment_method_id', 'is', null)
+    .is('stripe_payment_intent_id', null)
+    .lte('scheduled_at', horizon)
+    .gte('scheduled_at', new Date().toISOString())
+  if (error) throw error
+  const out = { held: [], failed: [] }
+  for (const t of rows || []) {
+    const customerId = await guestCustomerId(t.guest_id)
+    const hold = await holdSavedCard({
+      customerId,
+      paymentMethodId: t.stripe_payment_method_id,
+      amount: Math.round(Number(t.customer_charge) * 100) / 100,
+      metadata: { my30a_transfer_id: t.id, kind: 'transfer' },
+      offSession: true,
+    })
+    if (hold.intent?.status === 'requires_capture') {
+      await supabase.from('transfers').update({ stripe_payment_intent_id: hold.intent.id, payment_status: 'authorized' }).eq('id', t.id)
+      out.held.push(t.id)
+      continue
+    }
+    out.failed.push(t.id)
+    await supabase.from('transfers').update({ notes: appendNote(t.notes, `Pre-trip card hold failed: ${hold.error || hold.intent?.status || 'unknown'}`) }).eq('id', t.id)
+    await notifyGuestAccount(t, `We couldn’t authorize ${t.card_label || 'your card'} for transfer #${t.trip_number}. Please update your payment in the app so your ride stays confirmed.`)
+    await notifyAdmins({ transfer_id: t.id, message: `Card hold failed for transfer #${t.trip_number} (${t.card_label || 'card on file'}): ${hold.error || 'needs guest action'}` })
+  }
+  return out
 }

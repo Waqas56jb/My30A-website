@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Calendar,
@@ -15,9 +15,9 @@ import {
   Plane,
   Users,
 } from 'lucide-react'
-import { errorText, guest } from '../../../lib/guestApi.js'
+import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
+import CheckoutPayment from '../../../components/CheckoutPayment.jsx'
 import {
-  Cta,
   DetailRow,
   PriceCard,
   TransferShell,
@@ -45,7 +45,6 @@ export default function TransferReview() {
   const [returnFlight, setReturnFlight] = useState('')
   const [quote, setQuote] = useState(null)
   const [quoteError, setQuoteError] = useState('')
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   const quoteBody = {
@@ -70,37 +69,50 @@ export default function TransferReview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking.tripType, booking.airport, booking.community, booking.vehicleType, roundTrip])
 
-  const submit = async () => {
+  // Checkout: the booking is only created once the card is confirmed (see CheckoutPayment).
+  // One key per checkout attempt keeps retries (bank approval, double taps) idempotent.
+  const checkoutKey = useRef(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
+  const { data: me } = useGuestQuery(guest.me, [])
+
+  const book = async (paymentMethodId, { handleAction }) => {
     setError('')
-    if (!agree) {
-      setError('Please agree to the cancellation policy to continue.')
-      return
+    if (!agree) throw new Error('Please agree to the cancellation policy to continue.')
+    const payload = {
+      ...quoteBody,
+      address: booking.address,
+      lat: booking.addressLat ?? undefined,
+      lon: booking.addressLon ?? undefined,
+      scheduled_at: booking.scheduledAt || new Date(Date.now() + 86400 * 1000).toISOString(),
+      passengers: booking.passengers,
+      bags: booking.bags,
+      flight_number: booking.flight || undefined,
+      return_trip: roundTrip
+        ? { scheduled_at: toIso(returnDate, returnTime), flight_number: returnFlight.trim() || undefined }
+        : undefined,
+      payment_method: 'card_on_file',
+      payment_method_id: paymentMethodId,
+      checkout_key: checkoutKey.current,
     }
-    setBusy(true)
-    try {
-      const transfer = await guest.createTransfer({
-        ...quoteBody,
-        address: booking.address,
-        lat: booking.addressLat ?? undefined,
-        lon: booking.addressLon ?? undefined,
-        scheduled_at: booking.scheduledAt || new Date(Date.now() + 86400 * 1000).toISOString(),
-        passengers: booking.passengers,
-        bags: booking.bags,
-        flight_number: booking.flight || undefined,
-        return_trip: roundTrip
-          ? { scheduled_at: toIso(returnDate, returnTime), flight_number: returnFlight.trim() || undefined }
-          : undefined,
-      })
-      navigate('/app/transfer/pending', {
-        replace: true,
-        state: { booking, transfer },
-      })
-    } catch (err) {
-      setError(errorText(err))
-    } finally {
-      setBusy(false)
+    let confirmed = {}
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const transfer = await guest.createTransfer({ ...payload, payment_intents: confirmed })
+        navigate('/app/transfer/pending', { replace: true, state: { booking, transfer } })
+        return
+      } catch (err) {
+        // The bank wants the guest to approve the hold (3-D Secure): show it, then finish booking.
+        if (err.status === 402 && err.data?.requires_action) {
+          await handleAction(err.data.client_secret)
+          confirmed = { ...(err.data.payment_intents || {}), [err.data.leg]: err.data.client_secret.split('_secret_')[0] }
+          continue
+        }
+        throw err
+      }
     }
+    throw new Error('We couldn’t confirm your payment. Please try again.')
   }
+
+  const total = quote ? (quote.round_trip ? quote.round_trip_total : quote.total) : null
 
   const [street, ...rest] = booking.address.split(', ')
   const addressValue = rest.length ? (
@@ -117,21 +129,6 @@ export default function TransferReview() {
       title="Book Airport Transfer"
       back="/app/transfer"
       step={2}
-      footer={
-        <>
-          <div className="app-xfer-note is-info">
-            <Info size={20} strokeWidth={1.5} aria-hidden="true" />
-            <span>
-              No payment is taken yet. Your card will only be authorized after My30A Host
-              confirms availability.
-            </span>
-          </div>
-          {error ? <p className="app-inline-error">{error}</p> : null}
-          <Cta onClick={submit} disabled={busy || Boolean(quoteError)}>
-            {busy ? 'Submitting…' : 'Submit Request'}
-          </Cta>
-        </>
-      }
     >
       <div className="app-xfer-stack">
         <div className="app-xfer-intro">
@@ -234,6 +231,21 @@ export default function TransferReview() {
           </span>
           I understand and agree to the cancellation policy.
         </button>
+
+        {error ? <p className="app-inline-error">{error}</p> : null}
+        <CheckoutPayment
+          title="Payment"
+          amountLabel={total !== null ? `$${Number(total).toFixed(2)}` : '…'}
+          note={
+            quote?.available_credit > 0
+              ? `Your $${quote.available_credit} credit is applied automatically. Your card is authorized now and charged only after your ride.`
+              : 'Your card is authorized now and charged only after your ride. Free cancellation up to 48 hours before pickup.'
+          }
+          submitLabel={total !== null ? `Pay & Book · $${Number(total).toFixed(2)}` : 'Pay & Book'}
+          disabled={!quote || Boolean(quoteError) || !agree}
+          onPay={book}
+          profile={me}
+        />
       </div>
     </TransferShell>
   )

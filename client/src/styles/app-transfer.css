@@ -1486,3 +1486,235 @@
     font-size: 18px;
   }
 }
+
+/* ——— Checkout (card on file) ——— */
+.app-co {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px;
+  border: 1px solid rgba(10, 22, 40, 0.07);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(10, 22, 40, 0.04), 0 16px 34px -24px rgba(10, 22, 40, 0.45);
+}
+
+.app-co-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.app-co-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 18px;
+  color: #0a1628;
+}
+
+.app-co-secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #ecfbf2;
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 11px;
+  color: #13804a;
+}
+
+.app-co-amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f3f8fc 0%, #eef4fb 100%);
+  font-family: var(--app-body);
+  font-size: 14px;
+  color: #43536a;
+}
+
+.app-co-amount strong {
+  font-family: var(--app-title);
+  font-weight: 700;
+  font-size: 22px;
+  color: #0a1628;
+}
+
+.app-co-note {
+  margin: 0;
+  font-family: var(--app-body);
+  font-size: 13px;
+  line-height: 145%;
+  color: #43536a;
+}
+
+.app-co-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-co-method {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.app-co-method.is-on {
+  border-color: #0c3255;
+  background: #f7fbff;
+  box-shadow: 0 0 0 3px rgba(12, 50, 85, 0.08);
+}
+
+.app-co-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 32px;
+  border-radius: 7px;
+  background: #0c3255;
+  font-family: var(--app-body);
+  font-weight: 800;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.app-co-brand.is-visa { background: linear-gradient(135deg, #1a1f71 0%, #2a3499 100%); }
+.app-co-brand.is-mastercard { background: linear-gradient(135deg, #eb001b 0%, #f79e1b 100%); }
+.app-co-brand.is-amex { background: linear-gradient(135deg, #2e77bb 0%, #1d5a94 100%); }
+.app-co-brand.is-discover { background: linear-gradient(135deg, #ff6000 0%, #f39200 100%); }
+.app-co-brand.is-add { background: #eef2f7; color: #0c3255; }
+
+.app-co-method-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-co-method-text strong {
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 14px;
+  color: #0a1628;
+}
+
+.app-co-method-text small {
+  font-family: var(--app-body);
+  font-size: 12px;
+  color: #6b7a90;
+}
+
+.app-co-tick {
+  flex-shrink: 0;
+  color: #13804a;
+}
+
+.app-co-newcard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.app-co-pay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0c3255 0%, #1a5fbf 100%);
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 16px;
+  color: #ffffff;
+  box-shadow: 0 14px 28px -14px rgba(12, 50, 85, 0.8);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.app-co-pay:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.app-co-pay:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.app-co-legal {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--app-body);
+  font-size: 11.5px;
+  line-height: 140%;
+  color: #6b7a90;
+}
+
+.app-co-legal svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.app-co-onfile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: #13804a;
+}
+
+.app-co-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--app-body);
+  font-size: 14px;
+  color: #30313d;
+}
+
+.app-co-field input {
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  background: #ffffff;
+  font-size: 16px;
+  color: #0a1628;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03), 0 3px 6px rgba(0, 0, 0, 0.02);
+  outline: none;
+}
+
+.app-co-field input:focus {
+  border-color: #0c3255;
+  box-shadow: 0 0 0 3px rgba(12, 50, 85, 0.12);
+}

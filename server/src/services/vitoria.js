@@ -155,7 +155,7 @@ async function buildKnowledge() {
   }
   lines.push('The guest pays the flat package + stocking fee plus the exact Publix receipt (no markup). Nothing is charged until the order is delivered; the card is saved in the app and charged once, after delivery. The guest sends their list by uploading a Publix cart screenshot or emailing my30ahost@gmail.com.')
 
-  lines.push('\nCONTACT MY30A HOST: email my30ahost@gmail.com · Instagram @my30a_host (instagram.com/my30a_host) · website www.my30ahost.com')
+  lines.push('\nCONTACT MY30A HOST: phone (850) 955-4577 · email my30ahost@gmail.com · Instagram @my30a_host · Facebook (My30A Host) · TikTok @my30ahost1 · website www.my30ahost.com')
 
   return lines.join('\n')
 }

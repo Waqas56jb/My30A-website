@@ -14,6 +14,7 @@ import {
   Settings,
   User,
   Utensils,
+  Phone,
 } from 'lucide-react'
 import BottomNav from './BottomNav.jsx'
 import { errorText, guest, initials, useGuestQuery } from '../../lib/guestApi.js'
@@ -33,8 +34,11 @@ const ACCOUNT = [
 
 const SUPPORT = [
   { Icon: MessageCircle, label: 'Message Vitoria', sub: 'Your 24/7 AI concierge', to: '/app/vitoria', tone: 'sea' },
-  { Icon: Headset, label: 'Contact My30A Host', sub: 'my30ahost@gmail.com', to: 'mailto:my30ahost@gmail.com', tone: 'leaf' },
+  { Icon: Phone, label: 'Call My30A Host', sub: '(850) 955-4577', to: 'tel:+18509554577', tone: 'sea' },
+  { Icon: Headset, label: 'Email My30A Host', sub: 'my30ahost@gmail.com', to: 'mailto:my30ahost@gmail.com', tone: 'leaf' },
   { Icon: InstagramIcon, label: 'Follow us on Instagram', sub: '@my30a_host', to: 'https://www.instagram.com/my30a_host/', tone: 'pink', external: true },
+  { Icon: FacebookIcon, label: 'Facebook', sub: 'My30A Host', to: 'https://www.facebook.com/share/1KWYNPbK31/', tone: 'sea', external: true },
+  { Icon: TikTokIcon, label: 'TikTok', sub: '@my30ahost1', to: 'https://www.tiktok.com/@my30ahost1', tone: 'slate', external: true },
 ]
 
 // lucide has no brand icons in this version — same stroke style, drawn inline.
@@ -44,6 +48,22 @@ function InstagramIcon({ size = 18, strokeWidth = 1.8 }) {
       <rect x="3" y="3" width="18" height="18" rx="5" />
       <circle cx="12" cy="12" r="4" />
       <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
+    </svg>
+  )
+}
+
+function FacebookIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v2H6v4h3v9h4v-9h3.2l.8-4H13V9c0-.6.4-1 1-1z" />
+    </svg>
+  )
+}
+
+function TikTokIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.6 3c.4 2.1 1.7 3.6 3.9 3.9v3.2c-1.4.1-2.7-.3-3.9-1v6.3c0 3.5-2.6 5.8-5.8 5.6-3-.2-5.2-2.9-4.9-5.9.3-2.8 2.8-5 5.6-4.7v3.3c-1.2-.3-2.5.5-2.6 1.8-.2 1.4.9 2.5 2.2 2.4 1.2 0 2.1-1 2.1-2.2V3h3.4z" />
     </svg>
   )
 }
