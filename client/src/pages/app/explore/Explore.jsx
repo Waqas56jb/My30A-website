@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { ArrowRight, Search } from 'lucide-react'
 import { guest, useGuestQuery } from '../../../lib/guestApi.js'
 import { BackButton, CategoryTile, DINING_KEYS, ExploreShell, TileSkeleton } from './ExploreShared.jsx'
 
@@ -51,10 +51,14 @@ export default function Explore() {
             <Search size={18} strokeWidth={1.8} aria-hidden="true" />
             <input
               type="search"
+              enterKeyHint="search"
               placeholder="Search places, restaurants, or things to do"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
+            <button type="submit" className="app-exp-search-go" aria-label="Search" disabled={!q.trim()}>
+              <ArrowRight size={18} strokeWidth={2.2} aria-hidden="true" />
+            </button>
           </label>
         </form>
 

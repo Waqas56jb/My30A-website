@@ -1,5 +1,6 @@
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { NotificationHost } from './NotificationBell.jsx'
 
 function Frame({ children }) {
   return (
@@ -47,5 +48,10 @@ export default function GuestRoute({ children }) {
     )
   }
 
-  return children
+  return (
+    <>
+      {children}
+      <NotificationHost />
+    </>
+  )
 }

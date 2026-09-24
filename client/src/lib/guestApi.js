@@ -41,6 +41,7 @@ export const guest = {
   signup: (body) => api('/api/guest/signup', { method: 'POST', body }).then((r) => (queryCache.clear(), adoptSession(r))),
   login: (body) => api('/api/guest/login', { method: 'POST', body }).then((r) => (queryCache.clear(), adoptSession(r))),
   signOut: async () => {
+    import('./notifications.js').then((m) => m.stopNotificationWatcher()).catch(() => {})
     queryCache.clear()
     setAccessToken(null)
     if (supabase) await supabase.auth.signOut()
@@ -57,6 +58,15 @@ export const guest = {
   addressAutocomplete: (q) => api(withQuery('/api/guest/address-autocomplete', { q })),
   addressCheck: (body) => api('/api/guest/address-check', { method: 'POST', body }),
   notifications: () => api('/api/notifications/mine'),
+  unreadNotifications: () => api('/api/notifications/mine?unread=true'),
+  readNotification: (id) => api(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+  readAllNotifications: () => api('/api/notifications/read-all', { method: 'POST' }),
+  uploadAvatar: (file) => {
+    const form = new FormData()
+    form.append('avatar', file, file.name || 'avatar.jpg')
+    return apiUpload('/api/guest/me/avatar', form)
+  },
+  removeCard: (id) => api(`/api/guest/payment-methods/${id}`, { method: 'DELETE' }),
 
   // explore
   explore: () => api('/api/guest/explore'),

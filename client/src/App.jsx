@@ -36,6 +36,10 @@ import BeachDetail from './pages/app/explore/BeachDetail.jsx'
 import PublicInfo from './pages/app/explore/PublicInfo.jsx'
 import Dining from './pages/app/explore/Dining.jsx'
 import Events from './pages/app/explore/Events.jsx'
+import AppNotifications from './pages/app/profile/AppNotifications.jsx'
+import ProfileInfo from './pages/app/profile/ProfileInfo.jsx'
+import ProfilePayments from './pages/app/profile/ProfilePayments.jsx'
+import ProfileSettings from './pages/app/profile/ProfileSettings.jsx'
 import TripPage from './pages/public/TripPage.jsx'
 import TipPage from './pages/public/TipPage.jsx'
 import Trips from './pages/driver/Trips.jsx'
@@ -51,6 +55,7 @@ import './styles/app-transfer.css'
 import './styles/app-grocery.css'
 import './styles/app-explore.css'
 import './styles/app-motion.css'
+import './styles/app-account.css'
 
 const PANEL_ROLES = ['driver', 'partner', 'shopper']
 
@@ -151,6 +156,10 @@ const GUEST_ROUTES = [
   ['/app/vitoria', AppVitoria],
   ['/app/profile', AppProfile],
   ['/app/profile/saved', SavedPlaces],
+  ['/app/profile/info', ProfileInfo],
+  ['/app/profile/payments', ProfilePayments],
+  ['/app/profile/settings', ProfileSettings],
+  ['/app/notifications', AppNotifications],
   ['/app/explore', Explore],
   ['/app/explore/guide', LocalGuide],
   ['/app/explore/vendors/:slug', VendorList],

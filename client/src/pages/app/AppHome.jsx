@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
-  Bell,
   ChevronRight,
   Clock,
   MapPin,
@@ -15,6 +14,7 @@ import {
 import BottomNav from './BottomNav.jsx'
 import { errorText, guest, rememberedName, useGuestQuery } from '../../lib/guestApi.js'
 import { iconFor } from './explore/ExploreShared.jsx'
+import NotificationBell from '../../components/NotificationBell.jsx'
 
 function localGreeting() {
   const h = new Date().getHours()
@@ -215,10 +215,7 @@ export default function AppHome() {
             <header className="app-home-hero">
               <div className="app-home-hero-top app-enter">
                 <img className="app-home-logo" src="/home logo.png" alt="M30A" width={78} height={40} />
-                <Link to="/app/profile" className="app-home-bell app-press" aria-label="Notifications">
-                  <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
-                  {data?.unread_count ? <span className="app-home-bell-dot" aria-hidden="true" /> : null}
-                </Link>
+                <NotificationBell className="app-home-bell app-press" />
               </div>
 
               <div className="app-home-greet app-enter" style={{ animationDelay: '60ms' }}>

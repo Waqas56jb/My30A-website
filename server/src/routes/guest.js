@@ -12,7 +12,7 @@ import { openStatus } from '../lib/hours.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
 import { notify } from '../services/notifications.js'
-import { getSignedUrl, uploadFile } from '../lib/storage.js'
+import { getSignedUrl, uploadAvatar, uploadFile } from '../lib/storage.js'
 import { chatCompletion, createRealtimeSession, webResponse } from '../lib/openai.js'
 import { cleanConciergeText } from '../lib/textFormat.js'
 import {
@@ -784,6 +784,39 @@ router.patch('/me', async (req, res, next) => {
       .single()
     if (error) return res.status(400).json({ error: error.message })
     res.json(profileView(data))
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Profile photo: the app resizes it to a small JPEG first; stored in a public bucket.
+router.post('/me/avatar', upload.single('avatar'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'avatar image is required' })
+    const url = await uploadAvatar(req.file.buffer, `${req.user.id}/${Date.now()}.${extensionFor(req.file.mimetype)}`, req.file.mimetype)
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: url })
+      .eq('id', req.user.id)
+      .select('id, name, email, phone, avatar_url, roles')
+      .single()
+    if (error) return res.status(400).json({ error: error.message })
+    res.json(profileView(data))
+  } catch (error) {
+    if (error.message === 'Images only') return res.status(400).json({ error: 'Please choose a photo (JPG or PNG).' })
+    next(error)
+  }
+})
+
+// Remove a saved card (only one saved on this guest's own Stripe customer).
+router.delete('/payment-methods/:id', guestOnly, async (req, res, next) => {
+  try {
+    const { data: profile } = await supabase.from('profiles').select('stripe_customer_id').eq('id', req.user.id).maybeSingle()
+    if (!profile?.stripe_customer_id) return res.status(404).json({ error: 'Card not found' })
+    const check = await verifyCustomerCard(profile.stripe_customer_id, req.params.id)
+    if (!check?.ok) return res.status(404).json({ error: 'Card not found' })
+    await detachCardSafe(req.params.id)
+    res.json({ ok: true, cards: await listCards(profile.stripe_customer_id) })
   } catch (error) {
     next(error)
   }

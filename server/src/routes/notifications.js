@@ -12,6 +12,8 @@ router.get('/mine', async (req, res, next) => {
       .select('*')
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false })
+      // Latest first; the app never needs the whole history at once.
+      .limit(Math.min(Number(req.query.limit) || 100, 200))
 
     if (req.query.unread === 'true') {
       query = query.eq('is_read', false)

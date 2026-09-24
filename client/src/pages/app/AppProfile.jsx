@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -17,19 +17,21 @@ import {
   Phone,
 } from 'lucide-react'
 import BottomNav from './BottomNav.jsx'
+import NotificationBell from '../../components/NotificationBell.jsx'
+import { squareJpeg } from '../../lib/avatar.js'
 import { errorText, guest, initials, useGuestQuery } from '../../lib/guestApi.js'
 
 const SAVED = [
   { Icon: Utensils, label: 'Saved Places', sub: 'Places you’ve hearted', to: '/app/profile/saved', tone: 'sand' },
-  { Icon: MapPin, label: 'Favorite Restaurants', sub: 'Dining around 30A', to: '/app/explore/guide?c=restaurants', tone: 'sea' },
-  { Icon: History, label: 'Vitoria Memory', sub: 'What your concierge knows', to: '/app/vitoria', tone: 'violet' },
+  { Icon: MapPin, label: 'Favorite Restaurants', sub: 'Restaurants, bars & cafés you’ve saved', to: '/app/profile/saved?type=dining', tone: 'sea' },
+  { Icon: History, label: 'Vitoria Memory', sub: 'Your conversations with your concierge', to: '/app/vitoria', tone: 'violet' },
 ]
 
 const ACCOUNT = [
-  { Icon: User, label: 'Personal Information', sub: 'Name, email and phone', to: '#account', tone: 'sea' },
-  { Icon: Bell, label: 'Notifications', sub: 'Alerts and updates', to: '#account', tone: 'sand' },
-  { Icon: CreditCard, label: 'Payment Methods', sub: 'Saved cards', to: '#account', tone: 'leaf' },
-  { Icon: Settings, label: 'Settings', sub: 'Preferences and privacy', to: '#account', tone: 'slate' },
+  { Icon: User, label: 'Personal Information', sub: 'Name, email and phone', to: '/app/profile/info', tone: 'sea' },
+  { Icon: Bell, label: 'Notifications', sub: 'Alerts and updates', to: '/app/notifications', tone: 'sand' },
+  { Icon: CreditCard, label: 'Payment Methods', sub: 'Saved cards', to: '/app/profile/payments', tone: 'leaf' },
+  { Icon: Settings, label: 'Settings', sub: 'Preferences and privacy', to: '/app/profile/settings', tone: 'slate' },
 ]
 
 const SUPPORT = [
@@ -108,9 +110,29 @@ function Group({ title, rows, index, badges = {} }) {
 
 export default function AppProfile() {
   const navigate = useNavigate()
-  const { data, loading, error } = useGuestQuery(guest.me, [])
+  const { data, loading, error, reload } = useGuestQuery(guest.me, [])
   const [signingOut, setSigningOut] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState('')
+  const photoRef = useRef(null)
   const pending = loading && !data
+
+  // Pencil on the avatar: pick a photo → resized to 512px → uploaded → shown right away.
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoError('')
+    setPhotoBusy(true)
+    try {
+      await guest.uploadAvatar(await squareJpeg(file))
+      reload()
+    } catch (err) {
+      setPhotoError(errorText(err))
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
   const profile = data?.profile
   const name = profile?.name || 'Guest'
   const stats = data?.stats
@@ -143,9 +165,7 @@ export default function AppProfile() {
                   <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
                 </button>
                 <span className="app-pf-hero-title">Profile</span>
-                <button type="button" className="app-round-btn is-glass app-press" aria-label="Notifications">
-                  <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
-                </button>
+                <NotificationBell className="app-round-btn is-glass app-press" />
               </div>
             </div>
 
@@ -153,14 +173,23 @@ export default function AppProfile() {
               <div className="app-pf-avatar-wrap">
                 {pending ? (
                   <span className="app-pf-avatar app-skel app-skel-circle" aria-hidden="true" />
+                ) : profile?.avatar_url ? (
+                  <img className="app-pf-avatar is-photo" src={profile.avatar_url} alt={name} />
                 ) : (
                   <span className="app-pf-avatar" role="img" aria-label={name}>
                     {initials(profile?.name, profile?.email)}
                   </span>
                 )}
-                <button type="button" className="app-pf-edit app-press" aria-label="Edit photo">
+                <button
+                  type="button"
+                  className={`app-pf-edit app-press${photoBusy ? ' is-busy' : ''}`}
+                  aria-label="Change profile photo"
+                  onClick={() => photoRef.current?.click()}
+                  disabled={photoBusy}
+                >
                   <Pencil size={14} strokeWidth={2} aria-hidden="true" />
                 </button>
+                <input ref={photoRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
               </div>
 
               {pending ? (
@@ -183,6 +212,7 @@ export default function AppProfile() {
                 </div>
               )}
               {error ? <p className="app-inline-error" style={{ textAlign: 'center' }}>{errorText(error)}</p> : null}
+              {photoError ? <p className="app-inline-error" style={{ textAlign: 'center' }}>{photoError}</p> : null}
 
               <dl className="app-pf-stats">
                 {[

@@ -12,7 +12,7 @@ import { stripeConfigured, stripePromise } from '../lib/stripeClient.js'
 // Card numbers never touch our code or servers (PCI scope stays with Stripe).
 const BRAND_SHORT = { visa: 'VISA', mastercard: 'MC', amex: 'AMEX', discover: 'DISC', diners: 'DINERS', jcb: 'JCB', unionpay: 'UPAY' }
 
-function NewCardForm({ busy, setBusy, onConfirmed, setError, submitLabel, profile }) {
+function NewCardForm({ busy, payDisabled, setBusy, onConfirmed, setError, submitLabel, profile }) {
   const stripe = useStripe()
   const elements = useElements()
   const [holder, setHolder] = useState(profile?.name || '')
@@ -31,8 +31,8 @@ function NewCardForm({ busy, setBusy, onConfirmed, setError, submitLabel, profil
     setError('')
     const { error: invalid } = await elements.submit()
     if (invalid) {
+      // Stripe highlights the field that needs fixing inside its own form.
       setBusy(false)
-      setError(invalid.message || 'Please check your card details.')
       return
     }
     const { error, setupIntent } = await stripe.confirmSetup({
@@ -52,7 +52,7 @@ function NewCardForm({ busy, setBusy, onConfirmed, setError, submitLabel, profil
     })
     if (error) {
       setBusy(false)
-      setError(error.message || 'Your card could not be verified. Please try another card.')
+      setError(error.type === 'validation_error' ? '' : error.message || 'Your card could not be verified. Please try another card.')
       return
     }
     await onConfirmed(setupIntent.payment_method)
@@ -68,7 +68,7 @@ function NewCardForm({ busy, setBusy, onConfirmed, setError, submitLabel, profil
           value={holder}
           onChange={(e) => setHolder(e.target.value)}
           placeholder="Full name as shown on the card"
-          disabled={busy}
+          readOnly={busy}
         />
       </label>
       <PaymentElement
@@ -87,7 +87,7 @@ function NewCardForm({ busy, setBusy, onConfirmed, setError, submitLabel, profil
           wallets: { applePay: 'auto', googlePay: 'auto', link: 'never' },
         }}
       />
-      <button type="submit" className="app-co-pay" disabled={!stripe || busy}>
+      <button type="submit" className="app-co-pay" disabled={!stripe || busy || payDisabled}>
         <Lock size={16} strokeWidth={2} aria-hidden="true" />
         {busy ? 'Processing…' : submitLabel}
       </button>
@@ -244,7 +244,8 @@ export default function CheckoutPayment({ title = 'Payment', amountLabel, note, 
             }}
           >
             <NewCardForm
-              busy={busy || disabled || done}
+              busy={busy || done}
+              payDisabled={disabled}
               setBusy={setBusy}
               setError={setError}
               onConfirmed={pay}

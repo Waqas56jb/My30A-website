@@ -36,3 +36,24 @@ export async function getSignedUrl(filePath, expiresIn = 3600) {
 }
 
 export { BUCKET }
+
+// Public bucket for profile photos (safe to show anywhere, no signed URLs needed).
+const AVATAR_BUCKET = 'avatars'
+let avatarBucketReady = false
+export async function uploadAvatar(buffer, filePath, contentType) {
+  if (!avatarBucketReady) {
+    const { data: buckets } = await supabase.storage.listBuckets()
+    if (!(buckets || []).some((b) => b.name === AVATAR_BUCKET)) {
+      const { error } = await supabase.storage.createBucket(AVATAR_BUCKET, {
+        public: true,
+        fileSizeLimit: '5MB',
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+      })
+      if (error && !String(error.message).toLowerCase().includes('already')) throw error
+    }
+    avatarBucketReady = true
+  }
+  const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(filePath, buffer, { contentType, upsert: true })
+  if (error) throw error
+  return supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath).data.publicUrl
+}

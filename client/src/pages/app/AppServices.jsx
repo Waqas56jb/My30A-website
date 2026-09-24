@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Bell, Clock, CreditCard, Plane, ShieldCheck, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Clock, CreditCard, Plane, ShieldCheck, ShoppingBag } from 'lucide-react'
 import BottomNav from './BottomNav.jsx'
+import NotificationBell from '../../components/NotificationBell.jsx'
 
 const SERVICES = [
   {
@@ -102,9 +103,7 @@ export default function AppServices() {
                 <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
               </button>
               <h1 className="app-services-title">Services</h1>
-              <Link to="/app/profile" className="app-round-btn app-press" aria-label="Notifications">
-                <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
-              </Link>
+              <NotificationBell className="app-round-btn app-press" />
             </header>
 
             <main className="app-services-body">

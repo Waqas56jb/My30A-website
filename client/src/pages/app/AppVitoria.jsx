@@ -6,7 +6,6 @@ import {
   ArrowUp,
   BadgeCheck,
   CalendarDays,
-  Bell,
   Car,
   Clock,
   Globe,
@@ -24,6 +23,7 @@ import {
   Waves,
 } from 'lucide-react'
 import { errorText, guest } from '../../lib/guestApi.js'
+import NotificationBell from '../../components/NotificationBell.jsx'
 
 // Live voice mode (OpenAI Realtime) — loaded only when the guest opens it.
 const VitoriaVoice = lazy(() => import('./vitoria/VitoriaVoice.jsx'))
@@ -308,14 +308,7 @@ export default function AppVitoria() {
                 <AudioLines size={16} strokeWidth={2} aria-hidden="true" />
                 Talk
               </button>
-              <button
-                type="button"
-                className="app-home-bell app-home-bell-soft"
-                aria-label="Notifications"
-                onClick={() => navigate('/app/profile')}
-              >
-                <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
-              </button>
+              <NotificationBell className="app-home-bell app-home-bell-soft" />
             </div>
           </header>
 
