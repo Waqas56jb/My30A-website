@@ -81,13 +81,13 @@ try {
   await g.locator('.app-exp-tile', { hasText: 'Beaches' }).click()
   await g.waitForURL(/\/app\/explore\/info\?focus=beach-access/, { timeout: 10000 })
   await g.locator('h1', { hasText: 'Beaches' }).waitFor({ timeout: 10000 })
-  await g.locator('.app-exp-acc-head').first().waitFor({ timeout: 10000 })
-  const accSections = await g.locator('.app-exp-acc-head span').allTextContents()
-  ok(
-    accSections.some((t) => t.includes('With Parking')) && accSections.some((t) => t.includes('Walk')),
-    'Beaches tile shows the real 59 public beach-access points, not fake vendor guides',
-    accSections.join(' | ')
-  )
+  await g.locator('.app-beach-row:not(.app-skel)').first().waitFor({ timeout: 10000 })
+  const beachCount = await g.locator('.app-beach-row').count()
+  const countLabel = await g.locator('.app-dine-count strong').textContent()
+  ok(beachCount === 59 && countLabel.includes('59'), 'Beaches tile shows the real 59 public beach-access cards, not fake vendor guides', `${beachCount} cards`)
+  await g.locator('.app-dine-chip', { hasText: 'Restrooms' }).click()
+  const withRestrooms = await g.locator('.app-beach-row').count()
+  ok(withRestrooms > 0 && withRestrooms < 59, 'Restrooms filter narrows the list to accesses that have them', `${withRestrooms} accesses`)
   await shot(g, 'explore-beaches-real-data')
 } catch (error) {
   ok(false, 'unexpected error', error.message)

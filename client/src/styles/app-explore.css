@@ -1710,3 +1710,302 @@ img.app-exp-hero-img:not(.is-loaded) {
     padding-right: 16px;
   }
 }
+
+/* ——— Beaches (public beach accesses) ——— */
+.app-beach-wrap {
+  gap: 18px;
+}
+
+.app-beach-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0b4f7a 0%, #1a8fc0 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 28px -18px rgba(11, 79, 122, 0.8);
+}
+
+.app-beach-flags strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.app-beach-flag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.app-beach-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px 5px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.app-beach-flag i {
+  display: block;
+  width: 12px;
+  height: 9px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.app-beach-flag.is-green i { background: #22c55e; }
+.app-beach-flag.is-yellow i { background: #facc15; }
+.app-beach-flag.is-red i { background: #ef4444; }
+.app-beach-flag.is-double i { background: linear-gradient(90deg, #ef4444 45%, transparent 45%, transparent 55%, #ef4444 55%); }
+.app-beach-flag.is-purple i { background: #a855f7; }
+
+.app-beach-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-beach-features {
+  display: flex;
+  gap: 12px;
+  margin: 0 -20px;
+  padding: 2px 20px 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.app-beach-features::-webkit-scrollbar {
+  display: none;
+}
+
+.app-beach-feature {
+  position: relative;
+  flex: 0 0 76%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  aspect-ratio: 4 / 3.3;
+  padding: 12px;
+  border-radius: 20px;
+  overflow: hidden;
+  isolation: isolate;
+  color: #ffffff;
+  text-decoration: none;
+  scroll-snap-align: start;
+  box-shadow: 0 14px 28px -18px rgba(10, 22, 40, 0.6);
+  transition: transform 0.28s var(--ease-out);
+}
+
+.app-beach-feature:active {
+  transform: scale(0.97);
+}
+
+.app-beach-feature-media {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+
+.app-beach-feature-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.45s var(--ease-std), transform 0.9s var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-beach-feature:hover .app-beach-feature-media img.is-loaded {
+    transform: scale(1.06);
+  }
+}
+
+.app-beach-feature::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(10, 22, 40, 0.1) 0%, rgba(10, 22, 40, 0) 35%, rgba(10, 22, 40, 0.85) 100%);
+}
+
+.app-beach-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 10.5px;
+  color: #0b4f7a;
+}
+
+.app-beach-feature-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.app-beach-feature-foot strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 115%;
+  text-shadow: 0 1px 12px rgba(10, 22, 40, 0.4);
+}
+
+.app-beach-feature-foot small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--app-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.app-beach-feature .app-beach-facts span {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.app-beach-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.app-beach-facts span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eaf6fb;
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 10.5px;
+  line-height: 100%;
+  color: #0c4a6e;
+}
+
+.app-beach-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-beach-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(10, 22, 40, 0.06);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(10, 22, 40, 0.04), 0 10px 24px -18px rgba(10, 22, 40, 0.35);
+}
+
+.app-beach-row.app-skel {
+  border: 0;
+  box-shadow: none;
+}
+
+.app-beach-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #7fd3e8 0%, #1a8fc0 100%);
+  color: #ffffff;
+}
+
+.app-beach-badge b {
+  font-family: var(--app-body);
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 100%;
+}
+
+.app-beach-badge.is-rba {
+  background: linear-gradient(145deg, #ffb547 0%, #e5801c 100%);
+}
+
+.app-beach-badge.is-park {
+  background: linear-gradient(145deg, #3fae74 0%, #17613d 100%);
+}
+
+.app-beach-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-beach-body strong {
+  font-family: var(--app-title);
+  font-weight: 600;
+  font-size: 15.5px;
+  line-height: 120%;
+  color: var(--xfer-ink);
+}
+
+.app-beach-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--app-body);
+  font-size: 12px;
+  color: var(--xfer-muted);
+}
+
+.app-beach-addr {
+  font-family: var(--app-body);
+  font-size: 12px;
+  color: var(--xfer-faint);
+}
+
+.app-beach-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--app-body);
+  font-weight: 600;
+  font-size: 11px;
+  color: #c2410c;
+}
+
+.app-beach-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--xfer-ink);
+  color: #ffffff;
+  box-shadow: 0 8px 16px -10px rgba(10, 22, 40, 0.7);
+  transition: transform 0.2s var(--ease-out), background-color 0.2s ease;
+}
+
+.app-beach-go:active {
+  transform: scale(0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-beach-go:hover {
+    background: #1a8fc0;
+  }
+}

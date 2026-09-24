@@ -58,6 +58,21 @@ export function loadBeaches() {
   })
 }
 
+// County labels ("Santa Rosa Beach (Seagrove)", "Panama City Beach (Seacrest)") → our community names.
+const AREA_NAMES = {
+  seagrove: 'Seagrove Beach',
+  'blue mountain': 'Blue Mountain Beach',
+  'dune allen': 'Dune Allen Beach',
+  seacrest: 'Seacrest Beach',
+  'gulf place': 'Gulf Place',
+}
+function areaName(label) {
+  const raw = String(label || '')
+  const inner = raw.match(/\(([^)]+)\)/)?.[1]
+  const base = inner || raw
+  return AREA_NAMES[low(base)] || base
+}
+
 function photoFor(b) {
   if (/inlet/i.test(b.name) || /phillip/i.test(b.name)) return INLET_PHOTO
   let h = 0
@@ -73,9 +88,9 @@ export function beachCard(b, why = '') {
     b.accessible ? 'Accessible' : null,
     b.dogs ? 'Dog friendly' : null,
   ].filter(Boolean)
-  const area = String(b.community || '').replace(/^Santa Rosa Beach \((.+)\)$/, '$1').replace(/^Panama City Beach \((.+)\)$/, '$1')
+  const area = areaName(b.community)
   return {
-    name: b.name.replace(/\s+#\w+$/, ''),
+    name: b.name.replace(/\s+#[\w-]+$/, ''),
     area,
     category: b.statePark ? 'State park beach' : b.regional ? 'Regional beach access' : 'Public beach access',
     why: why || b.address,
@@ -89,6 +104,16 @@ export function beachCard(b, why = '') {
     in_guide: true,
     kind: 'beach',
     to: '/app/explore/info?focus=beach-access',
+    number: b.name.match(/#\s*([\w-]+)$/)?.[1] || null,
+    step: stepOf(b.community),
+    spaces: b.spaces,
+    restroom: b.restroom,
+    walk_only: b.walkOnly,
+    state_park: b.statePark,
+    regional: b.regional,
+    accessible: b.accessible,
+    dogs: b.dogs,
+    note: /bonfire/i.test(b.details || '') ? 'Public bonfires only — no commercial vendors' : null,
   }
 }
 

@@ -66,6 +66,7 @@ export const guest = {
   vendor: (key) => api(`/api/guest/explore/vendor/${encodeURIComponent(key)}`),
   info: () => api('/api/guest/explore/info'),
   dining: () => api('/api/guest/explore/dining'),
+  beaches: () => api('/api/guest/explore/beaches'),
   saved: () => api('/api/guest/saved'),
   save: (key) => api(`/api/guest/saved/${encodeURIComponent(key)}`, { method: 'POST' }),
   unsave: (key) => api(`/api/guest/saved/${encodeURIComponent(key)}`, { method: 'DELETE' }),

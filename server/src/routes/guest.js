@@ -29,6 +29,7 @@ import { geocodeQuery } from '../lib/nominatim.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
 import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt } from '../services/vitoria.js'
 import { vitoriaOffline } from '../services/vitoriaOffline.js'
+import { beachCard, distinctPhotos, loadBeaches, recommendBeaches } from '../services/beaches.js'
 import {
   ROUND_TRIP_DISCOUNT_PERCENT,
   availableCredit,
@@ -1183,6 +1184,23 @@ router.get('/explore/vendor/:key', async (req, res, next) => {
     res.json(vendorView(vendor, { saved, back }))
   } catch (error) {
     next(error)
+  }
+})
+
+// Beaches screen: every Walton County public beach access as a card (area, parking, restrooms,
+// directions), west → east along 30A, plus the best-equipped ones to feature at the top.
+router.get('/explore/beaches', async (_req, res, next) => {
+  try {
+    const payload = await memo('explore:beaches-view', async () => {
+      const beaches = await loadBeaches()
+      const cards = beaches.map((b) => beachCard(b)).sort((a, b) => a.step - b.step)
+      const { picks } = await recommendBeaches({ count: 6 })
+      const featured = distinctPhotos(picks.map((b) => beachCard(b)))
+      return { beaches: cards, featured }
+    })
+    res.json(payload)
+  } catch (error) {
+    sendError(res, next, error)
   }
 })
 
