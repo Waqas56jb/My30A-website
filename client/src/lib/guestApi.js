@@ -67,6 +67,7 @@ export const guest = {
   info: () => api('/api/guest/explore/info'),
   dining: () => api('/api/guest/explore/dining'),
   beaches: () => api('/api/guest/explore/beaches'),
+  events: () => api('/api/guest/explore/events'),
   saved: () => api('/api/guest/saved'),
   save: (key) => api(`/api/guest/saved/${encodeURIComponent(key)}`, { method: 'POST' }),
   unsave: (key) => api(`/api/guest/saved/${encodeURIComponent(key)}`, { method: 'DELETE' }),
@@ -108,6 +109,9 @@ export const guest = {
   // Vitoria
   vitoria: () => api('/api/guest/vitoria/messages'),
   ask: (content) => api('/api/guest/vitoria/messages', { method: 'POST', body: { content } }),
+  voiceSession: () => api('/api/guest/vitoria/voice/session', { method: 'POST' }),
+  voiceTool: (name, args) => api('/api/guest/vitoria/voice/tool', { method: 'POST', body: { name, arguments: args } }),
+  voiceLog: (turns) => api('/api/guest/vitoria/voice/log', { method: 'POST', body: { turns } }),
   clearVitoria: () => api('/api/guest/vitoria/messages', { method: 'DELETE' }),
 }
 

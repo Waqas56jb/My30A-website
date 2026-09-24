@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase.js'
 import { capturePaymentIntent, releasePaymentHold, retrievePaymentIntent } from '../lib/stripe.js'
 import { maskedCallNumber, sendSms } from '../lib/sms.js'
 import { notify } from './notifications.js'
+import { pickPublicUrl } from '../lib/urls.js'
 
 export const ACTIVE_TRIP_STATUSES = ['requested', 'assigned', 'started', 'arrived', 'picked_up']
 export const ENDED_TRIP_STATUSES = ['completed', 'cancelled', 'refunded', 'no_show']
@@ -31,8 +32,7 @@ export function money(value) {
 }
 
 export function publicBaseUrl() {
-  const raw = process.env.PUBLIC_APP_URL || process.env.CLIENT_APP_URL || 'http://localhost:5173'
-  return String(raw).trim().replace(/\/$/, '')
+  return pickPublicUrl(process.env.PUBLIC_APP_URL, process.env.CLIENT_APP_URL)
 }
 
 export function guestLinks(transfer) {

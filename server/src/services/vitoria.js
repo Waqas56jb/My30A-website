@@ -6,6 +6,7 @@
 import { supabase } from '../lib/supabase.js'
 import { diningCard, findDining } from './dining.js'
 import { beachCard, distinctPhotos, findBeach } from './beaches.js'
+import { eventCard, eventsKnowledge, findEvent } from './events.js'
 
 const TIME_ZONE = 'America/Chicago'
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -37,7 +38,7 @@ async function buildKnowledge() {
     supabase.from('service_catalog').select('kind, name, sub, price, unit').eq('is_active', true).order('sort_order'),
     supabase
       .from('explore_vendors')
-      .select('name, venue_type, community, cuisine, tags, hours, price_range, phone, website_url')
+      .select('name, venue_type, community, cuisine, tags, hours, price_range, phone, website_url, booking_platform')
       .eq('is_active', true)
       .eq('kind', 'restaurant')
       .not('venue_type', 'is', null)
@@ -100,11 +101,15 @@ async function buildKnowledge() {
       rows.sort((a, b) => TYPE_ORDER.indexOf(a.venue_type) - TYPE_ORDER.indexOf(b.venue_type))
       for (const r of rows) {
         const vibe = (r.tags || []).filter((t) => t !== r.cuisine).slice(0, 4).join('/')
-        const extras = [r.cuisine, vibe, r.price_range, r.hours, r.phone, bare(r.website_url)].filter(Boolean)
+        const book = { resy: 'reserve on Resy', opentable: 'reserve on OpenTable', sevenrooms: 'reserve on SevenRooms', tock: 'reserve on Tock', website_widget: 'reserve on its website', phone_only: r.venue_type === 'restaurant' ? 'reservations by phone' : null }[r.booking_platform]
+        const extras = [r.cuisine, vibe, r.price_range, r.hours, book, r.phone, bare(r.website_url)].filter(Boolean)
         lines.push(`- [${TYPE_MARK[r.venue_type]}] ${r.name}${extras.length ? ` — ${extras.join(' · ')}` : ''}`)
       }
     }
   }
+
+  // ---- Events (30a.com), next few days ----
+  lines.push(await eventsKnowledge(4).catch(() => ''))
 
   // ---- Official public layer ----
   lines.push('\nOFFICIAL PUBLIC INFORMATION (Walton County / Visit South Walton — facts, not partners):')
@@ -150,6 +155,8 @@ async function buildKnowledge() {
   }
   lines.push('The guest pays the flat package + stocking fee plus the exact Publix receipt (no markup). Nothing is charged until the order is delivered; the card is saved in the app and charged once, after delivery. The guest sends their list by uploading a Publix cart screenshot or emailing my30ahost@gmail.com.')
 
+  lines.push('\nCONTACT MY30A HOST: email my30ahost@gmail.com · Instagram @my30a_host (instagram.com/my30a_host) · website www.my30ahost.com')
+
   return lines.join('\n')
 }
 
@@ -181,6 +188,7 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
     '1. The MY30A HOST VETTED LOCAL GUIDE below is your first source. When it covers the request, recommend those partners by name with their real details (where they are, what they do, their phone or website when the guest wants to book or call). Never invent details for them.',
     '2. For food and drink (dinner, lunch, breakfast, brunch, coffee, bars, cocktails, “top 5 restaurants”), the 30A DINING GUIDE below is your source: recommend from it by name, matching what the guest wants (cuisine, vibe such as rooftop / waterfront / live music / family, price) and favouring their own community first, then the neighbouring ones. Mention in a short phrase that these are local favorites (not paid partners). Only go beyond the dining guide when nothing in it fits, and say so. For anything else no guide covers, recommend real, well-known places in the 30A / South Walton area as local favorites. Never refuse or say you can’t help just because something isn’t in a guide.',
     '2b. You have a web_search tool. Use it whenever the guest asks about hours, whether a place is open, phone numbers, menus, events or anything time-sensitive, and whenever you recommend restaurants, so the hours you give are today’s real hours. Give hours confidently in a friendly form (e.g. “open today 11 AM–3:30 PM and 4:30–10 PM”). Never say you lack internet or Google access. If a search genuinely finds nothing, say hours weren’t listed and suggest calling.',
+    '2c. For “what’s happening”, “things to do tonight”, live music, markets, festivals or kids’ activities, use the EVENTS ALONG 30A list: pick by day, time and the guest’s community, and mention these are listed by organizers on 30a.com so it’s worth confirming. Put each event in places with its exact title.',
     '3. For beach access points, parks, playgrounds, safety, rules and emergency contacts, use the OFFICIAL PUBLIC INFORMATION. Match the guest to accesses in or next to their community. Beach flag colours and conditions change daily and you cannot see them live — tell guests to check the flags on arrival.',
     '4. For airport transfers and Publix grocery delivery, quote from the price tables. Those two — and only those two — are booked in the Services tab of the app. Everything else (partners, restaurants, rentals, tours) the guest books directly with the business using the Call / Website buttons on the cards; never say those are booked in the Services tab.',
     '5. Use the guest’s stay (community, address, dates) and today’s date to tailor every answer: “tonight”, “this weekend”, “near me” should reflect where and when they are.',
@@ -298,6 +306,11 @@ export async function enrichPlaces(places) {
         const card = diningCard(dining, p.why)
         if (!card.hours && p.hours) card.hours = String(p.hours).replace(/\*\*/g, '')
         return card
+      }
+      // Events the model names (exact titles from the events list): date, time, calendar link.
+      if (/event|music|market|festival|trivia|show|concert|class|club|night/i.test(`${p.category} ${p.why}`) || /live|market|trivia|festival/i.test(p.name)) {
+        const event = await findEvent(p.name)
+        if (event) return eventCard(event, p.why)
       }
       // Beach accesses / state parks from the county list: photo, parking + restroom facts, directions.
       if (/beach|access|park|rba|inlet|dune|lake/i.test(`${p.name} ${p.category}`)) {

@@ -422,7 +422,8 @@ async function main() {
     const p = e.profile || {}
     const ai = e.ai || {}
     const website = e.website_blocked ? null : normalizeUrl(item.website || p.website || (ai.found ? ai.website : null))
-    const bookingUrl = normalizeUrl(ai.booking_url) || null
+    // booking_url / booking_platform are owned by scripts/verify-reservations.js (read from each
+    // restaurant's own website), so a re-import never overwrites a verified reservation link.
     const community = communityFor(e, communities || [])
     const address = p.address || null
     const description = stripCitations(ai.found && ai.description ? ai.description : item.description || p.description_30a || null)
@@ -443,7 +444,6 @@ async function main() {
       opening_hours: p.opening_hours || null,
       phone: item.phone || p.phone || null,
       website_url: website && !NOT_OFFICIAL.test(website) ? website : null,
-      booking_url: bookingUrl && /opentable|resy|tock|sevenrooms|yelp\.com\/reservations/i.test(bookingUrl) ? bookingUrl : null,
       directions_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${address || community + ', FL'}`)}`,
       address,
       lat: p.lat || null,

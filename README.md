@@ -120,16 +120,16 @@ Three Vercel projects. Root directory for each project is the matching folder (`
 |---|---|---|
 | API | `server` | https://my30-a-website-server.vercel.app |
 | Admin | `admin` | https://my30-a-website-admin.vercel.app |
-| Client | `client` | https://my30-a-website-client.vercel.app |
+| Client | `client` | https://www.my30ahost.com (also https://my30-a-website-client.vercel.app) |
 
 Health: https://my30-a-website-server.vercel.app/api/health
 
 After push, Redeploy all three. API secrets go in the Vercel dashboard (not git). Admin/client production URLs are in `admin/.env.production` and `client/.env.production`.
 
-**Vercel API env:** `NODE_ENV=production`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_POOLER_URL`, `CLIENT_URL=https://my30-a-website-client.vercel.app,https://my30-a-website-admin.vercel.app`, `CLIENT_APP_URL=https://my30-a-website-client.vercel.app`, `ADMIN_APP_URL=https://my30-a-website-admin.vercel.app`, SMTP + `RATE_LIMIT_*` as needed.
+**Vercel API env:** `NODE_ENV=production`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_POOLER_URL`, `CLIENT_URL=https://www.my30ahost.com,https://my30ahost.com,https://my30-a-website-client.vercel.app,https://my30-a-website-admin.vercel.app`, `CLIENT_APP_URL=https://www.my30ahost.com`, `PUBLIC_APP_URL=https://www.my30ahost.com` (SMS + Stripe return links), `ADMIN_APP_URL=https://my30-a-website-admin.vercel.app`, SMTP + `RATE_LIMIT_*` as needed.
 
 **Vercel admin/client env:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL=https://my30-a-website-server.vercel.app` (or rely on `.env.production`). If the Vercel UI has empty `VITE_*` values, delete them — they override the file.
 
-**Supabase Auth → URL configuration:** Site URL `https://my30-a-website-client.vercel.app`. Redirect URLs: `https://my30-a-website-admin.vercel.app/**`, `https://my30-a-website-client.vercel.app/**`, plus localhost `5173` and `5174` for local work.
+**Supabase Auth → URL configuration:** Site URL `https://www.my30ahost.com`. Redirect URLs: `https://www.my30ahost.com/**`, `https://my30-a-website-admin.vercel.app/**`, `https://my30-a-website-client.vercel.app/**`, plus localhost `5173` and `5174` for local work.
 
 Migrate once from `server/` (`npm run migrate`). Do not run migrations on boot.

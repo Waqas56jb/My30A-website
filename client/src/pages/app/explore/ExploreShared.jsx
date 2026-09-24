@@ -34,6 +34,7 @@ import {
   Waves,
   Wine,
   Coffee,
+  CalendarDays,
 } from 'lucide-react'
 import BottomNav from '../BottomNav.jsx'
 
@@ -52,6 +53,7 @@ const ICONS = {
   Info,
   Wine,
   Coffee,
+  CalendarDays,
 }
 
 export function iconFor(name) {
@@ -115,14 +117,17 @@ export function RatingPill({ rating, reviews, white }) {
 }
 
 // Image that fades in once decoded over a shimmer — photos never pop in half-drawn.
-export function FadeImg({ className = '', ...props }) {
+export function FadeImg({ className = '', fallback = null, ...props }) {
   const [loaded, setLoaded] = useState(false)
+  const [broken, setBroken] = useState(false)
+  // A dead remote image shows the caller's fallback (designed art) instead of an empty box.
+  if (broken && fallback) return fallback
   return (
     <img
       {...props}
       className={`app-fade-img${loaded ? ' is-loaded' : ''}${className ? ` ${className}` : ''}`}
       onLoad={() => setLoaded(true)}
-      onError={() => setLoaded(true)}
+      onError={() => (setLoaded(true), setBroken(true))}
       decoding="async"
     />
   )
@@ -283,7 +288,7 @@ export function CategoryTile({ category, featured = false, index = 0 }) {
           {category.coming_soon
             ? 'Curated list on the way'
             : category.count
-              ? `${category.count} ${DINING_KEYS.has(category.key) ? 'places' : 'local partners'}`
+              ? `${category.count} ${category.key === 'events' ? 'upcoming events' : DINING_KEYS.has(category.key) ? 'places' : 'local partners'}`
               : 'Explore'}
           {category.coming_soon ? null : <ChevronRight size={13} strokeWidth={2} aria-hidden="true" />}
         </small>

@@ -51,16 +51,30 @@ export default function RestaurantDetail() {
     place.phone ? { Icon: Phone, label: 'Phone', value: place.phone } : null,
   ].filter(Boolean)
 
-  // Reserve online when the restaurant takes online bookings; otherwise the phone is the real way
-  // to get a table, and the website is secondary.
-  const primary = place.booking_url
-    ? { label: /resy/i.test(place.booking_url) ? 'Book On Resy' : 'Reserve a Table', Icon: CalendarDays, href: place.booking_url }
+  // Reservations are free: we only deep-link to the restaurant's own booking page, chosen by the
+  // platform it really uses (verified from its website). Phone-only restaurants show the number.
+  const PLATFORM = { resy: 'Resy', opentable: 'OpenTable', sevenrooms: 'SevenRooms', tock: 'Tock' }
+  const online = place.booking_url && place.booking_platform && place.booking_platform !== 'phone_only'
+  const primary = online
+    ? {
+        label: PLATFORM[place.booking_platform] ? `Reserve on ${PLATFORM[place.booking_platform]}` : 'Reserve online',
+        Icon: CalendarDays,
+        href: place.booking_url,
+      }
     : tel
-      ? { label: place.venue_type === 'restaurant' ? 'Call to Reserve' : 'Call', Icon: Phone, href: tel }
+      ? { label: place.venue_type === 'restaurant' ? 'Call to reserve' : 'Call', Icon: Phone, href: tel }
       : { label: 'Directions', Icon: Navigation, href: place.directions_url }
   const secondary = place.website_url
-    ? { label: 'Website', Icon: ExternalLink, href: place.website_url }
+    ? { label: 'Menu & website', Icon: ExternalLink, href: place.website_url }
     : { label: 'Directions', Icon: Navigation, href: place.directions_url }
+  const reservationLine = online
+    ? `Book free on ${PLATFORM[place.booking_platform] || 'the restaurant’s own website'} — no fee from My30A Host.`
+    : place.phone
+      ? `${place.venue_type === 'restaurant' ? 'Reservations by phone' : 'Call ahead'}: ${place.phone}`
+      : null
+  const verified = place.last_verified_date
+    ? new Date(`${place.last_verified_date}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    : null
 
   return (
     <ExploreShell className="app-exp-detail">
@@ -122,6 +136,16 @@ export default function RestaurantDetail() {
             today&apos;s hours.
           </span>
         </div>
+
+        {reservationLine ? (
+          <p className="app-exp-reserve-line">
+            {online ? <CalendarDays size={14} strokeWidth={1.8} aria-hidden="true" /> : <Phone size={14} strokeWidth={1.8} aria-hidden="true" />}
+            <span>
+              {reservationLine}
+              {verified ? <small> · Checked {verified}</small> : null}
+            </span>
+          </p>
+        ) : null}
 
         <Actions primary={primary} secondary={secondary} />
       </DetailHero>

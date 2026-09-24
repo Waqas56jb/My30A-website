@@ -13,7 +13,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
 import { notify } from '../services/notifications.js'
 import { getSignedUrl, uploadFile } from '../lib/storage.js'
-import { chatCompletion, webResponse } from '../lib/openai.js'
+import { chatCompletion, createRealtimeSession, webResponse } from '../lib/openai.js'
 import { cleanConciergeText } from '../lib/textFormat.js'
 import {
   createPaymentIntent,
@@ -29,7 +29,9 @@ import { geocodeQuery } from '../lib/nominatim.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
 import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt } from '../services/vitoria.js'
 import { vitoriaOffline } from '../services/vitoriaOffline.js'
+import { realtimeSessionConfig, runVoiceTool } from '../services/vitoriaVoice.js'
 import { beachCard, distinctPhotos, loadBeaches, recommendBeaches } from '../services/beaches.js'
+import { eventDay, eventView, loadUpcomingEvents } from '../services/events.js'
 import {
   ROUND_TRIP_DISCOUNT_PERCENT,
   availableCredit,
@@ -371,6 +373,8 @@ function vendorView(vendor, extra = {}) {
     phone: vendor.phone,
     website_url: vendor.website_url,
     booking_url: vendor.booking_url,
+    booking_platform: vendor.booking_platform || null,
+    last_verified_date: vendor.last_verified_date || null,
     directions_url: vendor.directions_url,
     image: vendor.image_url,
     from: money(vendor.price_from),
@@ -1021,7 +1025,14 @@ function exploreCategories() {
     ])
     const categoryForSlug = Object.fromEntries((guides || []).map((g) => [g.slug, g.category_key]))
     const counts = {}
+    const { count: eventCount } = await supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'scheduled')
+      .gte('starts_at', new Date().toISOString())
+      .lte('starts_at', new Date(Date.now() + 30 * 86400000).toISOString())
     const DINING_TILE = { restaurant: 'restaurants', bar: 'bars', coffee: 'coffee' }
+    counts.events = eventCount || 0
     for (const vendor of vendors || []) {
       const key = vendor.kind === 'restaurant' ? DINING_TILE[vendor.venue_type] : categoryForSlug[vendor.guide_slug]
       if (key) counts[key] = (counts[key] || 0) + 1
@@ -1116,7 +1127,7 @@ router.get('/explore/vendors/:slug', async (req, res, next) => {
 // the facets the Dining screen filters on (type → community → cuisine/features). 246 compact rows,
 // cached; "open now" is recomputed per request from each place's structured hours.
 const DINING_FIELDS =
-  'id, slug, name, venue_type, community, cuisine, tags, image_url, price_range, hours, opening_hours, rating, review_count, website_url, booking_url, phone'
+  'id, slug, name, venue_type, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, rating, review_count, website_url, booking_url, booking_platform, phone'
 
 router.get('/explore/dining', async (_req, res, next) => {
   try {
@@ -1148,7 +1159,9 @@ router.get('/explore/dining', async (_req, res, next) => {
           reviews: row.review_count,
           open_now: status.open_now,
           today: status.today,
-          reservable: Boolean(row.booking_url),
+          reservable: Boolean(row.booking_url) && row.booking_platform !== 'phone_only',
+          platform: row.booking_platform || null,
+          blurb: row.description ? String(row.description).split(/(?<=[.!?])\s/)[0] : null,
           to: `/app/explore/restaurant/${row.slug}`,
         }
       })
@@ -1184,6 +1197,18 @@ router.get('/explore/vendor/:key', async (req, res, next) => {
     res.json(vendorView(vendor, { saved, back }))
   } catch (error) {
     next(error)
+  }
+})
+
+router.get('/explore/events', async (_req, res, next) => {
+  try {
+    const rows = await loadUpcomingEvents()
+    // Hide ones that already ended today.
+    const now = Date.now()
+    const events = rows.filter((e) => new Date(e.ends_at || e.starts_at).getTime() + (e.ends_at ? 0 : 2 * 3600000) > now).map(eventView)
+    res.json({ today: eventDay(new Date().toISOString()), events, source: '30a.com' })
+  } catch (error) {
+    sendError(res, next, error)
   }
 })
 
@@ -1526,6 +1551,8 @@ router.post('/transfers/:id/sync-payment', guestOnly, async (req, res, next) => 
     if (intent?.skipped) {
       return res.json(transferView(transfer, { stripe_skipped: true }))
     }
+    // The payment belongs to the other Stripe mode (made in test, now live) — start over.
+    if (!intent) return res.json(transferView(transfer, { payment_intent_status: null }))
     const payment_status = transfer.payment_status === 'captured' ? 'captured' : mapIntentStatus(intent.status)
     const { data, error } = await supabase
       .from('transfers')
@@ -1867,6 +1894,8 @@ router.post('/grocery/:id/sync-payment', guestOnly, async (req, res, next) => {
     if (intent?.skipped) {
       return res.json(orderView(order, { stripe_skipped: true }))
     }
+    // The payment belongs to the other Stripe mode (made in test, now live) — start over.
+    if (!intent) return res.json(orderView(order, { payment_intent_status: null }))
     const payment_status = order.payment_status === 'captured' ? 'captured' : mapIntentStatus(intent.status)
     const { data, error } = await supabase
       .from('grocery_orders')
@@ -2105,6 +2134,62 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
       model,
       ...(skippedReason ? { skipped_reason: skippedReason } : {}),
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ---------- Vitoria voice (OpenAI Realtime, speech-to-speech over WebRTC) ----------
+// 1) the app asks for a session → a 10-minute client secret + the model to call;
+// 2) the browser runs the call with OpenAI directly; tool calls come back here to run on our data;
+// 3) when the call ends the transcript (and cards) are saved into the normal chat history.
+router.post('/vitoria/voice/session', guestOnly, async (req, res, next) => {
+  try {
+    const ctx = await vitoriaContext(req.user.id)
+    const session = await createRealtimeSession(realtimeSessionConfig(ctx))
+    if (session.skipped) {
+      return res.status(503).json({ error: 'Voice chat is unavailable right now — you can still type to Vitoria.', reason: session.reason })
+    }
+    res.json({ client_secret: session.value, expires_at: session.expires_at, model: session.model, calls_url: 'https://api.openai.com/v1/realtime/calls' })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/vitoria/voice/tool', guestOnly, async (req, res, next) => {
+  try {
+    const name = String(req.body?.name || '')
+    let args = req.body?.arguments || {}
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args || '{}')
+      } catch {
+        args = {}
+      }
+    }
+    const ctx = await vitoriaContext(req.user.id)
+    res.json(await runVoiceTool(name, args, ctx))
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/vitoria/voice/log', guestOnly, async (req, res, next) => {
+  try {
+    const turns = (Array.isArray(req.body?.turns) ? req.body.turns : [])
+      .filter((t) => (t.role === 'user' || t.role === 'assistant') && String(t.content || '').trim())
+      .slice(0, 80)
+      .map((t) => ({
+        guest_id: req.user.id,
+        role: t.role,
+        content: String(t.content).trim().slice(0, 2000),
+        model: t.role === 'assistant' ? 'realtime-voice' : null,
+        places: t.role === 'assistant' && Array.isArray(t.places) && t.places.length ? t.places.slice(0, 6) : null,
+      }))
+    if (!turns.length) return res.json({ saved: 0 })
+    const { error } = await supabase.from('vitoria_messages').insert(turns)
+    if (error) return res.status(400).json({ error: error.message })
+    res.json({ saved: turns.length })
   } catch (error) {
     next(error)
   }

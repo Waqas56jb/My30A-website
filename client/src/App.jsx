@@ -35,6 +35,7 @@ import RestaurantDetail from './pages/app/explore/RestaurantDetail.jsx'
 import BeachDetail from './pages/app/explore/BeachDetail.jsx'
 import PublicInfo from './pages/app/explore/PublicInfo.jsx'
 import Dining from './pages/app/explore/Dining.jsx'
+import Events from './pages/app/explore/Events.jsx'
 import TripPage from './pages/public/TripPage.jsx'
 import TipPage from './pages/public/TipPage.jsx'
 import Trips from './pages/driver/Trips.jsx'
@@ -158,6 +159,7 @@ const GUEST_ROUTES = [
   ['/app/explore/beach/:id', BeachDetail],
   ['/app/explore/info', PublicInfo],
   ['/app/explore/dining', Dining],
+  ['/app/explore/events', Events],
   ['/app/transfer', TransferBook],
   ['/app/transfer/review', TransferReview],
   ['/app/transfer/pending', TransferPending],

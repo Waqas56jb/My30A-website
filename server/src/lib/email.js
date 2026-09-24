@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { pickPublicUrl } from './urls.js'
 
 function getTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_SECURE } = process.env
@@ -42,9 +43,9 @@ export async function sendEmail({ to, subject, text }) {
 export function loginUrlForRoles(roles) {
   const list = roles || []
   if (list.includes('admin')) {
-    return process.env.ADMIN_APP_URL || 'http://localhost:5174'
+    return pickPublicUrl(process.env.ADMIN_APP_URL) || 'http://localhost:5174'
   }
-  return process.env.CLIENT_APP_URL || 'http://localhost:5173'
+  return pickPublicUrl(process.env.CLIENT_APP_URL, process.env.PUBLIC_APP_URL)
 }
 
 export function welcomeLoginText({ name, email, password, loginUrl }) {

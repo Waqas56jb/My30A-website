@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
+  AudioLines,
   ArrowUp,
   BadgeCheck,
+  CalendarDays,
   Bell,
   Car,
   Clock,
@@ -22,6 +24,9 @@ import {
   Waves,
 } from 'lucide-react'
 import { errorText, guest } from '../../lib/guestApi.js'
+
+// Live voice mode (OpenAI Realtime) — loaded only when the guest opens it.
+const VitoriaVoice = lazy(() => import('./vitoria/VitoriaVoice.jsx'))
 
 const CHIPS = ['Best beach today', 'Dinner tonight', 'Things to do', 'Top 5 Restaurants']
 const FOLLOW_UP = 'How can I help to make your stay even better?'
@@ -73,7 +78,7 @@ const THEMES = [
 const themeFor = (place) =>
   THEMES.find((t) => t.test.test(`${place.category} ${place.name}`)) || { Icon: Sparkles, tone: 'is-misc' }
 
-function PlaceCard({ place }) {
+export function PlaceCard({ place }) {
   const { Icon, tone } = themeFor(place)
   const tel = place.phone ? `tel:${place.phone.replace(/[^\d+]/g, '')}` : null
   const hours = String(place.hours || '')
@@ -99,6 +104,11 @@ function PlaceCard({ place }) {
           <span className="app-vit-card-badge">
             <BadgeCheck size={12} strokeWidth={2} aria-hidden="true" />
             My30A Partner
+          </span>
+        ) : place.kind === 'event' ? (
+          <span className="app-vit-card-badge is-event">
+            <CalendarDays size={12} strokeWidth={2} aria-hidden="true" />
+            Event
           </span>
         ) : place.kind === 'beach' ? (
           <span className="app-vit-card-badge is-beach">
@@ -133,6 +143,12 @@ function PlaceCard({ place }) {
           </p>
         ) : null}
         <div className="app-vit-card-actions">
+          {place.calendar ? (
+            <a href={place.calendar} target="_blank" rel="noreferrer" className="app-vit-card-btn is-primary">
+              <CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" />
+              Add
+            </a>
+          ) : null}
           {place.booking ? (
             <a href={place.booking} target="_blank" rel="noreferrer" className="app-vit-card-btn is-primary">
               <CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" />
@@ -148,17 +164,17 @@ function PlaceCard({ place }) {
           {place.website ? (
             <a href={place.website} target="_blank" rel="noreferrer" className="app-vit-card-btn">
               <Globe size={13} strokeWidth={1.8} aria-hidden="true" />
-              Website
+              {place.kind === 'event' ? 'Details' : 'Website'}
             </a>
           ) : null}
-          <a href={place.directions} target="_blank" rel="noreferrer" className={`app-vit-card-btn${tel || place.booking ? '' : ' is-primary'}`}>
+          <a href={place.directions} target="_blank" rel="noreferrer" className={`app-vit-card-btn${tel || place.booking || place.calendar ? '' : ' is-primary'}`}>
             <Navigation size={13} strokeWidth={1.8} aria-hidden="true" />
             {place.kind === 'beach' ? 'Directions' : 'Map'}
           </a>
         </div>
         {place.to || place.slug ? (
           <Link to={place.to || `/app/explore/vendor/${place.slug}`} className="app-vit-card-more">
-            {place.kind === 'beach' ? 'All beach accesses' : 'View full profile'}
+            {place.kind === 'beach' ? 'All beach accesses' : place.kind === 'event' ? 'All events' : 'View full profile'}
           </Link>
         ) : null}
       </div>
@@ -174,6 +190,7 @@ export default function AppVitoria() {
   const [thinking, setThinking] = useState(false)
   const [error, setError] = useState('')
   const [listening, setListening] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const bodyRef = useRef(null)
   const recognitionRef = useRef(null)
 
@@ -285,14 +302,21 @@ export default function AppVitoria() {
                 <p>Your AI Concierge</p>
               </div>
             </div>
-            <button
-              type="button"
-              className="app-home-bell app-home-bell-soft"
-              aria-label="Notifications"
-              onClick={() => navigate('/app/profile')}
-            >
-              <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
-            </button>
+            <div className="app-vitoria-head-actions">
+              <button type="button" className="app-vitoria-talk" onClick={() => setVoiceOpen(true)} aria-label="Talk to Vitoria by voice">
+                <span className="app-vitoria-talk-orb" aria-hidden="true" />
+                <AudioLines size={16} strokeWidth={2} aria-hidden="true" />
+                Talk
+              </button>
+              <button
+                type="button"
+                className="app-home-bell app-home-bell-soft"
+                aria-label="Notifications"
+                onClick={() => navigate('/app/profile')}
+              >
+                <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            </div>
           </header>
 
           <div className="app-vitoria-body" ref={bodyRef}>
@@ -378,6 +402,14 @@ export default function AppVitoria() {
                   </button>
                 ) : null}
                 <button
+                  type="button"
+                  className="app-vitoria-voice"
+                  aria-label="Start a voice conversation with Vitoria"
+                  onClick={() => setVoiceOpen(true)}
+                >
+                  <AudioLines size={16} strokeWidth={2} aria-hidden="true" />
+                </button>
+                <button
                   type="submit"
                   className="app-vitoria-send"
                   aria-label="Send"
@@ -388,6 +420,18 @@ export default function AppVitoria() {
               </div>
             </form>
           </div>
+
+          {voiceOpen ? (
+            <Suspense fallback={<div className="app-voice is-connecting" />}>
+              <VitoriaVoice
+                onClose={(saved) => {
+                  setVoiceOpen(false)
+                  // The call's transcript + cards were saved into the chat — show them.
+                  if (saved) guest.vitoria().then((data) => setMessages(data.messages || [])).catch(() => {})
+                }}
+              />
+            </Suspense>
+          ) : null}
         </div>
       </div>
     </div>

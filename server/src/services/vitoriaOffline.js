@@ -12,6 +12,7 @@ import {
   understandDining,
 } from './dining.js'
 import { beachCard, distinctPhotos, recommendBeaches } from './beaches.js'
+import { EVENT_INTENT, eventCard, recommendEvents } from './events.js'
 
 const low = (s) => String(s || '').toLowerCase()
 const TRIP_STATUS = {
@@ -123,6 +124,26 @@ async function answerNamedPlace(rows, ctx) {
   }
 }
 
+async function answerEvents(text, ctx, community) {
+  const { picks, want, total } = await recommendEvents({ text, community })
+  const when = { today: 'today', tomorrow: 'tomorrow', weekend: 'this weekend', week: 'this week' }[want.when]
+  const what = want.category ? want.category.toLowerCase() : 'things'
+  if (!picks.length) {
+    return {
+      reply: `I don’t see any ${what} listed for ${want.tonight ? 'tonight' : when}, ${ctx.firstName}.\n\nExplore → Events shows everything coming up this month.`,
+      places: [],
+    }
+  }
+  const cards = picks.map((v) => eventCard(v))
+  const top = picks[0]
+  const intro = `There are ${total} ${what === 'things' ? 'events' : what} listed ${want.tonight ? 'tonight' : when}${community ? ` — here are the best near ${community}` : ''}, ${ctx.firstName}.`
+  const topLine = `${top.title} at ${top.venue || top.community}${top.time ? `, ${top.time}` : ''} is a great pick.`
+  return {
+    reply: `${intro}\n\n${topLine}\n\nThese are listed by organizers on 30a.com, so tap Details to confirm before you head out.`,
+    places: cards,
+  }
+}
+
 async function answerBeach(text, ctx, community) {
   const q = low(text)
   const { picks, exact } = await recommendBeaches({
@@ -178,6 +199,11 @@ export async function vitoriaOffline(text, ctx, recent = []) {
   const named = await diningMentionedIn(text)
   if (named.length && !/\b(best|top|recommend|near|closest)\b/.test(q)) return answerNamedPlace(named, ctx)
 
+  // Events: "what's happening tonight", "live music this weekend" — but "dinner with live music"
+  // is a restaurant question.
+  if (EVENT_INTENT.test(q) && !/restaurant|resturant|dinner|lunch|breakfast|brunch|eat\b|coffee/.test(q)) {
+    return answerEvents(text, ctx, community)
+  }
   const topic = lastTopic(userTexts.slice(0, -1))
   const placeOnly = isOnlyPlace(text)
   if (DINING_INTENT.test(q) || (placeOnly && topic !== 'beach')) return answerDining(text, userTexts, ctx)

@@ -265,7 +265,7 @@ async function main() {
   // 13 real-data-backed categories: the 3 dining tiles (the client's list of restaurants, bars and
   // coffee & breakfast spots, migration 023) plus the partner categories and the public-info tiles.
   await expect('GET /api/guest/explore', 'GET', '/api/guest/explore', G, 200, (d) =>
-    d.categories.length === 13 &&
+    d.categories.length === 14 &&
     ['restaurants', 'bars', 'coffee'].every((k) => {
       const c = d.categories.find((x) => x.key === k)
       return c && !c.coming_soon && c.count > 0 && c.to.startsWith('/app/explore/dining?type=')
@@ -276,8 +276,14 @@ async function main() {
     ['restaurant', 'bar', 'coffee'].every((t) => d.places.some((p) => p.type === t)) &&
     d.places.every((p) => p.community && p.to.startsWith('/app/explore/restaurant/'))
   )
+  await expect('GET /api/guest/explore/events (30a.com events, next 5 weeks)', 'GET', '/api/guest/explore/events', G, 200, (d) =>
+    d.events.length > 50 && d.events.every((e) => e.title && e.day && e.time && e.url.startsWith('https://30a.com/events/') && e.calendar.startsWith('https://calendar.google.com'))
+  )
+  await expect('GET /api/guest/explore/beaches (59 county accesses as cards)', 'GET', '/api/guest/explore/beaches', G, 200, (d) => d.beaches.length === 59 && d.featured.length >= 3)
+  await expect('voice tool find_restaurants → real dining cards', 'POST', '/api/guest/vitoria/voice/tool', { ...G, body: { name: 'find_restaurants', arguments: '{"request":"seafood dinner","community":"Seaside"}' } }, 200, (d) => d.cards.length > 0 && d.result.picks.length > 0)
+  await expect('voice tool transfer_price → fixed price from the table', 'POST', '/api/guest/vitoria/voice/tool', { ...G, body: { name: 'transfer_price', arguments: { community: 'Seaside', airport: 'ECP', passengers: 2 } } }, 200, (d) => d.result.one_way_price_usd > 0)
   await expect('GET /api/guest/explore/vendor/borago (dining detail: hours, open-now, address)', 'GET', '/api/guest/explore/vendor/borago', G, 200, (d) =>
-    d.kind === 'restaurant' && d.venue_type === 'restaurant' && Boolean(d.hours) && typeof d.open_now === 'boolean' && Boolean(d.address) && d.back.startsWith('/app/explore/dining')
+    d.kind === 'restaurant' && d.venue_type === 'restaurant' && Boolean(d.hours) && typeof d.open_now === 'boolean' && Boolean(d.address) && d.back.startsWith('/app/explore/dining') && d.booking_platform === 'phone_only' && Boolean(d.last_verified_date)
   )
   await expect(
     'GET /api/guest/explore/guide?c=golf-outdoor (category_key scoping — the old bug showed all 20 guides here)',
@@ -394,7 +400,7 @@ async function main() {
       d.picks[0].title === '30A Blaze Beach Bonfires' &&
       d.picks[0].rating === 5 &&
       d.picks[0].reviews === 1200 &&
-      d.explore.length === 13 &&
+      d.explore.length === 14 &&
       d.location_label === 'Rosemary Beach, FL' &&
       /^Good/.test(d.greeting)
   )
@@ -562,7 +568,10 @@ async function main() {
   // pm_card_visa is Stripe's official test token for a card that always succeeds — this is the
   // documented way to exercise a real PaymentIntent confirmation from a script instead of the
   // Payment Element UI. See https://stripe.com/docs/testing.
-  const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY)
+  // Never against LIVE keys: this section confirms real PaymentIntents with test cards.
+  const serverMode = await fetch(`${API}/api/health`).then((r) => r.json()).then((d) => d.stripe).catch(() => null)
+  const liveStripe = /^(sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY || '') || serverMode === 'live'
+  const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY) && !liveStripe
   // Once a real whsec_ is configured (it now is — see server/.env), a request with no
   // stripe-signature header must be rejected, not silently skipped.
   if (process.env.STRIPE_WEBHOOK_SECRET) {
@@ -585,7 +594,7 @@ async function main() {
   }
 
   if (!stripeConfigured) {
-    record(true, 'Stripe section skipped — STRIPE_SECRET_KEY not set', 'add test keys to server/.env to run this section')
+    record(true, liveStripe ? 'Stripe section skipped — LIVE keys (would make real charges)' : 'Stripe section skipped — STRIPE_SECRET_KEY not set', 'use sk_test_ keys in server/.env for this section')
   } else {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     const confirmWithTestCard = (clientSecret) =>

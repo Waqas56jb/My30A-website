@@ -23,21 +23,27 @@ import publicRouter from './routes/public.js'
 import jobsRouter from './routes/jobs.js'
 import messagesRouter from './routes/messages.js'
 import { ensureBucket } from './lib/storage.js'
+import { stripeMode } from './lib/stripe.js'
 
 const app = express()
 
 app.set('trust proxy', 1)
 
+// Env values may be comma-separated lists (CLIENT_URL, CLIENT_APP_URL, …) — split every one.
 const listedOrigins = [
-  ...(process.env.CLIENT_URL || '').split(','),
-  process.env.ADMIN_APP_URL,
+  process.env.CLIENT_URL,
   process.env.CLIENT_APP_URL,
+  process.env.ADMIN_APP_URL,
+  process.env.PUBLIC_APP_URL,
+  'https://www.my30ahost.com',
+  'https://my30ahost.com',
   'https://my30-a-website-admin.vercel.app',
   'https://my30-a-website-client.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',
 ]
-  .map((origin) => (origin || '').trim().replace(/\/$/, ''))
+  .flatMap((value) => String(value || '').split(','))
+  .map((origin) => origin.trim().replace(/\/$/, ''))
   .filter(Boolean)
 const uniqueOrigins = new Set(listedOrigins)
 
@@ -45,7 +51,9 @@ function isAllowedOrigin(origin) {
   if (!origin) return true
   if (uniqueOrigins.has(origin)) return true
   try {
-    const { hostname } = new URL(origin)
+    const { hostname, protocol } = new URL(origin)
+    // The live domain and any of its subdomains (www, admin, …).
+    if (protocol === 'https:' && (hostname === 'my30ahost.com' || hostname.endsWith('.my30ahost.com'))) return true
     if (!hostname.endsWith('.vercel.app')) return false
     return hostname.includes('my30-a-website-admin') || hostname.includes('my30-a-website-client')
   } catch {
@@ -100,8 +108,9 @@ app.use((req, res, next) => {
   next()
 })
 
+// stripe: 'live' | 'test' | 'off' — lets deploy checks confirm which mode production runs in.
 function health(_req, res) {
-  res.json({ ok: true })
+  res.json({ ok: true, stripe: stripeMode() })
 }
 
 app.get('/health', health)

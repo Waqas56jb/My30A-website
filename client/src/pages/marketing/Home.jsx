@@ -675,35 +675,11 @@ export default function Home() {
               to get in the way of that.
             </p>
             <div className="mkt-footer-social" aria-label="Social media">
-              <a href="https://www.facebook.com/" target="_blank" rel="noreferrer" aria-label="Facebook">
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v2H6v4h3v9h4v-9h3.2l.8-4H13V9c0-.6.4-1 1-1z"
-                  />
-                </svg>
-              </a>
-              <a href="https://x.com/" target="_blank" rel="noreferrer" aria-label="X">
-                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M18.2 3H21l-6.6 7.5L22 21h-6.2l-4.4-5.7L6 21H3.2l7-8L2 3h6.3l4 5.2L18.2 3zm-1.1 16.2h1.7L7 4.7H5.2l11.9 14.5z"
-                  />
-                </svg>
-              </a>
-              <a href="https://www.instagram.com/" target="_blank" rel="noreferrer" aria-label="Instagram">
+              <a href="https://www.instagram.com/my30a_host/" target="_blank" rel="noreferrer" aria-label="My30A Host on Instagram">
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                   <path
                     fill="currentColor"
                     d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 2.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zM17.4 6.5a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"
-                  />
-                </svg>
-              </a>
-              <a href="https://www.youtube.com/" target="_blank" rel="noreferrer" aria-label="YouTube">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M23 12.2s0-3.2-.4-4.7c-.2-.9-.9-1.6-1.8-1.8C18.5 5.2 12 5.2 12 5.2s-6.5 0-8.8.5c-.9.2-1.6.9-1.8 1.8C1 9 1 12.2 1 12.2s0 3.2.4 4.7c.2.9.9 1.6 1.8 1.8 2.3.5 8.8.5 8.8.5s6.5 0 8.8-.5c.9-.2 1.6-.9 1.8-1.8.4-1.5.4-4.7.4-4.7zM9.8 15.5v-6.6l6.2 3.3-6.2 3.3z"
                   />
                 </svg>
               </a>
@@ -761,6 +737,17 @@ export default function Home() {
                 </svg>
               </span>
               my30ahost@gmail.com
+            </a>
+            <a className="mkt-footer-email" href="https://www.instagram.com/my30a_host/" target="_blank" rel="noreferrer">
+              <span className="mkt-footer-email-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="14" height="14">
+                  <path
+                    fill="currentColor"
+                    d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 2.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zM17.4 6.5a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"
+                  />
+                </svg>
+              </span>
+              @my30a_host
             </a>
           </div>
         </div>

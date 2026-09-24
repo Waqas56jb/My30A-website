@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Clock, Coffee, MapPin, Search, Star, UtensilsCrossed, Wine, X } from 'lucide-react'
+import { CalendarCheck, Clock, Coffee, MapPin, Search, Star, UtensilsCrossed, Wine, X } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import { BrandArt, ExploreHead, ExploreShell, FadeImg } from './ExploreShared.jsx'
 
@@ -13,6 +13,7 @@ const TYPES = [
   { key: 'coffee', label: 'Coffee & Breakfast', Icon: Coffee },
 ]
 const PAGE = 24
+const BOOK_LABEL = { resy: 'Resy', opentable: 'OpenTable', sevenrooms: 'SevenRooms', tock: 'Tock', website_widget: 'Book online' }
 
 function countBy(list, pick) {
   const out = new Map()
@@ -42,6 +43,12 @@ function DiningCard({ place, index }) {
           </span>
         ) : null}
         {place.price ? <span className="app-dine-price">{place.price}</span> : null}
+        {place.reservable ? (
+          <span className="app-dine-book">
+            <CalendarCheck size={11} strokeWidth={2.2} aria-hidden="true" />
+            {BOOK_LABEL[place.platform] || 'Book online'}
+          </span>
+        ) : null}
       </span>
       <span className="app-dine-body">
         <strong>{place.name}</strong>
@@ -59,6 +66,7 @@ function DiningCard({ place, index }) {
           ) : null}
           <span>{place.cuisine || TYPES.find((t) => t.key === place.type)?.label}</span>
         </span>
+        {place.blurb ? <span className="app-dine-blurb">{place.blurb}</span> : null}
         {place.today && place.today !== 'Closed today' ? (
           <span className="app-dine-hours">
             <Clock size={11} strokeWidth={2} aria-hidden="true" />
@@ -88,6 +96,7 @@ export default function Dining() {
   const area = params.get('area') || ''
   const tag = params.get('tag') || ''
   const openOnly = params.get('open') === '1'
+  const bookOnly = params.get('book') === '1'
   const [q, setQ] = useState('')
   const [shown, setShown] = useState(PAGE)
   const sentinel = useRef(null)
@@ -107,6 +116,7 @@ export default function Dining() {
   const inArea = useMemo(() => (area ? ofType.filter((p) => p.community === area) : ofType), [ofType, area])
   const tags = useMemo(() => countBy(inArea, (p) => p.tags).filter(([, n]) => n >= 2).slice(0, 14), [inArea])
   const openCount = inArea.filter((p) => p.open_now).length
+  const bookCount = inArea.filter((p) => p.reservable).length
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -114,11 +124,12 @@ export default function Dining() {
       (p) =>
         (!tag || p.tags.includes(tag)) &&
         (!openOnly || p.open_now) &&
+        (!bookOnly || p.reservable) &&
         (!needle || `${p.name} ${p.cuisine || ''} ${p.community} ${p.tags.join(' ')}`.toLowerCase().includes(needle))
     )
-  }, [inArea, tag, openOnly, q])
+  }, [inArea, tag, openOnly, bookOnly, q])
 
-  useEffect(() => setShown(PAGE), [type, area, tag, openOnly, q])
+  useEffect(() => setShown(PAGE), [type, area, tag, openOnly, bookOnly, q])
 
   // Infinite scroll: render 24 cards at a time so a 160-place list stays instant.
   useEffect(() => {
@@ -131,7 +142,7 @@ export default function Dining() {
     return () => io.disconnect()
   }, [shown, results.length])
 
-  const filtered = area || tag || openOnly || q.trim()
+  const filtered = area || tag || openOnly || bookOnly || q.trim()
   const typeLabel = TYPES.find((t) => t.key === type).label
 
   return (
@@ -203,6 +214,11 @@ export default function Dining() {
                 <span className="app-live-dot" aria-hidden="true" /> Open now <small>{openCount}</small>
               </button>
             ) : null}
+            {bookCount ? (
+              <button type="button" className={`app-dine-chip${bookOnly ? ' is-on' : ''}`} onClick={() => update({ book: bookOnly ? '' : '1' })}>
+                <CalendarCheck size={14} strokeWidth={1.9} aria-hidden="true" /> Book online <small>{bookCount}</small>
+              </button>
+            ) : null}
             {tags.map(([name, n]) => (
               <button key={name} type="button" className={`app-dine-chip is-soft${tag === name ? ' is-on' : ''}`} onClick={() => update({ tag: tag === name ? '' : name })}>
                 {name} <small>{n}</small>
@@ -218,7 +234,7 @@ export default function Dining() {
             {all ? `${results.length} ${results.length === 1 ? 'place' : 'places'}` : 'Loading…'}
           </strong>
           {filtered ? (
-            <button type="button" onClick={() => (setQ(''), update({ area: '', tag: '', open: '' }))}>
+            <button type="button" onClick={() => (setQ(''), update({ area: '', tag: '', open: '', book: '' }))}>
               Clear filters
             </button>
           ) : null}

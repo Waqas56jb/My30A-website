@@ -34,9 +34,21 @@ const ACCOUNT = [
 const SUPPORT = [
   { Icon: MessageCircle, label: 'Message Vitoria', sub: 'Your 24/7 AI concierge', to: '/app/vitoria', tone: 'sea' },
   { Icon: Headset, label: 'Contact My30A Host', sub: 'my30ahost@gmail.com', to: 'mailto:my30ahost@gmail.com', tone: 'leaf' },
+  { Icon: InstagramIcon, label: 'Follow us on Instagram', sub: '@my30a_host', to: 'https://www.instagram.com/my30a_host/', tone: 'pink', external: true },
 ]
 
-function Row({ Icon, label, sub, to, tone, badge }) {
+// lucide has no brand icons in this version — same stroke style, drawn inline.
+function InstagramIcon({ size = 18, strokeWidth = 1.8 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
+    </svg>
+  )
+}
+
+function Row({ Icon, label, sub, to, tone, badge, external }) {
   const inner = (
     <>
       <span className={`app-pf-row-ico is-${tone}`} aria-hidden="true">
@@ -55,7 +67,7 @@ function Row({ Icon, label, sub, to, tone, badge }) {
       {inner}
     </Link>
   ) : (
-    <a href={to} className="app-pf-row">
+    <a href={to} className="app-pf-row" {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}>
       {inner}
     </a>
   )

@@ -36,7 +36,7 @@ try {
   ok(true, 'On The Water tile shows the real vendor count (34 local partners)')
 
   const tileCount = await g.locator('.app-exp-tile:not(.app-skel)').count()
-  ok(tileCount === 13, 'grid shows all 13 real categories (incl. 3 dining tiles)', `${tileCount} tiles`)
+  ok(tileCount === 14, 'grid shows all 14 real categories (3 dining tiles + events)', `${tileCount} tiles`)
   await shot(g, 'explore-grid-redesigned')
 
   const shopping = g.locator('.app-exp-tile', { hasText: 'Shopping' })

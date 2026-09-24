@@ -10,7 +10,7 @@ import { memo } from '../lib/memo.js'
 import { nowIn30A, openStatus, opensLaterToday } from '../lib/hours.js'
 
 const FIELDS =
-  'id, slug, name, venue_type, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, phone, website_url, booking_url, directions_url, address, lat, lng, rating, review_count'
+  'id, slug, name, venue_type, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, phone, website_url, booking_url, booking_platform, directions_url, address, lat, lng, rating, review_count'
 
 export function loadDining() {
   return memo('explore:dining-full', async () => {
@@ -102,7 +102,8 @@ export function diningCard(r, why = '') {
     price: r.price_range || '',
     phone: r.phone || '',
     website: r.website_url || '',
-    booking: r.booking_url || '',
+    booking: r.booking_platform === 'phone_only' ? '' : r.booking_url || '',
+    booking_platform: r.booking_platform || null,
     directions:
       r.directions_url ||
       `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name} ${r.address || r.community}`)}`,

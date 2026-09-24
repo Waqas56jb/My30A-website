@@ -19,7 +19,7 @@ export default function Explore() {
   const [q, setQ] = useState('')
   const { data } = useGuestQuery(guest.explore, [])
   const categories = data?.categories ? ordered(data.categories) : null
-  const partners = categories?.reduce((sum, c) => sum + (c.coming_soon || DINING_KEYS.has(c.key) ? 0 : c.count || 0), 0)
+  const partners = categories?.reduce((sum, c) => sum + (c.coming_soon || DINING_KEYS.has(c.key) || c.key === 'events' ? 0 : c.count || 0), 0)
   const dining = categories?.reduce((sum, c) => sum + (DINING_KEYS.has(c.key) ? c.count || 0 : 0), 0)
 
   const onSearch = (e) => {

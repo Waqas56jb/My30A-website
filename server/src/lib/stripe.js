@@ -58,9 +58,9 @@ export async function createPaymentIntent({ amount, customerId, metadata }) {
     currency: 'usd',
     customer: customerId,
     capture_method: 'manual',
-    // Redirect-based methods (Klarna, bank redirects, …) don't support long authorization
-    // holds well, so only non-redirect methods (card, Link, Cash App, …) are offered.
-    automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+    // Cards only: a transfer is a hold captured after the ride, and only cards support manual
+    // capture reliably — bank debits / Pix / wallets that settle later can't be held.
+    payment_method_types: ['card'],
     setup_future_usage: 'off_session',
     metadata,
   })
@@ -76,7 +76,8 @@ export async function createSetupIntent({ customerId }) {
   return stripe.setupIntents.create({
     customer: customerId,
     usage: 'off_session',
-    automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+    // Cards only — chargeSavedCard bills the saved card off-session at delivery.
+    payment_method_types: ['card'],
   })
 }
 
@@ -108,11 +109,23 @@ export async function chargeSavedCard({ customerId, amount, metadata }) {
   }
 }
 
+// null when the id doesn't exist for the current key — e.g. an order paid in TEST mode looked up
+// after switching to LIVE keys. Callers treat that as "no payment yet" and start a fresh one.
 export async function retrievePaymentIntent(id) {
   const stripe = await getStripe()
   if (!stripe) return notConfigured
   if (!id) return null
-  return stripe.paymentIntents.retrieve(id)
+  try {
+    return await stripe.paymentIntents.retrieve(id)
+  } catch (error) {
+    if (error?.code === 'resource_missing') return null
+    throw error
+  }
+}
+
+export function stripeMode() {
+  const key = process.env.STRIPE_SECRET_KEY || ''
+  return key.startsWith('sk_live_') || key.startsWith('rk_live_') ? 'live' : key ? 'test' : 'off'
 }
 
 // Captures the full authorized amount, or a partial amount (cancellation / no-show fee): Stripe
@@ -133,6 +146,7 @@ export async function createCheckoutSession({ amount, description, metadata, suc
   if (!stripe) return notConfigured
   return stripe.checkout.sessions.create({
     mode: 'payment',
+    payment_method_types: ['card'],
     line_items: [
       {
         quantity: 1,

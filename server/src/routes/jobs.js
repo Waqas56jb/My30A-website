@@ -4,13 +4,16 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { expireUnauthorizedHolds } from '../services/tripFlow.js'
+import { syncEvents } from '../services/events.js'
 
 const router = Router()
 
 export async function runJobs() {
   const started = Date.now()
   const holds = await expireUnauthorizedHolds()
-  return { ok: true, ms: Date.now() - started, expire_unauthorized_holds: holds }
+  // Events from 30a.com: next 3 weeks, time-boxed to fit the 60s serverless limit.
+  const events = await syncEvents({ days: 21, detailLimit: 60, budgetMs: 40000 }).catch((error) => ({ ok: false, error: error.message }))
+  return { ok: true, ms: Date.now() - started, expire_unauthorized_holds: holds, events }
 }
 
 function secretAllowed(req) {

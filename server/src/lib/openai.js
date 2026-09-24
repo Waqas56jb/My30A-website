@@ -126,3 +126,29 @@ export async function chatCompletion({ messages, model, maxTokens = 400, timeout
 
   return { skipped: true, reason: lastReason }
 }
+
+// Realtime (speech-to-speech) session for the browser: mints a short-lived client secret so the
+// guest's browser can open a WebRTC call straight to OpenAI without ever seeing our API key.
+// Same { skipped, reason } contract when OpenAI is unavailable (e.g. no credits).
+export async function createRealtimeSession(session, ttlSeconds = 600) {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return NOT_CONFIGURED
+  const blocked = quotaBlocked()
+  if (blocked) return blocked
+  try {
+    const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expires_after: { anchor: 'created_at', seconds: ttlSeconds }, session }),
+      signal: AbortSignal.timeout(20000),
+    })
+    const json = await response.json().catch(() => null)
+    if (!response.ok) {
+      noteQuota(json)
+      return { skipped: true, reason: json?.error?.message || `${response.status} ${response.statusText}` }
+    }
+    return { value: json.value, expires_at: json.expires_at, model: json.session?.model || session.model }
+  } catch (error) {
+    return { skipped: true, reason: error?.name === 'TimeoutError' ? 'OPENAI_TIMEOUT' : error.message }
+  }
+}
