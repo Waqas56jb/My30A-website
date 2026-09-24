@@ -1,6 +1,6 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { ExploreHead, ExploreShell, GuideCard, VendorCard } from './ExploreShared.jsx'
+import { ExploreHead, ExploreShell, GuideCard, GuideSkeleton, VendorCard } from './ExploreShared.jsx'
 
 export default function LocalGuide() {
   const [params] = useSearchParams()
@@ -26,18 +26,25 @@ export default function LocalGuide() {
       <div className="app-exp-body">
         {error ? <p className="app-inline-error">{errorText(error)}</p> : null}
 
-        <div className="app-exp-cards">
-          {items.map((item) => (
-            <GuideCard key={item.key} item={item} />
-          ))}
-        </div>
+        {loading && !items.length && !vendors.length ? (
+          <div className="app-exp-cards">
+            <GuideSkeleton />
+          </div>
+        ) : null}
+        {items.length ? (
+          <div className="app-exp-cards">
+            {items.map((item, i) => (
+              <GuideCard key={item.key} item={item} index={i} />
+            ))}
+          </div>
+        ) : null}
 
         {vendors.length ? (
           <>
             <h2 className="app-exp-count">{vendors.length} Places</h2>
             <div className="app-exp-vendors">
-              {vendors.map((v) => (
-                <VendorCard key={v.id} vendor={v} />
+              {vendors.map((v, i) => (
+                <VendorCard key={v.id} vendor={v} index={i} />
               ))}
             </div>
           </>

@@ -38,9 +38,10 @@ export function errorText(error, fallback = 'Something went wrong. Please try ag
 
 export const guest = {
   // auth
-  signup: (body) => api('/api/guest/signup', { method: 'POST', body }).then(adoptSession),
-  login: (body) => api('/api/guest/login', { method: 'POST', body }).then(adoptSession),
+  signup: (body) => api('/api/guest/signup', { method: 'POST', body }).then((r) => (queryCache.clear(), adoptSession(r))),
+  login: (body) => api('/api/guest/login', { method: 'POST', body }).then((r) => (queryCache.clear(), adoptSession(r))),
   signOut: async () => {
+    queryCache.clear()
     setAccessToken(null)
     if (supabase) await supabase.auth.signOut()
   },
@@ -119,22 +120,54 @@ export const pub = {
 }
 
 // Small data hook: { data, loading, error, reload }. `loader` is re-run when deps change.
+// Stale-while-revalidate: a screen the guest has already opened renders its last data instantly
+// (no blank flash when hopping between tabs) while a fresh copy loads in the background. Keyed by
+// the loader's source plus its deps, so `() => guest.vendor(slug)` caches per slug. Cleared on
+// login/logout so one account never sees another's data.
+const queryCache = new Map()
+const MAX_ENTRIES = 60
+
+function cacheKey(loader, deps) {
+  try {
+    return `${loader.toString()}|${JSON.stringify(deps)}`
+  } catch {
+    return null
+  }
+}
+
 export function useGuestQuery(loader, deps = [], { enabled = true } = {}) {
+  const key = cacheKey(loader, deps)
+  const cached = key ? queryCache.get(key) : undefined
   const [tick, setTick] = useState(0)
-  const [state, setState] = useState({ data: null, loading: enabled, error: null })
+  const [state, setState] = useState(() =>
+    cached !== undefined
+      ? { data: cached, loading: false, error: null }
+      : { data: null, loading: enabled, error: null }
+  )
   const reload = useCallback(() => setTick((value) => value + 1), [])
 
   useEffect(() => {
     if (!enabled) return undefined
     let ignore = false
-    setState((current) => ({ ...current, loading: true, error: null }))
+    const hit = key ? queryCache.get(key) : undefined
+    // With cached data, refresh silently; only a cold load shows the loading state.
+    setState((current) =>
+      hit !== undefined && tick === 0
+        ? { data: hit, loading: false, error: null }
+        : { ...current, loading: true, error: null }
+    )
     Promise.resolve()
       .then(loader)
       .then((data) => {
+        if (key) {
+          queryCache.delete(key)
+          queryCache.set(key, data)
+          if (queryCache.size > MAX_ENTRIES) queryCache.delete(queryCache.keys().next().value)
+        }
         if (!ignore) setState({ data, loading: false, error: null })
       })
       .catch((error) => {
-        if (!ignore) setState({ data: null, loading: false, error })
+        if (!ignore) setState((current) => (current.data && hit !== undefined ? { ...current, loading: false } : { data: null, loading: false, error }))
       })
     return () => {
       ignore = true

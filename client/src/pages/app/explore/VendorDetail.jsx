@@ -5,6 +5,7 @@ import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import {
   Actions,
   DetailHero,
+  DetailSkeleton,
   ExploreShell,
   MapCard,
   Pill,
@@ -43,8 +44,8 @@ export default function VendorDetail() {
   if (loading || error || !vendor) {
     return (
       <ExploreShell className="app-exp-detail">
-        <DetailHero image="/image6.png" back="/app/explore/guide">
-          <p className="app-empty">{error ? (error.status === 404 ? 'Place not found.' : errorText(error)) : 'Loading…'}</p>
+        <DetailHero loading={!error} back="/app/explore/guide">
+          {error ? <p className="app-empty">{error.status === 404 ? 'Place not found.' : errorText(error)}</p> : <DetailSkeleton />}
         </DetailHero>
       </ExploreShell>
     )
@@ -52,7 +53,7 @@ export default function VendorDetail() {
 
   return (
     <ExploreShell className="app-exp-detail">
-      <DetailHero image={vendor.image} back={vendor.back || '/app/explore/guide'}>
+      <DetailHero image={vendor.image} name={vendor.name} guideSlug={vendor.guide_slug} back={vendor.back || '/app/explore/guide'}>
         <TitleRow title={vendor.name} saved={saved} onToggle={toggle} busy={busy} />
         <div className="app-exp-pills">
           <Pill icon={MapPin} white>

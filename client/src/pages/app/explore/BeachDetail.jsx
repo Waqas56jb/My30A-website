@@ -19,6 +19,7 @@ import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import {
   Actions,
   DetailHero,
+  DetailSkeleton,
   ExploreShell,
   MapCard,
   Pill,
@@ -55,8 +56,8 @@ export default function BeachDetail() {
   if (loading || error || !beach) {
     return (
       <ExploreShell className="app-exp-detail">
-        <DetailHero image="/image1.png" back="/app/explore/guide?c=beaches">
-          <p className="app-empty">{error ? (error.status === 404 ? 'Beach not found.' : errorText(error)) : 'Loading…'}</p>
+        <DetailHero loading={!error} back="/app/explore/guide?c=beaches">
+          {error ? <p className="app-empty">{error.status === 404 ? 'Beach not found.' : errorText(error)}</p> : <DetailSkeleton />}
         </DetailHero>
       </ExploreShell>
     )

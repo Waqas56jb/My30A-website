@@ -30,18 +30,18 @@ try {
   await g.waitForURL(/\/app\/home/, { timeout: 20000 })
 
   await g.goto(`${CLIENT}/app/explore`)
-  await g.locator('.app-exp-tile').first().waitFor({ timeout: 15000 })
+  await g.locator('.app-exp-tile:not(.app-skel)').first().waitFor({ timeout: 15000 })
   const onWater = g.locator('.app-exp-tile', { hasText: 'On The Water' })
-  await onWater.locator('small', { hasText: '34 places' }).waitFor({ timeout: 8000 })
-  ok(true, 'On The Water tile shows the real vendor count (34 places)')
+  await onWater.locator('small', { hasText: '34 local partners' }).waitFor({ timeout: 8000 })
+  ok(true, 'On The Water tile shows the real vendor count (34 local partners)')
 
-  const tileCount = await g.locator('.app-exp-tile').count()
+  const tileCount = await g.locator('.app-exp-tile:not(.app-skel)').count()
   ok(tileCount === 11, 'grid shows all 11 real categories', `${tileCount} tiles`)
   await shot(g, 'explore-grid-redesigned')
 
   const shopping = g.locator('.app-exp-tile', { hasText: 'Shopping' })
-  await shopping.locator('small', { hasText: '39 places' }).waitFor({ timeout: 8000 })
-  ok(true, 'Shopping tile shows the real vendor count (39 places)')
+  await shopping.locator('small', { hasText: '39 local partners' }).waitFor({ timeout: 8000 })
+  ok(true, 'Shopping tile shows the real vendor count (39 local partners)')
 
   const soonBadge = await g.locator('.app-exp-tile', { hasText: 'Restaurants' }).locator('.app-exp-tile-soon').count()
   ok(soonBadge > 0, 'Restaurants tile shows a "Coming Soon" badge (no fake data)')
@@ -51,8 +51,8 @@ try {
   await g.waitForURL(/\/app\/explore\/guide/, { timeout: 10000 })
   await g.locator('h1', { hasText: 'Golf & Outdoor Rentals' }).waitFor({ timeout: 10000 })
   ok(true, 'guide screen header shows the tapped category name, not generic "Local Guide"')
-  await g.locator('.app-exp-card').first().waitFor({ timeout: 10000 })
-  const cardCount = await g.locator('.app-exp-card').count()
+  await g.locator('.app-exp-card:not(.app-skel)').first().waitFor({ timeout: 10000 })
+  const cardCount = await g.locator('.app-exp-card:not(.app-skel)').count()
   ok(cardCount === 4, 'shows exactly the 4 real golf/outdoor guides, not all 20', `${cardCount} cards`)
   const cardTitles = await g.locator('.app-exp-card strong').allTextContents()
   const expected = ['Golf Cart Rentals', 'Bike Rentals', 'Golf Courses', 'Pickleball']
@@ -66,8 +66,8 @@ try {
   // ---------- Drill into one guide's vendor list (real data) ----------
   await g.locator('.app-exp-card', { hasText: 'Golf Courses' }).click()
   await g.waitForURL(/\/app\/explore\/vendors\/golf-courses/, { timeout: 10000 })
-  await g.locator('.app-exp-vendor').first().waitFor({ timeout: 10000 })
-  const vendorNames = await g.locator('.app-exp-vendor h3').allTextContents()
+  await g.locator('.app-exp-vendor:not(.is-skel)').first().waitFor({ timeout: 10000 })
+  const vendorNames = await g.locator('.app-exp-vendor-name strong').allTextContents()
   ok(
     vendorNames.includes('Santa Rosa Golf & Beach Club') && vendorNames.includes('Burnt Pine Golf Club'),
     'vendor list shows real client-provided golf courses',

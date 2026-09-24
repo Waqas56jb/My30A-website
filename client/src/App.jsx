@@ -48,6 +48,7 @@ import './styles/app-vitoria.css'
 import './styles/app-transfer.css'
 import './styles/app-grocery.css'
 import './styles/app-explore.css'
+import './styles/app-motion.css'
 
 const PANEL_ROLES = ['driver', 'partner', 'shopper']
 

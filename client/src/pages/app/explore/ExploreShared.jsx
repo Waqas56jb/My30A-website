@@ -1,17 +1,33 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
+  ArrowUpRight,
+  Baby,
+  BadgeCheck,
   Bike,
   Briefcase,
   Camera,
+  Car,
+  ChefHat,
+  ChevronRight,
   Compass,
+  Flag,
+  Flame,
+  Gem,
+  Gift,
   Heart,
+  House,
   Info,
   Leaf,
   MapPin,
   Palette,
+  PawPrint,
   ShoppingBag,
   Star,
+  Stethoscope,
+  Tent,
+  Trophy,
   Umbrella,
   Users,
   UtensilsCrossed,
@@ -37,21 +53,6 @@ const ICONS = {
 export function iconFor(name) {
   return ICONS[name] || Compass
 }
-
-// Static fallback (mirrors the seeded database) used only while /api/guest/explore is loading.
-export const CATEGORIES = [
-  { key: 'restaurants', label: 'Restaurants', tone: 'sand', icon: 'UtensilsCrossed', image_url: '/image7.png', coming_soon: true, to: '/app/explore/guide?c=restaurants' },
-  { key: 'beaches', label: 'Beaches', tone: 'sea', icon: 'Umbrella', image_url: '/image1.png', to: '/app/explore/info?focus=beach-access' },
-  { key: 'on-the-water', label: 'On The Water', tone: 'cyan', icon: 'Waves', image_url: '/image3.png', to: '/app/explore/guide?c=on-the-water' },
-  { key: 'golf-outdoor', label: 'Golf & Outdoor Rentals', tone: 'leaf', icon: 'Bike', image_url: '/image6.png', to: '/app/explore/guide?c=golf-outdoor' },
-  { key: 'family-kids', label: 'Family & Kids', tone: 'pink', icon: 'Users', image_url: '/cover.png', to: '/app/explore/guide?c=family-kids' },
-  { key: 'wellness-spa', label: 'Wellness & Spa', tone: 'olive', icon: 'Leaf', image_url: '/image5.png', to: '/app/explore/guide?c=wellness-spa' },
-  { key: 'weddings-photography', label: 'Weddings & Photography', tone: 'peach', icon: 'Camera', image_url: '/image2.png', to: '/app/explore/guide?c=weddings-photography' },
-  { key: 'shopping', label: 'Shopping', tone: 'lime', icon: 'ShoppingBag', image_url: '/homecover.png', to: '/app/explore/guide?c=shopping' },
-  { key: 'arts-culture', label: 'Arts & Culture', tone: 'violet', icon: 'Palette', image_url: '/image12.png', to: '/app/explore/guide?c=arts-culture' },
-  { key: 'local-essentials', label: 'Local Essentials', tone: 'slate', icon: 'Briefcase', image_url: '/image7.png', to: '/app/explore/guide?c=local-essentials' },
-  { key: 'info', label: 'Public Information', tone: 'teal', icon: 'Info', image_url: '/homecover.png', to: '/app/explore/info' },
-]
 
 export function ExploreShell({ active = 'explore', nav = true, className = '', children }) {
   return (
@@ -109,13 +110,89 @@ export function RatingPill({ rating, reviews, white }) {
   )
 }
 
-export function DetailHero({ image, back = '/app/explore', children }) {
+// Image that fades in once decoded over a shimmer — photos never pop in half-drawn.
+export function FadeImg({ className = '', ...props }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <img
+      {...props}
+      className={`app-fade-img${loaded ? ' is-loaded' : ''}${className ? ` ${className}` : ''}`}
+      onLoad={() => setLoaded(true)}
+      onError={() => setLoaded(true)}
+      decoding="async"
+    />
+  )
+}
+
+// Partners without a photo of their own get a designed card in their guide's colour + icon,
+// never a borrowed stock photo that could be mistaken for the business.
+const GUIDE_THEMES = {
+  'on-the-water': ['sea', Waves],
+  'golf-cart-rentals': ['leaf', Car],
+  'bike-rentals': ['leaf', Bike],
+  'golf-courses': ['leaf', Flag],
+  pickleball: ['leaf', Trophy],
+  'beach-bonfires': ['sand', Flame],
+  'wellness-spa': ['olive', Leaf],
+  shopping: ['lime', ShoppingBag],
+  'welcome-setup': ['lime', Gift],
+  family: ['pink', Users],
+  'kids-camps': ['pink', Tent],
+  babysitting: ['pink', Baby],
+  'baby-kids-equipment': ['pink', Baby],
+  photography: ['peach', Camera],
+  'weddings-events': ['peach', Gem],
+  'arts-culture': ['violet', Palette],
+  'private-chef': ['slate', ChefHat],
+  'pet-services': ['slate', PawPrint],
+  medical: ['teal', Stethoscope],
+  'real-estate': ['slate', House],
+}
+
+export function themeOf(guideSlug) {
+  const [tone, Icon] = GUIDE_THEMES[guideSlug] || ['sea', Compass]
+  return { tone, Icon }
+}
+
+function monogram(name) {
+  return String(name || '')
+    .replace(/^(the|30a)\s+/i, '')
+    .split(/\s+/)
+    .filter((w) => /^[a-z0-9]/i.test(w))
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('')
+}
+
+export function BrandArt({ name, guideSlug, className = '', large = false }) {
+  const { tone, Icon } = themeOf(guideSlug)
+  return (
+    <span
+      className={`app-exp-art is-${tone}${large ? ' is-large' : ''}${className ? ` ${className}` : ''}`}
+      aria-hidden="true"
+    >
+      <Icon className="app-exp-art-bg" strokeWidth={1} />
+      <span className="app-exp-art-mono">{monogram(name)}</span>
+      <span className="app-exp-art-ico">
+        <Icon size={large ? 18 : 14} strokeWidth={1.8} />
+      </span>
+    </span>
+  )
+}
+
+export function DetailHero({ image, name, guideSlug, loading = false, back = '/app/explore', children }) {
   return (
     <>
-      <div className="app-exp-hero" style={{ backgroundImage: `url('${image}')` }}>
+      <div className={`app-exp-hero${loading ? ' app-fade-bg' : ''}`}>
+        {loading ? null : image ? (
+          <FadeImg src={image} alt="" className="app-exp-hero-img" fetchpriority="high" />
+        ) : (
+          <BrandArt name={name} guideSlug={guideSlug} large className="app-exp-hero-img" />
+        )}
+        <span className="app-exp-hero-shade" aria-hidden="true" />
         <BackButton to={back} className="app-exp-hero-back" />
       </div>
-      <div className="app-exp-sheet">{children}</div>
+      <div className="app-exp-sheet app-enter">{children}</div>
     </>
   )
 }
@@ -172,55 +249,140 @@ export function Actions({ primary, secondary }) {
   )
 }
 
-export function CategoryTile({ category }) {
+export function CategoryTile({ category, featured = false, index = 0 }) {
   const Icon = iconFor(category.icon)
   return (
     <Link
       to={category.to}
-      className={`app-exp-tile is-${category.tone}`}
-      style={{ backgroundImage: `url('${category.image_url}')` }}
+      className={`app-exp-tile is-${category.tone}${featured ? ' is-featured' : ''}${category.coming_soon ? ' is-soon' : ''} app-rise`}
+      style={{ '--i': index }}
       state={{ label: category.label }}
     >
+      <span className="app-exp-tile-media app-fade-bg">
+        {category.image_url ? (
+          <FadeImg src={category.image_url} alt="" loading={index < 6 ? 'eager' : 'lazy'} />
+        ) : null}
+      </span>
       {category.coming_soon ? <span className="app-exp-tile-soon">Coming Soon</span> : null}
       <span className="app-exp-tile-ico" aria-hidden="true">
-        <Icon size={18} strokeWidth={1.5} />
+        <Icon size={featured ? 20 : 17} strokeWidth={1.6} />
       </span>
       <span className="app-exp-tile-text">
         <strong>{category.label}</strong>
-        {!category.coming_soon && category.count ? <small>{category.count} places</small> : null}
+        <small>
+          {category.coming_soon
+            ? 'Curated list on the way'
+            : category.count
+              ? `${category.count} local partners`
+              : 'Explore'}
+          {category.coming_soon ? null : <ChevronRight size={13} strokeWidth={2} aria-hidden="true" />}
+        </small>
       </span>
     </Link>
   )
 }
 
-export function GuideCard({ item }) {
+export function TileSkeleton({ count = 7 }) {
+  return Array.from({ length: count }, (_, i) => (
+    <span key={i} className={`app-exp-tile app-skel${i === 0 ? ' is-featured' : ''}`} aria-hidden="true" />
+  ))
+}
+
+export function GuideCard({ item, index = 0 }) {
   return (
-    <Link to={item.to} className="app-exp-card" style={{ backgroundImage: `url('${item.image}')` }}>
-      <strong>{item.title}</strong>
-      <span className="app-exp-tags">
-        <span className="app-exp-tag">{item.from}</span>
-        <span className="app-exp-tag">{item.vendors}</span>
+    <Link to={item.to} className="app-exp-card app-rise" style={{ '--i': index }}>
+      <span className="app-exp-card-media app-fade-bg">
+        {item.image ? <FadeImg src={item.image} alt="" loading={index < 4 ? 'eager' : 'lazy'} /> : null}
+      </span>
+      <span className="app-exp-card-top">
+        {item.vendors ? <span className="app-exp-tag">{item.vendors}</span> : <span />}
+        <span className="app-exp-card-go" aria-hidden="true">
+          <ArrowUpRight size={16} strokeWidth={2} />
+        </span>
+      </span>
+      <span className="app-exp-card-foot">
+        <strong>{item.title}</strong>
+        {item.from ? <small>{item.from}</small> : null}
       </span>
     </Link>
   )
 }
 
-export function VendorCard({ vendor }) {
+export function GuideSkeleton({ count = 4 }) {
+  return Array.from({ length: count }, (_, i) => (
+    <span key={i} className="app-exp-card app-skel" aria-hidden="true" />
+  ))
+}
+
+export function VendorCard({ vendor, index = 0 }) {
+  const footLabel = vendor.from ? `From $${vendor.from}` : vendor.kind === 'beach' ? 'Public access' : 'Book direct'
+  const rated = vendor.rating !== null && vendor.rating !== undefined
   return (
-    <article className="app-exp-vendor">
-      <img src={vendor.image} alt="" />
-      <div className="app-exp-vendor-body">
-        <h3>{vendor.name}</h3>
-        <div className="app-exp-pills">
-          <Pill icon={MapPin}>{vendor.place}</Pill>
-          <RatingPill rating={vendor.rating} reviews={vendor.reviews} />
-        </div>
-        <p>{vendor.desc}</p>
-        <div className="app-exp-vendor-foot">
-          <strong>{vendor.from ? `From $${vendor.from}` : vendor.kind === 'beach' ? 'Public access' : 'Book direct'}</strong>
-          <Link to={vendor.to}>{vendor.kind === 'vendor' ? 'View Vendor' : 'View'}</Link>
-        </div>
-      </div>
-    </article>
+    <Link to={vendor.to} className="app-exp-vendor app-rise" style={{ '--i': Math.min(index, 11) }}>
+      <span className="app-exp-vendor-media app-fade-bg">
+        {vendor.image ? (
+          <FadeImg src={vendor.image} alt="" loading={index < 4 ? 'eager' : 'lazy'} width={132} height={132} />
+        ) : (
+          <BrandArt name={vendor.name} guideSlug={vendor.guide_slug} />
+        )}
+      </span>
+      <span className="app-exp-vendor-body">
+        <span className="app-exp-vendor-name">
+          <strong>{vendor.name}</strong>
+          {vendor.kind === 'vendor' ? (
+            <BadgeCheck size={15} strokeWidth={2} className="app-exp-verified" aria-label="Local partner" />
+          ) : null}
+        </span>
+        <span className="app-exp-vendor-meta">
+          <MapPin size={12} strokeWidth={1.8} aria-hidden="true" />
+          <span className="app-exp-vendor-place">{vendor.place}</span>
+          {rated ? (
+            <>
+              <Star size={12} strokeWidth={0} fill="#f5b50a" aria-hidden="true" />
+              <b>{Number(vendor.rating).toFixed(1)}</b>
+              {vendor.reviews ? <span className="app-exp-vendor-rev">({vendor.reviews})</span> : null}
+            </>
+          ) : null}
+        </span>
+        {vendor.desc ? <span className="app-exp-vendor-desc">{vendor.desc}</span> : null}
+        <span className="app-exp-vendor-foot">
+          <span className="app-exp-vendor-price">{footLabel}</span>
+          <span className="app-exp-vendor-cta">
+            View
+            <ChevronRight size={14} strokeWidth={2.2} aria-hidden="true" />
+          </span>
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+export function VendorSkeleton({ count = 5 }) {
+  return Array.from({ length: count }, (_, i) => (
+    <div key={i} className="app-exp-vendor is-skel" aria-hidden="true">
+      <span className="app-exp-vendor-media app-skel" />
+      <span className="app-exp-vendor-body">
+        <span className="app-skel app-skel-title" style={{ width: '70%' }} />
+        <span className="app-skel app-skel-line" style={{ width: '45%' }} />
+        <span className="app-skel app-skel-line" style={{ width: '95%' }} />
+        <span className="app-skel app-skel-line" style={{ width: '60%' }} />
+      </span>
+    </div>
+  ))
+}
+
+export function DetailSkeleton() {
+  return (
+    <div className="app-exp-detail-skel" aria-label="Loading">
+      <span className="app-skel app-skel-title" style={{ width: '72%', height: 28 }} />
+      <span className="app-exp-detail-skel-row">
+        <span className="app-skel app-skel-card" style={{ width: 130, height: 34, borderRadius: 999 }} />
+        <span className="app-skel app-skel-card" style={{ width: 100, height: 34, borderRadius: 999 }} />
+      </span>
+      <span className="app-skel app-skel-line" style={{ width: '100%' }} />
+      <span className="app-skel app-skel-line" style={{ width: '92%' }} />
+      <span className="app-skel app-skel-line" style={{ width: '64%' }} />
+      <span className="app-skel app-skel-card" style={{ width: '100%', height: 96 }} />
+    </div>
   )
 }

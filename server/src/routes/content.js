@@ -2,9 +2,16 @@
 // and the service catalog the guest app quotes from.
 import { Router } from 'express'
 import { supabase } from '../lib/supabase.js'
+import { clearMemo } from '../lib/memo.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 
 const router = Router()
+
+// Any admin content edit must show up for guests immediately — drop the cached Explore data.
+router.use((req, _res, next) => {
+  if (req.method !== 'GET') clearMemo('explore:')
+  next()
+})
 router.use(requireAuth, requireRole('admin'))
 
 const RESOURCES = {

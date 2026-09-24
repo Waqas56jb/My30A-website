@@ -4,6 +4,7 @@ import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import {
   Actions,
   DetailHero,
+  DetailSkeleton,
   ExploreShell,
   Pill,
   RatingPill,
@@ -19,8 +20,8 @@ export default function RestaurantDetail() {
   if (loading || error || !place) {
     return (
       <ExploreShell className="app-exp-detail">
-        <DetailHero image="/image10.png" back="/app/explore/guide?c=restaurants">
-          <p className="app-empty">{error ? (error.status === 404 ? 'Restaurant not found.' : errorText(error)) : 'Loading…'}</p>
+        <DetailHero loading={!error} back="/app/explore/guide?c=restaurants">
+          {error ? <p className="app-empty">{error.status === 404 ? 'Restaurant not found.' : errorText(error)}</p> : <DetailSkeleton />}
         </DetailHero>
       </ExploreShell>
     )

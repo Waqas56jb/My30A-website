@@ -1,0 +1,250 @@
+/* ——————————————————————————————————————————————
+   Guest app motion + skeleton layer (shared, reusable)
+
+   .app-skel                 shimmer placeholder block (size it inline or with a modifier)
+     .app-skel-line          12px text line          .app-skel-title   20px heading line
+     .app-skel-circle        round (avatar/icon)     .app-skel-card    16px-radius card
+     .app-skel-on-dark       shimmer tuned for dark backgrounds
+     .app-skel-on-photo      brighter shimmer over photos
+   .app-enter                page-enter fade + 12px slide-up (on mount)
+   .app-rise                 card rise; stagger with style={{ '--i': index }}
+   .app-stagger              auto-stagger every direct child (first 12 children)
+   .app-press                press-scale on touch + hover lift on pointer devices
+   .app-fade-img             image hidden until `.is-loaded` is added in onLoad
+   .app-fade-bg              shimmer background behind a fading image
+   .app-live-dot             pulsing "live" status dot
+   All motion is transform/opacity only and switches off under prefers-reduced-motion.
+   —————————————————————————————————————————————— */
+
+.app-guest {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+  --skel-base: #e6eef1;
+  --skel-shine: rgba(255, 255, 255, 0.75);
+}
+
+/* —— Skeleton shimmer —— */
+
+.app-skel {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--skel-base);
+  isolation: isolate;
+}
+
+.app-skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, var(--skel-shine) 50%, transparent 100%);
+  animation: app-shimmer 1.3s var(--ease-std) infinite;
+}
+
+.app-skel-line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.app-skel-title {
+  height: 20px;
+  border-radius: 8px;
+}
+
+.app-skel-circle {
+  border-radius: 50%;
+}
+
+.app-skel-card {
+  border-radius: 16px;
+}
+
+.app-skel-on-dark {
+  --skel-base: rgba(255, 255, 255, 0.22);
+  --skel-shine: rgba(255, 255, 255, 0.35);
+}
+
+.app-skel-on-photo {
+  --skel-base: rgba(255, 255, 255, 0.6);
+  --skel-shine: rgba(255, 255, 255, 0.95);
+}
+
+.app-skel-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes app-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* —— Entrances —— */
+
+.app-enter {
+  animation: app-enter 0.42s var(--ease-out) backwards;
+}
+
+.app-rise,
+.app-stagger > * {
+  animation: app-rise 0.46s var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 55ms + 60ms);
+}
+
+.app-stagger > :nth-child(2) { --i: 1; }
+.app-stagger > :nth-child(3) { --i: 2; }
+.app-stagger > :nth-child(4) { --i: 3; }
+.app-stagger > :nth-child(5) { --i: 4; }
+.app-stagger > :nth-child(6) { --i: 5; }
+.app-stagger > :nth-child(7) { --i: 6; }
+.app-stagger > :nth-child(8) { --i: 7; }
+.app-stagger > :nth-child(9) { --i: 8; }
+.app-stagger > :nth-child(10) { --i: 9; }
+.app-stagger > :nth-child(11) { --i: 10; }
+.app-stagger > :nth-child(n + 12) { --i: 11; }
+
+@keyframes app-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes app-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes app-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* —— Press + hover —— */
+
+.app-press {
+  transition:
+    transform 0.22s var(--ease-out),
+    box-shadow 0.22s var(--ease-out),
+    background-color 0.18s var(--ease-std);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-press:active {
+  transform: scale(0.97);
+  transition-duration: 0.1s;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-press:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -12px rgba(10, 22, 40, 0.28);
+  }
+
+  .app-press:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+.app-guest :where(a, button):focus-visible {
+  outline: 2px solid #1a6ebb;
+  outline-offset: 2px;
+}
+
+/* —— Image fade-in —— */
+
+.app-fade-img {
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity 0.45s var(--ease-std),
+    transform 0.7s var(--ease-out);
+}
+
+.app-fade-img.is-loaded {
+  opacity: 1;
+  transform: none;
+}
+
+.app-fade-bg {
+  background-color: var(--skel-base);
+  background-image: linear-gradient(90deg, transparent 0%, var(--skel-shine) 50%, transparent 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: app-shimmer-bg 1.3s var(--ease-std) infinite;
+}
+
+@keyframes app-shimmer-bg {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+/* —— Live dot —— */
+
+.app-live-dot {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.app-live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: app-ping 1.8s var(--ease-out) infinite;
+}
+
+@keyframes app-ping {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-guest *,
+  .app-guest *::before,
+  .app-guest *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .app-skel::after,
+  .app-live-dot::after {
+    display: none;
+  }
+}

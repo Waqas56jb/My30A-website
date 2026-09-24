@@ -7,6 +7,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase.js'
+import { memo } from '../lib/memo.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
 import { notify } from '../services/notifications.js'
@@ -922,7 +923,7 @@ router.get('/home', guestOnly, async (req, res, next) => {
         .in('status', ACTIVE_ORDER)
         .order('delivery_time', { ascending: true })
         .limit(3),
-      supabase.from('explore_categories').select('*').eq('is_active', true).order('sort_order'),
+      exploreCategories(),
       // "Vitoria's Pick" highlights real, genuinely well-reviewed partners (not a curated
       // category shortcut) — the client's own data only has real ratings for a handful of
       // vendors, so that's the actual pool, ranked by rating then review count.
@@ -932,6 +933,7 @@ router.get('/home', guestOnly, async (req, res, next) => {
         .eq('is_active', true)
         .eq('kind', 'vendor')
         .not('rating', 'is', null)
+        .not('image_url', 'is', null)
         .order('rating', { ascending: false })
         .order('review_count', { ascending: false })
         .limit(3),
@@ -973,13 +975,7 @@ router.get('/home', guestOnly, async (req, res, next) => {
       location_label: view?.location_label || '30A, FL',
       unread_count: unread.count || 0,
       orders: activeOrders,
-      explore: (categories.data || []).map((category) => ({
-        key: category.key,
-        label: category.label,
-        tone: category.tone,
-        icon: category.icon,
-        to: category.target === 'info' ? '/app/explore/info' : `/app/explore/${category.target}`,
-      })),
+      explore: [...categories].sort((a, b) => Number(a.coming_soon) - Number(b.coming_soon)),
       picks: (picks.data || []).map((vendor) => ({
         key: vendor.slug,
         title: vendor.name,
@@ -997,61 +993,63 @@ router.get('/home', guestOnly, async (req, res, next) => {
 
 // ---------- Explore 30A ----------
 
-router.get('/explore', async (_req, res, next) => {
-  try {
+// Categories + live vendor counts are identical for every guest — built once, served from memory
+// (see lib/memo.js); Home's Explore strip reuses the same list so it gets photos and counts too.
+function exploreCategories() {
+  return memo('explore:categories', async () => {
     const { data: categories, error } = await supabase
       .from('explore_categories')
       .select('*')
       .eq('is_active', true)
       .order('sort_order')
-    if (error) return res.status(400).json({ error: error.message })
+    if (error) throw httpError(400, error.message)
 
     // Each guide belongs to exactly one tile (category_key) — count real active vendors per
     // tile so the grid shows an honest "N places" instead of a hand-typed number that can drift.
-    const { data: guides } = await supabase
-      .from('explore_guides')
-      .select('slug, category_key')
-      .eq('is_active', true)
-      .not('category_key', 'is', null)
+    const [{ data: guides }, { data: vendors }] = await Promise.all([
+      supabase.from('explore_guides').select('slug, category_key').eq('is_active', true).not('category_key', 'is', null),
+      supabase.from('explore_vendors').select('guide_slug').eq('is_active', true).eq('kind', 'vendor'),
+    ])
     const categoryForSlug = Object.fromEntries((guides || []).map((g) => [g.slug, g.category_key]))
-    const { data: vendors } = await supabase
-      .from('explore_vendors')
-      .select('guide_slug')
-      .eq('is_active', true)
-      .eq('kind', 'vendor')
     const counts = {}
     for (const vendor of vendors || []) {
       const key = categoryForSlug[vendor.guide_slug]
       if (key) counts[key] = (counts[key] || 0) + 1
     }
+    return categories.map((category) => ({
+      key: category.key,
+      label: category.label,
+      tone: category.tone,
+      icon: category.icon,
+      image_url: category.image_url,
+      coming_soon: category.coming_soon,
+      count: counts[category.key] || 0,
+      to: category.target === 'info' ? '/app/explore/info' : `/app/explore/${category.target}`,
+    }))
+  })
+}
 
-    res.json({
-      categories: categories.map((category) => ({
-        key: category.key,
-        label: category.label,
-        tone: category.tone,
-        icon: category.icon,
-        image_url: category.image_url,
-        coming_soon: category.coming_soon,
-        count: counts[category.key] || 0,
-        to: category.target === 'info' ? '/app/explore/info' : `/app/explore/${category.target}`,
-      })),
-    })
+router.get('/explore', async (_req, res, next) => {
+  try {
+    res.json({ categories: await exploreCategories() })
   } catch (error) {
-    next(error)
+    sendError(res, next, error)
   }
 })
 
 router.get('/explore/guide', async (req, res, next) => {
   try {
     const categoryKey = String(req.query.c || '').trim()
-    let query = supabase.from('explore_guides').select('*').eq('is_active', true).order('sort_order')
-    if (categoryKey) query = query.eq('category_key', categoryKey)
-    const { data, error } = await query
-    if (error) return res.status(400).json({ error: error.message })
-    res.json({ category: categoryKey || null, items: (data || []).map((guide) => guideView(guide)) })
+    const items = await memo(`explore:guide:${categoryKey}`, async () => {
+      let query = supabase.from('explore_guides').select('*').eq('is_active', true).order('sort_order')
+      if (categoryKey) query = query.eq('category_key', categoryKey)
+      const { data, error } = await query
+      if (error) throw httpError(400, error.message)
+      return (data || []).map((guide) => guideView(guide))
+    })
+    res.json({ category: categoryKey || null, items })
   } catch (error) {
-    next(error)
+    sendError(res, next, error)
   }
 })
 
@@ -1080,24 +1078,27 @@ router.get('/explore/search', async (req, res, next) => {
 
 router.get('/explore/vendors/:slug', async (req, res, next) => {
   try {
-    const { data: guide } = await supabase
-      .from('explore_guides')
-      .select('*')
-      .eq('slug', req.params.slug)
-      .eq('is_active', true)
-      .maybeSingle()
-    if (!guide) return res.status(404).json({ error: 'Guide not found' })
-    const { data, error } = await supabase
-      .from('explore_vendors')
-      .select('*')
-      .eq('guide_slug', guide.slug)
-      .eq('is_active', true)
-      .order('sort_order')
-    if (error) return res.status(400).json({ error: error.message })
-    const vendors = (data || []).map((vendor) => vendorView(vendor))
-    res.json({ guide: guideView(guide), title: guide.title, count: vendors.length, vendors })
+    const payload = await memo(`explore:vendors:${req.params.slug}`, async () => {
+      const { data: guide } = await supabase
+        .from('explore_guides')
+        .select('*')
+        .eq('slug', req.params.slug)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (!guide) throw httpError(404, 'Guide not found')
+      const { data, error } = await supabase
+        .from('explore_vendors')
+        .select('*')
+        .eq('guide_slug', guide.slug)
+        .eq('is_active', true)
+        .order('sort_order')
+      if (error) throw httpError(400, error.message)
+      const vendors = (data || []).map((vendor) => vendorView(vendor))
+      return { guide: guideView(guide), title: guide.title, count: vendors.length, vendors }
+    })
+    res.json(payload)
   } catch (error) {
-    next(error)
+    sendError(res, next, error)
   }
 })
 
