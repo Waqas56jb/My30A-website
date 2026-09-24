@@ -4,6 +4,7 @@
 // turn. It's assembled stable-first so OpenAI's prompt cache reuses the big unchanging prefix and
 // only the short per-guest tail changes between calls.
 import { supabase } from '../lib/supabase.js'
+import { diningCard, findDining } from './dining.js'
 
 const TIME_ZONE = 'America/Chicago'
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -197,6 +198,7 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
     '- "places": one card per specific place you recommend or are asked about (restaurants, partners, beach accesses, parks, pharmacies, etc.), in the order you recommend them, max 6. Empty array when the answer is not about specific places.',
     '  name: exact business/place name. area: community or town. category: short type, e.g. "Seafood · Waterfront", "Golf cart rental", "Beach access". why: one short sentence on why it fits. hours: today’s hours from your web search, or "" if unknown. phone: real phone or "". website: bare domain or URL, or "". partner: true only if it appears in the MY30A HOST VETTED LOCAL GUIDE (dining-guide places are local favorites: partner false).',
     '- Never put URLs, citations or source markers in "reply".',
+    '- In "places", write each name exactly as it appears in the guides — the app then shows that place’s real photo, live hours, reservations and profile page on the card.',
     '',
     knowledge,
     '',
@@ -216,6 +218,16 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
   }
   if (ctx.orders.length) {
     head.push('Their active grocery orders: ' + ctx.orders.map((o) => `#${o.order_number} ${o.status}, ${o.package}, delivery ${ctx.formatWhen(o.delivery_time)}`).join('; '))
+  }
+  const h = ctx.history || {}
+  if (h.trips?.length) {
+    head.push('Their airport transfer history (newest first): ' + h.trips.map((t) => `#${t.trip_number} ${t.airport} ${t.direction === 'from_airport' ? 'arrival' : 'departure'} ${ctx.formatWhen(t.scheduled_at)} — ${t.status}`).join('; '))
+  }
+  if (h.orders?.length) {
+    head.push('Their grocery order history (newest first): ' + h.orders.map((o) => `#${o.order_number} ${o.package || ''} delivery ${ctx.formatWhen(o.delivery_time)} — ${o.status}`).join('; '))
+  }
+  if (h.saved?.length) {
+    head.push('Places they saved (hearted) in the app: ' + h.saved.map((x) => `${x.name}${x.community ? ` (${x.community})` : ''}`).join(', ') + ' — use these as a hint to their taste.')
   }
   return head.join('\n')
 }
@@ -273,54 +285,46 @@ export async function enrichPlaces(places) {
     .from('explore_vendors')
     .select('slug, kind, name, place, phone, website_url, image_url, rating, review_count')
     .eq('is_active', true)
-    .in('kind', ['vendor', 'restaurant'])
+    .eq('kind', 'vendor')
   const byName = new Map((vendors || []).map((v) => [normalize(v.name), v]))
-  return list.map((p) => {
-    const vendor = byName.get(normalize(p.name))
-    const query = encodeURIComponent([p.name, p.area || '30A', 'FL'].filter(Boolean).join(' '))
-    return {
-      name: p.name,
-      area: p.area || vendor?.place || '',
-      category: p.category || '',
-      why: p.why || '',
-      hours: String(p.hours || '').replace(/\*\*/g, ''),
-      phone: vendor?.phone || p.phone || '',
-      website: cleanUrl(vendor?.website_url || p.website),
-      partner: vendor?.kind === 'vendor',
-      in_guide: Boolean(vendor),
-      slug: vendor?.slug || null,
-      to: vendor ? `/app/explore/${vendor.kind === 'restaurant' ? 'restaurant' : 'vendor'}/${vendor.slug}` : null,
-      image: vendor?.image_url || null,
-      rating: vendor?.rating != null ? Number(vendor.rating) : null,
-      reviews: vendor?.review_count || 0,
-      directions: `https://www.google.com/maps/search/?api=1&query=${query}`,
-    }
+  const cards = await Promise.all(
+    list.map(async (p) => {
+      // Restaurants / bars / coffee from the dining guide: the card is built from the database —
+      // real photo, today's hours and open-now, phone, reservations and its profile page — even
+      // when the model wrote the name a little differently ("Bud & Alley's Waterfront Restaurant").
+      const dining = await findDining(p.name, p.area)
+      if (dining) {
+        const card = diningCard(dining, p.why)
+        if (!card.hours && p.hours) card.hours = String(p.hours).replace(/\*\*/g, '')
+        return card
+      }
+      const vendor = byName.get(normalize(p.name))
+      const query = encodeURIComponent([p.name, p.area || '30A', 'FL'].filter(Boolean).join(' '))
+      return {
+        name: p.name,
+        area: p.area || vendor?.place || '',
+        category: p.category || '',
+        why: p.why || '',
+        hours: String(p.hours || '').replace(/\*\*/g, ''),
+        phone: vendor?.phone || p.phone || '',
+        website: cleanUrl(vendor?.website_url || p.website),
+        partner: Boolean(vendor),
+        in_guide: Boolean(vendor),
+        slug: vendor?.slug || null,
+        to: vendor ? `/app/explore/vendor/${vendor.slug}` : null,
+        image: vendor?.image_url || null,
+        rating: vendor?.rating != null ? Number(vendor.rating) : null,
+        reviews: vendor?.review_count || 0,
+        directions: `https://www.google.com/maps/search/?api=1&query=${query}`,
+      }
+    })
+  )
+  // The model sometimes names the same place twice in different words — one card each.
+  const seen = new Set()
+  return cards.filter((c) => {
+    const key = c.slug || normalize(c.name)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
   })
-}
-
-// Only when the AI is unreachable — same voice and layout rules, plain text, real paragraph breaks.
-export function vitoriaFallback(text, ctx, beachAccesses = []) {
-  const q = String(text || '').toLowerCase()
-  const name = ctx.firstName
-  const community = ctx.booking?.community_name || null
-
-  if (/beach|sunset|swim|sand/.test(q)) {
-    const near = community ? beachAccesses.filter((p) => String(p.community || '').includes(community)) : []
-    const picks = (near.length ? near : beachAccesses).slice(0, 3)
-    if (!picks.length) return `Every beach along 30A is public access — look for the blue access signs.\n\nWhich community are you staying in? I’ll point you to the closest ones.`
-    return `Closest public beach access${community ? ` to ${community}` : ''}:\n\n${picks.map((p) => `${p.name}${p.details ? ` — ${p.details}` : ''}`).join('\n')}\n\nCheck the flags when you arrive — double red means the water is closed.`
-  }
-  if (/dinner|restaurant|eat|food|lunch|breakfast|brunch|bar|top 5/.test(q)) {
-    return `I can’t pull up live picks this second, ${name}, but the full dining guide is in Explore under Restaurants, Bars and Coffee & Breakfast, sorted by community${community ? ` (start with ${community})` : ''}.\n\nReservations are wise in season. Want help with anything else for your stay?`
-  }
-  if (/grocer|publix|stock/.test(q)) {
-    return `Groceries are ordered from the Services tab.\n\nPick a package, choose how you’d like the kitchen stocked, and upload your Publix cart screenshot.\n\nYou pay the flat service fee plus the exact Publix receipt, charged only once it’s delivered.`
-  }
-  if (/airport|transfer|ride|pickup|pick up|drop|flight|shuttle|driver/.test(q)) {
-    return `Airport transfers to and from ECP, VPS and PNS are booked in the Services tab.\n\nAdd your flight number and we’ll track it and confirm your driver — you’ll get a notification as soon as one is assigned.`
-  }
-  if (/hello|hi\b|hey|good (morning|afternoon|evening)/.test(q)) {
-    return `Hi ${name}. I can help with beaches, things to do, dinner ideas, groceries or airport transfers.\n\nWhat sounds good?`
-  }
-  return `Happy to help, ${name}.\n\nAsk me about beaches, activities, local services and dining near ${community || '30A'}, or about groceries and airport transfers from the Services tab.\n\nWhat would you like?`
 }

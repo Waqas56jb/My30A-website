@@ -394,7 +394,7 @@ async function main() {
       d.picks[0].title === '30A Blaze Beach Bonfires' &&
       d.picks[0].rating === 5 &&
       d.picks[0].reviews === 1200 &&
-      d.explore.length === 11 &&
+      d.explore.length === 13 &&
       d.location_label === 'Rosemary Beach, FL' &&
       /^Good/.test(d.greeting)
   )
@@ -516,7 +516,7 @@ async function main() {
   await expect('GET /api/guest/vitoria/messages (empty)', 'GET', '/api/guest/vitoria/messages', G, 200, (d) => d.messages.length === 0 && d.greeting.includes('Alex'))
   const chat1 = await expect('POST /api/guest/vitoria/messages "Best beach today" (real AI, not fallback)', 'POST', '/api/guest/vitoria/messages', { ...G, body: { content: 'Best beach today' } }, 201, (d) => d.assistant?.content?.length > 20 && d.model !== 'fallback')
   console.log(`      Vitoria (${chat1.model}${chat1.skipped_reason ? `, fallback because: ${chat1.skipped_reason}` : ''}): ${chat1.assistant.content.slice(0, 160)}…`)
-  const chat2 = await expect('POST /api/guest/vitoria/messages "Dinner tonight"', 'POST', '/api/guest/vitoria/messages', { ...G, body: { content: 'Dinner tonight' } }, 201, (d) => d.assistant?.content?.length > 20)
+  const chat2 = await expect('POST /api/guest/vitoria/messages "Dinner tonight" (dining-guide cards: photo, live hours, profile link — AI or offline)', 'POST', '/api/guest/vitoria/messages', { ...G, body: { content: 'Dinner tonight' } }, 201, (d) => d.assistant?.content?.length > 20 && (d.assistant.places || []).length >= 2 && d.assistant.places.some((p) => p.image) && d.assistant.places.every((p) => !p.in_guide || p.to))
   console.log(`      Vitoria (${chat2.model}): ${chat2.assistant.content.slice(0, 160)}…`)
   await expect('POST /api/guest/vitoria/messages empty → 400', 'POST', '/api/guest/vitoria/messages', { ...G, body: { content: '  ' } }, 400)
   await expect('GET /api/guest/vitoria/messages (4 messages)', 'GET', '/api/guest/vitoria/messages', G, 200, (d) => d.messages.length === 4)

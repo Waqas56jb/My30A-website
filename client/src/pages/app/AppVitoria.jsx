@@ -76,13 +76,25 @@ const themeFor = (place) =>
 function PlaceCard({ place }) {
   const { Icon, tone } = themeFor(place)
   const tel = place.phone ? `tel:${place.phone.replace(/[^\d+]/g, '')}` : null
+  const hours = String(place.hours || '')
+  const [status, ...rest] = hours.split(' · ')
+  const hasStatus = place.open_now === true || place.open_now === false
   return (
     <article className="app-vit-card">
-      <div
-        className={`app-vit-card-top ${place.image ? 'has-photo' : tone}`}
-        style={place.image ? { backgroundImage: `url('${place.image}')` } : undefined}
-      >
-        {place.image ? null : <Icon size={26} strokeWidth={1.4} aria-hidden="true" />}
+      {place.to ? <Link to={place.to} className="app-vit-card-hit" aria-label={`Open ${place.name}`} /> : null}
+      <div className={`app-vit-card-top ${place.image ? 'has-photo' : tone}`}>
+        {place.image ? (
+          <img src={place.image} alt="" loading="lazy" decoding="async" />
+        ) : (
+          <Icon size={26} strokeWidth={1.4} aria-hidden="true" />
+        )}
+        {hasStatus ? (
+          <span className={`app-vit-card-open${place.open_now ? ' is-open' : ''}`}>
+            {place.open_now ? <span className="app-live-dot" aria-hidden="true" /> : null}
+            {status}
+          </span>
+        ) : null}
+        {place.price ? <span className="app-vit-card-price">{place.price}</span> : null}
         {place.partner ? (
           <span className="app-vit-card-badge">
             <BadgeCheck size={12} strokeWidth={2} aria-hidden="true" />
@@ -102,15 +114,21 @@ function PlaceCard({ place }) {
           {[place.area, place.category].filter(Boolean).join(' · ')}
         </p>
         {place.why ? <p className="app-vit-card-why">{place.why}</p> : null}
-        {place.hours ? (
+        {hours && (!hasStatus || rest.length) ? (
           <p className="app-vit-card-hours">
             <Clock size={12} strokeWidth={1.8} aria-hidden="true" />
-            {place.hours}
+            {hasStatus ? rest.join(' · ') : hours}
           </p>
         ) : null}
         <div className="app-vit-card-actions">
+          {place.booking ? (
+            <a href={place.booking} target="_blank" rel="noreferrer" className="app-vit-card-btn is-primary">
+              <CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" />
+              Reserve
+            </a>
+          ) : null}
           {tel ? (
-            <a href={tel} className="app-vit-card-btn">
+            <a href={tel} className={`app-vit-card-btn${place.booking ? '' : ' is-primary'}`}>
               <Phone size={13} strokeWidth={1.8} aria-hidden="true" />
               Call
             </a>
@@ -121,14 +139,14 @@ function PlaceCard({ place }) {
               Website
             </a>
           ) : null}
-          <a href={place.directions} target="_blank" rel="noreferrer" className="app-vit-card-btn is-primary">
+          <a href={place.directions} target="_blank" rel="noreferrer" className={`app-vit-card-btn${tel || place.booking ? '' : ' is-primary'}`}>
             <Navigation size={13} strokeWidth={1.8} aria-hidden="true" />
             Map
           </a>
         </div>
-        {place.slug ? (
+        {place.to || place.slug ? (
           <Link to={place.to || `/app/explore/vendor/${place.slug}`} className="app-vit-card-more">
-            View in Explore
+            View full profile
           </Link>
         ) : null}
       </div>

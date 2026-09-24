@@ -522,3 +522,96 @@
 .app-vit-card-badge.is-fav {
   color: #b4610a;
 }
+
+/* —— Place cards v2: real photo, live open status, whole card opens the profile —— */
+.app-vit-card {
+  position: relative;
+  flex-basis: 248px;
+  transition:
+    transform 0.25s var(--ease-out, ease),
+    box-shadow 0.25s var(--ease-out, ease);
+}
+
+.app-vit-card-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.app-vit-card-body a,
+.app-vit-card-body button {
+  position: relative;
+  z-index: 2;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-vit-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px -14px rgba(12, 67, 85, 0.35);
+  }
+
+  .app-vit-card:hover .app-vit-card-top img {
+    transform: scale(1.06);
+  }
+}
+
+.app-vit-card-top {
+  height: 132px;
+  overflow: hidden;
+}
+
+.app-vit-card-top img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s var(--ease-out, ease);
+}
+
+.app-vit-card-top.has-photo::after {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+.app-vit-card-open,
+.app-vit-card-price {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-family: var(--app-body);
+  font-weight: 700;
+  font-size: 10.5px;
+  line-height: 100%;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.app-vit-card-open {
+  left: 8px;
+  background: rgba(10, 22, 40, 0.6);
+  color: #ffffff;
+}
+
+.app-vit-card-open.is-open {
+  background: rgba(255, 255, 255, 0.95);
+  color: #13804a;
+}
+
+.app-vit-card-price {
+  right: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0a1628;
+}
+
+.app-vit-card-why {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

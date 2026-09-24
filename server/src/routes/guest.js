@@ -8,6 +8,7 @@ import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase.js'
 import { memo } from '../lib/memo.js'
+import { openStatus } from '../lib/hours.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
 import { notify } from '../services/notifications.js'
@@ -26,7 +27,8 @@ import {
 import { maskedCallNumber } from '../lib/sms.js'
 import { geocodeQuery } from '../lib/nominatim.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
-import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaFallback, vitoriaSystemPrompt } from '../services/vitoria.js'
+import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt } from '../services/vitoria.js'
+import { vitoriaOffline } from '../services/vitoriaOffline.js'
 import {
   ROUND_TRIP_DISCOUNT_PERCENT,
   availableCredit,
@@ -333,40 +335,6 @@ function vendorPath(vendor) {
   if (vendor.kind === 'restaurant') return `/app/explore/restaurant/${vendor.slug}`
   if (vendor.kind === 'beach') return `/app/explore/beach/${vendor.slug}`
   return `/app/explore/vendor/${vendor.slug}`
-}
-
-// Dining hours come from 30a.com's structured opening hours ({ mon: [["17:00","21:00"]], … }),
-// evaluated in 30A's own time zone so "Open now" is right whatever the server's clock says.
-const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
-const clockLabel = (t) => {
-  const [h, m] = String(t).split(':').map(Number)
-  const suffix = h >= 12 && h < 24 ? 'pm' : 'am'
-  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''}${suffix}`
-}
-function openStatus(openingHours) {
-  if (!openingHours || typeof openingHours !== 'object') return { open_now: null, today: null }
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-      .formatToParts(new Date())
-      .map((part) => [part.type, part.value])
-  )
-  const day = parts.weekday.slice(0, 3).toLowerCase()
-  const now = Number(parts.hour) * 60 + Number(parts.minute)
-  const minutes = (t) => {
-    const [h, m] = String(t).split(':').map(Number)
-    return h * 60 + (m || 0)
-  }
-  const spans = openingHours[day] || []
-  const yesterday = openingHours[DAY_KEYS[(DAY_KEYS.indexOf(day) + 6) % 7]] || []
-  const open =
-    spans.some(([o, c]) => {
-      const [a, b] = [minutes(o), minutes(c)]
-      return b > a ? now >= a && now < b : now >= a // closes after midnight
-    }) || yesterday.some(([o, c]) => minutes(c) < minutes(o) && now < minutes(c))
-  return {
-    open_now: open,
-    today: spans.length ? spans.map(([o, c]) => `${clockLabel(o)}–${clockLabel(c)}`).join(', ') : 'Closed today',
-  }
 }
 
 function vendorView(vendor, extra = {}) {
@@ -1963,7 +1931,7 @@ router.post('/grocery/:id/tip', guestOnly, async (req, res, next) => {
 
 // Per-guest tail of Vitoria's prompt (the big stable knowledge pack lives in services/vitoria.js).
 async function vitoriaContext(userId) {
-  const [profile, booking, trips, orders, beaches] = await Promise.all([
+  const [profile, booking, trips, orders, beaches, pastTrips, pastOrders, saved] = await Promise.all([
     loadProfile(userId),
     loadBooking(userId),
     supabase
@@ -1986,6 +1954,23 @@ async function vitoriaContext(userId) {
       .eq('is_active', true)
       .like('section_key', 'beach-access%')
       .order('sort_order'),
+    supabase
+      .from('transfers')
+      .select('trip_number, status, scheduled_at, airport, direction')
+      .eq('guest_id', userId)
+      .order('scheduled_at', { ascending: false })
+      .limit(6),
+    supabase
+      .from('grocery_orders')
+      .select('order_number, status, delivery_time, package')
+      .eq('guest_id', userId)
+      .order('delivery_time', { ascending: false })
+      .limit(6),
+    supabase
+      .from('saved_places')
+      .select('vendor:explore_vendors (name, community, place, kind)')
+      .eq('guest_id', userId)
+      .limit(20),
   ])
   return {
     profile,
@@ -1994,6 +1979,11 @@ async function vitoriaContext(userId) {
     trips: trips.data || [],
     orders: orders.data || [],
     beachAccesses: beaches.data || [],
+    history: {
+      trips: pastTrips.data || [],
+      orders: pastOrders.data || [],
+      saved: (saved.data || []).map((row) => row.vendor).filter(Boolean).map((v) => ({ name: v.name, community: v.community || v.place })),
+    },
     formatWhen,
   }
 }
@@ -2073,10 +2063,16 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
     }
     // Sanitized regardless of source — a stray "**", "- " or citation link from the model must
     // never reach the guest, since the chat bubble renders plain text, not markdown.
-    const reply = cleanConciergeText(
-      (rawReply ?? vitoriaFallback(content, ctx, ctx.beachAccesses)).replace(/\s*\(\[[^\]]*\]\([^)]*\)\)/g, '')
-    )
-    const places = await enrichPlaces(rawPlaces)
+    // No AI (no credits, outage, timeout): the offline concierge answers from the same real data,
+    // with the same cards — dining picks by community, beach accesses, the guest's own history.
+    let offlinePlaces = []
+    if (rawReply === null) {
+      const offline = await vitoriaOffline(content, ctx, recent)
+      rawReply = offline.reply
+      offlinePlaces = offline.places
+    }
+    const reply = cleanConciergeText(rawReply.replace(/\s*\(\[[^\]]*\]\([^)]*\)\)/g, ''))
+    const places = offlinePlaces.length ? offlinePlaces : await enrichPlaces(rawPlaces)
 
     const { data: assistantMessage, error: replyError } = await supabase
       .from('vitoria_messages')
