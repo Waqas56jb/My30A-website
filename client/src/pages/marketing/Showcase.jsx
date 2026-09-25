@@ -47,6 +47,7 @@ const SERVICES = [
     priceNote: '+ your Publix receipt',
     cta: 'Arrange Groceries',
     screen: '/marketing/screen-grocery.webp',
+    photo: '/services/grocery-stocked-kitchen.webp',
     alt: 'Grocery ordering screen in the My30A Host app with Full, Large and XL packs',
     tone: 'gold',
     floats: [
@@ -67,6 +68,7 @@ const SERVICES = [
     priceNote: 'per ride',
     cta: 'Arrange Transfer',
     screen: '/marketing/screen-transfer.webp',
+    photo: '/marketing/transfer-arrival.webp',
     alt: 'Airport transfer booking screen in the My30A Host app',
     tone: 'sea',
     floats: [
@@ -87,6 +89,7 @@ const SERVICES = [
     priceNote: 'Included with your stay',
     cta: 'Ask Vitoria',
     screen: '/marketing/screen-vitoria.webp',
+    photo: '/marketing/hd/coast.webp',
     alt: 'Vitoria recommending restaurants with photos and hours in the My30A Host app',
     tone: 'violet',
     floats: [
@@ -107,6 +110,7 @@ const SERVICES = [
     priceNote: 'Free in the app',
     cta: 'Explore 30A',
     screen: '/marketing/screen-dining.webp',
+    photo: '/marketing/hd/eat.webp',
     alt: 'Dining on 30A screen listing restaurants, bars and coffee by community',
     tone: 'coral',
     floats: [
@@ -127,6 +131,7 @@ const SERVICES = [
     priceNote: 'Updated daily',
     cta: 'See what’s on',
     screen: '/marketing/screen-events.webp',
+    photo: '/marketing/hd/events.webp',
     alt: 'Events on 30A screen with today’s live music and markets',
     tone: 'teal',
     floats: [
@@ -275,6 +280,11 @@ export function ServicesShowcase() {
       {/* The phone */}
       <div className="mkt-sx-stage" data-reveal="zoom" style={{ '--d': '0.1s' }}>
         <div className="mkt-sx-glow" aria-hidden="true" />
+        <div className="mkt-sx-portal" aria-hidden="true">
+          {SERVICES.map((x, i) => (
+            <img key={x.key} src={x.photo} alt="" loading="lazy" decoding="async" className={i === active ? 'is-on' : ''} />
+          ))}
+        </div>
         <div className="mkt-sx-rings" aria-hidden="true">
           <span />
           <span />
@@ -395,6 +405,204 @@ export function GuideGrid() {
         </span>
         <ArrowRight className="mkt-guide-go" size={17} aria-hidden="true" />
       </Link>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------------ */
+/* Explore 30A: cinematic expanding panels (desktop), snap cards (phone).   */
+/* HD frames from the client's own 30A films.                                */
+/* ------------------------------------------------------------------------ */
+
+const GALLERY = [
+  {
+    key: 'eat',
+    title: 'Eat',
+    meta: '241 restaurants, bars & cafés',
+    chips: ['Open now', 'By community', 'Book online'],
+    src: '/marketing/hd/eat.webp',
+    pos: '42% 55%',
+    alt: 'Snow crab and a seafood bowl with white wine at a 30A restaurant',
+  },
+  {
+    key: 'move',
+    title: 'Move',
+    meta: 'Golf carts · Bikes · Airport transfers',
+    chips: ['Golf carts', 'Bike rentals', 'Transfers'],
+    src: '/marketing/hd/move.webp',
+    pos: '34% 40%',
+    alt: 'Riding a bike across a boardwalk through the coastal forest',
+  },
+  {
+    key: 'play',
+    title: 'Play',
+    meta: 'Charters · Paddle · Fishing',
+    chips: ['Yacht charters', 'Paddleboards', 'Fishing'],
+    src: '/marketing/hd/play.webp',
+    pos: '80% 50%',
+    alt: 'A girl riding a boogie board through the Gulf surf',
+  },
+  {
+    key: 'unwind',
+    title: 'Unwind',
+    meta: 'Spas · Beach setups · Bonfires',
+    chips: ['Spas', 'Beach setups', 'Bonfires'],
+    src: '/marketing/hd/unwind.webp',
+    pos: '48% 60%',
+    alt: 'A couple relaxing in an infinity pool framed by tall pines',
+  },
+  {
+    key: 'events',
+    title: 'Events',
+    meta: '~600 a month · Live music · Markets',
+    chips: ['Live music', 'Markets', 'Festivals'],
+    src: '/marketing/hd/events.webp',
+    pos: '40% 50%',
+    alt: 'A guitarist playing live music',
+  },
+  {
+    key: 'beaches',
+    title: 'Beaches',
+    meta: 'All 59 public beach accesses',
+    chips: ['Parking', 'Restrooms', 'Directions'],
+    src: '/marketing/hd/beaches.webp',
+    pos: '30% 50%',
+    alt: 'Aerial view of emerald water and white sand along 30A',
+  },
+]
+
+export function ExploreGallery() {
+  const ref = useRef(null)
+  const [active, setActive] = useState(0)
+  const [hover, setHover] = useState(false)
+  const [inView, setInView] = useState(false)
+  const [wide, setWide] = useState(false)
+  const running = wide && inView && !hover && !reduced()
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(min-width: 901px)')
+    const sync = () => setWide(Boolean(mq?.matches))
+    sync()
+    mq?.addEventListener?.('change', sync)
+    const el = ref.current
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.35 }) : null
+    if (el && io) io.observe(el)
+    return () => {
+      mq?.removeEventListener?.('change', sync)
+      io?.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!running) return undefined
+    const t = setTimeout(() => setActive((a) => (a + 1) % GALLERY.length), 5200)
+    return () => clearTimeout(t)
+  }, [running, active])
+
+  return (
+    <div
+      className="mkt-gal"
+      ref={ref}
+      data-reveal
+      onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      {GALLERY.map((g, i) => (
+        <Link
+          key={g.key}
+          to="/app"
+          className="mkt-gal-item"
+          data-on={i === active ? '' : undefined}
+          style={{ '--i': i }}
+          onMouseEnter={() => setActive(i)}
+          onFocus={() => setActive(i)}
+        >
+          <img className="mkt-gal-img" src={g.src} alt={g.alt} loading="lazy" decoding="async" width="1280" height="720" style={{ objectPosition: g.pos }} />
+          <span className="mkt-gal-shade" aria-hidden="true" />
+          <span className="mkt-gal-num" aria-hidden="true">
+            0{i + 1}
+          </span>
+          <span className="mkt-gal-vert" aria-hidden="true">
+            {g.title}
+          </span>
+          <span className="mkt-gal-body">
+            <span className="mkt-gal-title">{g.title}</span>
+            <span className="mkt-gal-meta">{g.meta}</span>
+            <span className="mkt-gal-chips" aria-hidden="true">
+              {g.chips.map((c) => (
+                <span key={c}>{c}</span>
+              ))}
+            </span>
+            <span className="mkt-gal-cta">
+              Explore in the app <ArrowUpRight size={16} aria-hidden="true" />
+            </span>
+          </span>
+          <span className="mkt-gal-bar" aria-hidden="true">
+            {i === active ? <i key={`${active}-${running}`} className={running ? 'is-running' : ''} /> : null}
+          </span>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------------ */
+/* Vitoria: the app's real 3D voice orb, acting out a conversation.          */
+/* ------------------------------------------------------------------------ */
+
+const ORB_SCRIPT = [
+  ['listening', 3400, 'Listening'],
+  ['thinking', 1700, 'Thinking'],
+  ['speaking', 4600, 'Speaking'],
+]
+
+export function VitoriaOrb({ OrbComponent }) {
+  const ref = useRef(null)
+  const levelRef = useRef(0)
+  const stateRef = useRef('listening')
+  const [step, setStep] = useState(0)
+  const [inView, setInView] = useState(false)
+  const [size, setSize] = useState(620)
+
+  useEffect(() => {
+    setSize(window.innerWidth < 640 ? 440 : window.innerWidth < 1024 ? 600 : 760)
+    const el = ref.current
+    if (!el || !('IntersectionObserver' in window)) return setInView(true)
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '200px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  // Walk through listening → thinking → speaking while visible.
+  useEffect(() => {
+    if (!inView) return undefined
+    stateRef.current = ORB_SCRIPT[step][0]
+    const t = setTimeout(() => setStep((s) => (s + 1) % ORB_SCRIPT.length), ORB_SCRIPT[step][1])
+    return () => clearTimeout(t)
+  }, [step, inView])
+
+  // A voice-like level: syllable bursts while speaking, softer while listening.
+  useEffect(() => {
+    if (!inView) return undefined
+    let raf = 0
+    const tick = (now) => {
+      const state = stateRef.current
+      const t = now / 1000
+      const syllables = Math.max(0, Math.sin(t * 9.3) * 0.55 + Math.sin(t * 3.1) * 0.35 + Math.sin(t * 17) * 0.15)
+      levelRef.current = state === 'speaking' ? 0.25 + syllables * 0.75 : state === 'listening' ? 0.08 + syllables * 0.35 : 0.05
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [inView])
+
+  const [state, , label] = ORB_SCRIPT[step]
+  return (
+    <div className="mkt-vorb" ref={ref} aria-hidden="true">
+      {inView ? <OrbComponent levelRef={levelRef} stateRef={stateRef} size={size} /> : null}
+      <span className={`mkt-vstate is-${state}`}>
+        <i /> Vitoria is {label.toLowerCase()}
+      </span>
     </div>
   )
 }

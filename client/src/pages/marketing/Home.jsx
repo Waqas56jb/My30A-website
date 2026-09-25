@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -6,8 +6,6 @@ import {
   AudioLines,
   CalendarDays,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Compass,
   MapPin,
   Menu,
@@ -18,7 +16,8 @@ import {
   Waves,
   X,
 } from 'lucide-react'
-import { GuideGrid, ServicesShowcase } from './Showcase.jsx'
+import { ExploreGallery, GuideGrid, ServicesShowcase, VitoriaOrb } from './Showcase.jsx'
+import VoiceOrb from '../app/vitoria/VoiceOrb.jsx'
 
 /* ------------------------------------------------------------------------ */
 /* Content                                                                   */
@@ -65,51 +64,6 @@ const STATS = [
   { value: 59, label: 'Public beach accesses', note: 'with parking & restrooms noted' },
   { value: 600, prefix: '~', label: 'Events every month', note: 'live music, markets & festivals' },
   { value: 16, label: '30A communities', note: 'from Inlet Beach to Miramar' },
-]
-
-const EXPLORE = [
-  {
-    key: 'eat',
-    title: 'Eat',
-    meta: '241 restaurants, bars & cafés',
-    src: '/restaurants/georges-at-alys-beach.webp',
-    alt: 'Seared tuna plated at a restaurant in Alys Beach',
-  },
-  {
-    key: 'move',
-    title: 'Move',
-    meta: 'Golf carts · Bikes · Airport transfers',
-    src: `${M}/explore-move.webp`,
-    alt: 'Guests cruising 30A in a golf cart',
-  },
-  {
-    key: 'play',
-    title: 'Play',
-    meta: 'Yacht charters · Paddle · Fishing',
-    src: '/vendors/glow-paddle.webp',
-    alt: 'Guests paddling illuminated clear kayaks at night',
-  },
-  {
-    key: 'unwind',
-    title: 'Unwind',
-    meta: 'Spas · Beach setups · Bonfires',
-    src: `${M}/explore-unwind.webp`,
-    alt: 'Sunset beach bonfire setup with chairs and tiki torches',
-  },
-  {
-    key: 'events',
-    title: 'Events',
-    meta: '~600 a month · Live music · Markets',
-    src: '/restaurants/north-beach-social.webp',
-    alt: 'String lights over a bayside deck at sunset',
-  },
-  {
-    key: 'beaches',
-    title: 'Beaches',
-    meta: 'All 59 public beach accesses',
-    src: `${M}/stay-aerial.webp`,
-    alt: 'Aerial view of white sand and emerald water on 30A',
-  },
 ]
 
 const STEPS = [
@@ -541,11 +495,9 @@ export default function Home() {
   const heroVideoRef = useRef(null)
   const coastalVideoRef = useRef(null)
   const stepsRef = useRef(null)
-  const railRef = useRef(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [heroReady, setHeroReady] = useState(false)
-  const [railEdge, setRailEdge] = useState({ start: true, end: false })
 
   useReveal(rootRef)
   usePointerFx(rootRef)
@@ -637,27 +589,6 @@ export default function Home() {
     window.addEventListener('resize', close)
     return () => window.removeEventListener('resize', close)
   }, [])
-
-  const updateRail = useCallback(() => {
-    const rail = railRef.current
-    if (!rail) return
-    const max = rail.scrollWidth - rail.clientWidth - 4
-    setRailEdge({ start: rail.scrollLeft <= 4, end: rail.scrollLeft >= max })
-  }, [])
-
-  useEffect(() => {
-    updateRail()
-    window.addEventListener('resize', updateRail)
-    return () => window.removeEventListener('resize', updateRail)
-  }, [updateRail])
-
-  const scrollRail = (dir) => {
-    const rail = railRef.current
-    if (!rail) return
-    const card = rail.querySelector('.mkt-rail-card')
-    const step = card ? card.getBoundingClientRect().width + 20 : rail.clientWidth * 0.8
-    rail.scrollBy({ left: dir * step, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
-  }
 
   const closeMenu = () => setMenuOpen(false)
 
@@ -945,7 +876,10 @@ export default function Home() {
             </div>
 
             <div className="mkt-vitoria-demo" data-reveal="zoom" style={{ '--d': '0.1s' }}>
-              <ChatDemo />
+              <VitoriaOrb OrbComponent={VoiceOrb} />
+              <div className="mkt-chat-frame">
+                <ChatDemo />
+              </div>
             </div>
           </div>
         </section>
@@ -978,7 +912,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ------------------------------------------------------------ Explore rail */}
+        {/* ------------------------------------------------------------ Explore gallery */}
         <section className="mkt-explore" id="explore" aria-labelledby="mkt-explore-title">
           <div className="mkt-wrap mkt-explore-head">
             <div>
@@ -994,48 +928,15 @@ export default function Home() {
                 The places locals actually use — from Inlet Beach to Miramar Beach — in one guide
                 inside the app.
               </p>
-              <div className="mkt-rail-nav">
-                <button
-                  type="button"
-                  onClick={() => scrollRail(-1)}
-                  disabled={railEdge.start}
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={20} aria-hidden="true" />
-                </button>
-                <button type="button" onClick={() => scrollRail(1)} disabled={railEdge.end} aria-label="Next">
-                  <ChevronRight size={20} aria-hidden="true" />
-                </button>
-              </div>
+              <p className="mkt-gal-hint" aria-hidden="true">
+                <span /> <b className="is-fine">Hover a guide to open it</b>
+                <b className="is-touch">Swipe to explore</b>
+              </p>
             </div>
           </div>
 
-          <div
-            className="mkt-rail"
-            ref={railRef}
-            onScroll={updateRail}
-            role="region"
-            aria-label="Explore categories"
-            data-reveal
-          >
-            {EXPLORE.map((card, i) => (
-              <Link key={card.key} to="/app" className="mkt-rail-card" style={{ '--i': i }}>
-                <span className="mkt-rail-media">
-                  <Img src={card.src} alt={card.alt} />
-                </span>
-                <span className="mkt-rail-shade" aria-hidden="true" />
-                <span className="mkt-rail-text">
-                  <span className="mkt-rail-num" aria-hidden="true">
-                    0{i + 1}
-                  </span>
-                  <span className="mkt-rail-title">{card.title}</span>
-                  <span className="mkt-rail-meta">{card.meta}</span>
-                </span>
-                <span className="mkt-rail-arrow" aria-hidden="true">
-                  <ArrowUpRight size={18} />
-                </span>
-              </Link>
-            ))}
+          <div className="mkt-wrap">
+            <ExploreGallery />
           </div>
 
           <div className="mkt-wrap">
