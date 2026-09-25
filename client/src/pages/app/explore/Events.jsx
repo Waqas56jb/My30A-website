@@ -20,7 +20,7 @@ import {
   Waves,
 } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { ExploreHead, ExploreShell, FadeImg } from './ExploreShared.jsx'
+import { ExploreHead, ExploreShell, FadeImg, LiveSearch } from './ExploreShared.jsx'
 
 // Events along 30A from 30a.com (organizer-submitted — the page says so): today / this weekend /
 // this month, filter by category and community, grouped by day. Filters live in the URL.
@@ -215,10 +215,7 @@ export default function Events() {
           ))}
         </div>
 
-        <label className="app-exp-search">
-          <Search size={18} strokeWidth={1.8} aria-hidden="true" />
-          <input type="search" placeholder="Search events, venues or bands" value={q} onChange={(e) => setQ(e.target.value)} />
-        </label>
+        <LiveSearch value={q} onChange={setQ} placeholder="Search events, venues or bands" resultsId="event-results" />
 
         {categories.length ? (
           <section className="app-dine-filter">
@@ -257,6 +254,7 @@ export default function Events() {
 
         {error ? <p className="app-inline-error">{errorText(error)}</p> : null}
 
+        <span id="event-results" aria-hidden="true" />
         {!data ? (
           <div className="app-ev-list">
             {Array.from({ length: 5 }, (_, i) => (

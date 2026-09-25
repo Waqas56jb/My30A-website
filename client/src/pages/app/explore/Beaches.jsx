@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Accessibility, Bike, Car, Dog, Flame, Info, MapPin, Navigation, Search, Toilet, TreePine, Umbrella } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { ExploreHead, ExploreShell, FadeImg } from './ExploreShared.jsx'
+import { ExploreHead, ExploreShell, FadeImg, LiveSearch } from './ExploreShared.jsx'
 
 // Beaches: every Walton County public beach access along 30A, west → east, as real cards —
 // filter by community and by what a beach day needs (parking, restrooms, accessible, dogs).
@@ -142,10 +142,7 @@ export default function Beaches() {
           </section>
         ) : null}
 
-        <label className="app-exp-search">
-          <Search size={18} strokeWidth={1.8} aria-hidden="true" />
-          <input type="search" placeholder="Search an access, street or area" value={q} onChange={(e) => setQ(e.target.value)} />
-        </label>
+        <LiveSearch value={q} onChange={setQ} placeholder="Search an access, street or area" resultsId="beach-results" />
 
         <section className="app-dine-filter">
           <h2 className="app-dine-h">Community</h2>
@@ -174,7 +171,7 @@ export default function Beaches() {
 
         {error ? <p className="app-inline-error">{errorText(error)}</p> : null}
 
-        <div className="app-dine-count">
+        <div className="app-dine-count" id="beach-results">
           <strong>{all ? `${list.length} ${list.length === 1 ? 'access' : 'accesses'}` : 'Loading…'}</strong>
           {area || on.length || q ? (
             <button type="button" onClick={() => (setArea(''), setOn([]), setQ(''))}>

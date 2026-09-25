@@ -1064,7 +1064,7 @@ function exploreCategories() {
     // tile so the grid shows an honest "N places" instead of a hand-typed number that can drift.
     const [{ data: guides }, { data: vendors }] = await Promise.all([
       supabase.from('explore_guides').select('slug, category_key').eq('is_active', true).not('category_key', 'is', null),
-      supabase.from('explore_vendors').select('guide_slug, kind, venue_type').eq('is_active', true).in('kind', ['vendor', 'restaurant']),
+      supabase.from('explore_vendors').select('guide_slug, kind, venue_type, venue_types').eq('is_active', true).in('kind', ['vendor', 'restaurant']),
     ])
     const categoryForSlug = Object.fromEntries((guides || []).map((g) => [g.slug, g.category_key]))
     const counts = {}
@@ -1077,7 +1077,12 @@ function exploreCategories() {
     const DINING_TILE = { restaurant: 'restaurants', bar: 'bars', coffee: 'coffee' }
     counts.events = eventCount || 0
     for (const vendor of vendors || []) {
-      const key = vendor.kind === 'restaurant' ? DINING_TILE[vendor.venue_type] : categoryForSlug[vendor.guide_slug]
+      // A place in several Dining tabs (restaurant + bar) counts in each.
+      if (vendor.kind === 'restaurant') {
+        for (const t of vendor.venue_types || [vendor.venue_type]) if (DINING_TILE[t]) counts[DINING_TILE[t]] = (counts[DINING_TILE[t]] || 0) + 1
+        continue
+      }
+      const key = categoryForSlug[vendor.guide_slug]
       if (key) counts[key] = (counts[key] || 0) + 1
     }
     return categories.map((category) => ({
@@ -1170,7 +1175,7 @@ router.get('/explore/vendors/:slug', async (req, res, next) => {
 // the facets the Dining screen filters on (type → community → cuisine/features). 246 compact rows,
 // cached; "open now" is recomputed per request from each place's structured hours.
 const DINING_FIELDS =
-  'id, slug, name, venue_type, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, rating, review_count, website_url, booking_url, booking_platform, phone'
+  'id, slug, name, venue_type, venue_types, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, rating, review_count, website_url, booking_url, booking_platform, phone'
 
 router.get('/explore/dining', async (_req, res, next) => {
   try {
@@ -1193,6 +1198,7 @@ router.get('/explore/dining', async (_req, res, next) => {
           slug: row.slug,
           name: row.name,
           type: row.venue_type,
+          types: row.venue_types?.length ? row.venue_types : [row.venue_type],
           community: row.community,
           cuisine: row.cuisine,
           tags: row.tags || [],

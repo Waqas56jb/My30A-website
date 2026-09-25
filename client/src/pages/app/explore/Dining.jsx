@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarCheck, Clock, Coffee, MapPin, Search, Star, UtensilsCrossed, Wine, X } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { BrandArt, ExploreHead, ExploreShell, FadeImg } from './ExploreShared.jsx'
+import { BrandArt, ExploreHead, ExploreShell, FadeImg, LiveSearch } from './ExploreShared.jsx'
 
 // Dining guide: the client's real list of restaurants, bars and coffee & breakfast spots.
 // Guests pick a type (tabs), then narrow by community and by cuisine / vibe — every choice lives in
@@ -110,8 +110,9 @@ export default function Dining() {
     setParams(next, { replace: true })
   }
 
-  const ofType = useMemo(() => (all || []).filter((p) => p.type === type), [all, type])
-  const typeCounts = useMemo(() => Object.fromEntries(countBy(all || [], (p) => p.type)), [all])
+  // A place can be in several tabs (Pescado: restaurant + bar).
+  const ofType = useMemo(() => (all || []).filter((p) => (p.types || [p.type]).includes(type)), [all, type])
+  const typeCounts = useMemo(() => Object.fromEntries(countBy(all || [], (p) => p.types || [p.type])), [all])
   const areas = useMemo(() => countBy(ofType, (p) => p.community), [ofType])
   const inArea = useMemo(() => (area ? ofType.filter((p) => p.community === area) : ofType), [ofType, area])
   const tags = useMemo(() => countBy(inArea, (p) => p.tags).filter(([, n]) => n >= 2).slice(0, 14), [inArea])
@@ -172,20 +173,7 @@ export default function Dining() {
           ))}
         </div>
 
-        <label className="app-exp-search">
-          <Search size={18} strokeWidth={1.8} aria-hidden="true" />
-          <input
-            type="search"
-            placeholder={`Search ${typeLabel.toLowerCase()}, cuisine or area`}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          {q ? (
-            <button type="button" className="app-dine-clear" aria-label="Clear search" onClick={() => setQ('')}>
-              <X size={16} strokeWidth={2} />
-            </button>
-          ) : null}
-        </label>
+        <LiveSearch value={q} onChange={setQ} placeholder={`Search ${typeLabel.toLowerCase()}, cuisine or area`} resultsId="dine-results" />
 
         <section className="app-dine-filter">
           <h2 className="app-dine-h">Community</h2>
@@ -229,7 +217,7 @@ export default function Dining() {
 
         {error ? <p className="app-inline-error">{errorText(error)}</p> : null}
 
-        <div className="app-dine-count">
+        <div className="app-dine-count" id="dine-results">
           <strong>
             {all ? `${results.length} ${results.length === 1 ? 'place' : 'places'}` : 'Loading…'}
           </strong>

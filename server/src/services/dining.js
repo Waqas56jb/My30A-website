@@ -10,7 +10,7 @@ import { memo } from '../lib/memo.js'
 import { nowIn30A, openStatus, opensLaterToday } from '../lib/hours.js'
 
 const FIELDS =
-  'id, slug, name, venue_type, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, phone, website_url, booking_url, booking_platform, directions_url, address, lat, lng, rating, review_count'
+  'id, slug, name, venue_type, venue_types, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, phone, website_url, booking_url, booking_platform, directions_url, address, lat, lng, rating, review_count'
 
 export function loadDining() {
   return memo('explore:dining-full', async () => {
@@ -222,7 +222,7 @@ export async function recommendDining({ type = null, tags = [], community = null
   const { minute } = nowIn30A()
   const eveningFrom = Math.max(minute, 18 * 60)
 
-  let pool = rows.filter((r) => (!type || r.venue_type === type) && !exclude.includes(r.slug))
+  let pool = rows.filter((r) => (!type || (r.venue_types?.length ? r.venue_types : [r.venue_type]).includes(type)) && !exclude.includes(r.slug))
   const scored = pool.map((r) => {
     const status = openStatus(r.opening_hours)
     const dist = center ? (r.community === community ? 0 : miles(center, r)) : 0

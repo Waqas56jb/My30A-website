@@ -38,7 +38,7 @@ async function buildKnowledge() {
     supabase.from('service_catalog').select('kind, name, sub, price, unit').eq('is_active', true).order('sort_order'),
     supabase
       .from('explore_vendors')
-      .select('name, venue_type, community, cuisine, tags, hours, price_range, phone, website_url, booking_platform')
+      .select('name, venue_type, venue_types, community, cuisine, tags, hours, price_range, phone, website_url, booking_platform')
       .eq('is_active', true)
       .eq('kind', 'restaurant')
       .not('venue_type', 'is', null)
@@ -87,7 +87,7 @@ async function buildKnowledge() {
   const diningRows = dining.data || []
   if (diningRows.length) {
     lines.push(
-      `\n30A DINING GUIDE — ${diningRows.length} local favorite restaurants, bars and coffee & breakfast spots curated by My30A Host (not paid partners), grouped by community. [R]=restaurant [B]=bar [C]=coffee & breakfast. Hours come from their listings and can change:`
+      `\n30A DINING GUIDE — ${diningRows.length} local favorite restaurants, bars and coffee & breakfast spots curated by My30A Host (not paid partners), grouped by community. [R]=restaurant [B]=bar [C]=coffee & breakfast; several letters = several (e.g. [RB] is a restaurant with a real bar). Hours come from their listings and can change:`
     )
     const TYPE_ORDER = ['restaurant', 'bar', 'coffee']
     const TYPE_MARK = { restaurant: 'R', bar: 'B', coffee: 'C' }
@@ -103,7 +103,8 @@ async function buildKnowledge() {
         const vibe = (r.tags || []).filter((t) => t !== r.cuisine).slice(0, 4).join('/')
         const book = { resy: 'reserve on Resy', opentable: 'reserve on OpenTable', sevenrooms: 'reserve on SevenRooms', tock: 'reserve on Tock', website_widget: 'reserve on its website', phone_only: r.venue_type === 'restaurant' ? 'reservations by phone' : null }[r.booking_platform]
         const extras = [r.cuisine, vibe, r.price_range, r.hours, book, r.phone, bare(r.website_url)].filter(Boolean)
-        lines.push(`- [${TYPE_MARK[r.venue_type]}] ${r.name}${extras.length ? ` — ${extras.join(' · ')}` : ''}`)
+        const marks = (r.venue_types?.length ? r.venue_types : [r.venue_type]).map((t) => TYPE_MARK[t]).join('')
+        lines.push(`- [${marks}] ${r.name}${extras.length ? ` — ${extras.join(' · ')}` : ''}`)
       }
     }
   }

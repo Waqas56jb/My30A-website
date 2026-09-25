@@ -76,6 +76,10 @@ const REJECT_PHOTOS = [
   'frost-bites', 'graffiti-and-the-funky-blues',
 ]
 const BLOCK_WEBSITES = ['frost-bites', 'graffiti-and-the-funky-blues']
+// Photos picked by hand (client feedback) — kept on every re-import.
+const PHOTO_OVERRIDES = {
+  'amavida-coffee-and-tea-seaside': 'amavida-seaside-cafe.webp', // café interior (30a.com listing), not the coffee-farm photo
+}
 
 // ---------- Stage 1: 30a.com profile (schema.org LocalBusiness data) ----------
 const DAY_KEYS = { Monday: 'mon', Tuesday: 'tue', Wednesday: 'wed', Thursday: 'thu', Friday: 'fri', Saturday: 'sat', Sunday: 'sun' }
@@ -452,7 +456,7 @@ async function main() {
       map_name: community,
       map_line1: address ? address.split(', ').slice(0, 1).join('') : `${community}, FL`,
       map_line2: address ? address.split(', ').slice(1).join(', ') : null,
-      image_url: e.photo?.file ? `/restaurants/${e.photo.file}` : null,
+      image_url: PHOTO_OVERRIDES[slugs.get(item.name)] ? `/restaurants/${PHOTO_OVERRIDES[slugs.get(item.name)]}` : e.photo?.file ? `/restaurants/${e.photo.file}` : null,
       source_url: item.profile || null,
       sort_order: i,
       is_active: ai.still_open !== false,

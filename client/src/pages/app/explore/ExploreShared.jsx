@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -35,6 +35,9 @@ import {
   Wine,
   Coffee,
   CalendarDays,
+  ArrowRight,
+  Search,
+  X,
 } from 'lucide-react'
 import BottomNav from '../BottomNav.jsx'
 
@@ -399,5 +402,40 @@ export function DetailSkeleton() {
       <span className="app-skel app-skel-line" style={{ width: '64%' }} />
       <span className="app-skel app-skel-card" style={{ width: '100%', height: 96 }} />
     </div>
+  )
+}
+
+// Search bar for screens that filter as you type (Dining, Beaches, Events). The orange button (and
+// the keyboard's Search key) closes the keyboard and scrolls to the results — phones don't always
+// show a search key, so there's always a visible button.
+export function LiveSearch({ value, onChange, placeholder, resultsId }) {
+  const inputRef = useRef(null)
+  const go = (e) => {
+    e.preventDefault()
+    inputRef.current?.blur()
+    document.getElementById(resultsId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  return (
+    <form className="app-exp-search-form" onSubmit={go} role="search">
+      <label className="app-exp-search">
+        <Search size={18} strokeWidth={1.8} aria-hidden="true" />
+        <input
+          ref={inputRef}
+          type="search"
+          enterKeyHint="search"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {value ? (
+          <button type="button" className="app-dine-clear" aria-label="Clear search" onClick={() => onChange('')}>
+            <X size={16} strokeWidth={2} />
+          </button>
+        ) : null}
+        <button type="submit" className="app-exp-search-go" aria-label="Search">
+          <ArrowRight size={18} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      </label>
+    </form>
   )
 }

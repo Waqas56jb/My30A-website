@@ -482,7 +482,7 @@ export default function Home() {
 
         <div className="mkt-wrap mkt-feature" id="grocery">
           <figure className="mkt-feature-media mkt-frame" data-reveal="zoom">
-            <Img src="/services/grocery-delivery.webp" alt="Paper grocery bags filled with fresh apples, bananas, bread and produce" />
+            <Img src="/services/grocery-stocked-kitchen.webp" alt="Bright kitchen with an open fridge and pantry fully stocked with fresh groceries" />
           </figure>
           <div className="mkt-feature-card mkt-card" data-reveal style={{ '--d': '0.12s' }}>
             <p className="mkt-eyebrow mkt-eyebrow-dark">Grocery Delivery</p>

@@ -8,7 +8,7 @@ const SERVICES = [
   {
     key: 'grocery',
     Icon: ShoppingBag,
-    image: '/services/grocery-delivery.webp',
+    image: '/services/grocery-stocked-kitchen.webp',
     tag: 'Pre-arrival stocking',
     title: 'Grocery Delivery',
     desc: 'Your rental stocked from Publix before you arrive — pay only once it’s delivered.',
