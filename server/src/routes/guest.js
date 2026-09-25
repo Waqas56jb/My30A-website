@@ -1075,11 +1075,13 @@ function exploreCategories() {
       .gte('starts_at', new Date().toISOString())
       .lte('starts_at', new Date(Date.now() + 30 * 86400000).toISOString())
     const DINING_TILE = { restaurant: 'restaurants', bar: 'bars', coffee: 'coffee' }
+    let diningUnique = 0 // each place once, even when it's in several Dining tabs
     counts.events = eventCount || 0
     for (const vendor of vendors || []) {
       // A place in several Dining tabs (restaurant + bar) counts in each.
       if (vendor.kind === 'restaurant') {
         for (const t of vendor.venue_types || [vendor.venue_type]) if (DINING_TILE[t]) counts[DINING_TILE[t]] = (counts[DINING_TILE[t]] || 0) + 1
+        diningUnique += 1
         continue
       }
       const key = categoryForSlug[vendor.guide_slug]
@@ -1093,6 +1095,7 @@ function exploreCategories() {
       image_url: category.image_url,
       coming_soon: category.coming_soon,
       count: counts[category.key] || 0,
+      ...(DINING_TILE[{ restaurants: 'restaurant', bars: 'bar', coffee: 'coffee' }[category.key]] ? { dining_total: diningUnique } : {}),
       to: category.target === 'info' ? '/app/explore/info' : `/app/explore/${category.target}`,
     }))
   })

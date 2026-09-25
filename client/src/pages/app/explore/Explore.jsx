@@ -20,7 +20,8 @@ export default function Explore() {
   const { data } = useGuestQuery(guest.explore, [])
   const categories = data?.categories ? ordered(data.categories) : null
   const partners = categories?.reduce((sum, c) => sum + (c.coming_soon || DINING_KEYS.has(c.key) || c.key === 'events' ? 0 : c.count || 0), 0)
-  const dining = categories?.reduce((sum, c) => sum + (DINING_KEYS.has(c.key) ? c.count || 0 : 0), 0)
+  // Unique places — a restaurant with a bar is in two tabs but is still one place.
+  const dining = categories?.find((c) => DINING_KEYS.has(c.key))?.dining_total ?? 0
 
   const onSearch = (e) => {
     e.preventDefault()

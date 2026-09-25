@@ -1,13 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ArrowUpRight, Check, Menu, X } from 'lucide-react'
+import {
+  ArrowRight,
+  ArrowUpRight,
+  AudioLines,
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  CreditCard,
+  MapPin,
+  Menu,
+  Mic,
+  Phone,
+  Plane,
+  ShoppingBag,
+  Sparkles,
+  UtensilsCrossed,
+  Waves,
+  X,
+} from 'lucide-react'
+
+/* ------------------------------------------------------------------------ */
+/* Content                                                                   */
+/* ------------------------------------------------------------------------ */
 
 const NAV = [
-  { label: 'Home', href: '#home' },
-  { label: 'Experience', href: '#experience' },
   { label: 'Services', href: '#arrive' },
-  { label: 'Explore 30A', href: '#explore' },
   { label: 'Meet Vitoria', href: '#meet-vitoria' },
+  { label: 'How it works', href: '#how' },
+  { label: 'Explore 30A', href: '#explore' },
+  { label: 'The App', href: '#app' },
 ]
 
 const M = '/marketing'
@@ -16,63 +40,143 @@ const HERO_VIDEO = '/19VSW352C-Dune-Allen.mp4'
 const COASTAL_POSTER = `${M}/coastal-poster.webp`
 const COASTAL_VIDEO = '/19VSW352C-Gulf-Place.mp4'
 
-const STAY_IMAGES = [
-  { src: `${M}/stay-boardwalk.webp`, alt: 'Boardwalk over the dunes to the beach' },
-  { src: `${M}/stay-balcony.webp`, alt: 'Ocean-view balcony seating' },
-  { src: `${M}/stay-aerial.webp`, alt: 'Aerial view of white sand and turquoise water' },
-  { src: `${M}/stay-sunset-paddle.webp`, alt: 'Paddleboarders heading out at sunset on 30A' },
-  { src: `${M}/stay-beach-bike.webp`, alt: 'Beach cruiser parked at a Gulf-front boardwalk' },
+const HERO_WORDS = ['Where', '30A', 'feels']
+
+const COMMUNITIES = [
+  'Alys Beach',
+  'Blue Mountain Beach',
+  'Dune Allen Beach',
+  'Grayton Beach',
+  'Gulf Place',
+  'Inlet Beach',
+  'Miramar Beach',
+  'Prominence',
+  'Rosemary Beach',
+  'Santa Rosa Beach',
+  'Seacrest Beach',
+  'Seagrove Beach',
+  'Seaside',
+  'Topsail Hill',
+  'WaterColor',
+  'Watersound',
+]
+
+const STATS = [
+  { value: 241, label: 'Restaurants, bars & cafés', note: 'by community, cuisine & open now' },
+  { value: 160, label: 'Vetted local partners', note: 'charters, carts, chefs, spas & more' },
+  { value: 59, label: 'Public beach accesses', note: 'with parking & restrooms noted' },
+  { value: 600, prefix: '~', label: 'Events every month', note: 'live music, markets & festivals' },
+  { value: 16, label: '30A communities', note: 'from Inlet Beach to Miramar' },
 ]
 
 const EXPLORE = [
   {
     key: 'eat',
     title: 'Eat',
-    meta: 'Private chefs · Seafood markets · Live restaurant hours',
-    src: `${M}/explore-eat.webp`,
-    alt: 'Plated dish from a 30A private chef',
+    meta: '241 restaurants, bars & cafés',
+    src: '/restaurants/georges-at-alys-beach.webp',
+    alt: 'Seared tuna plated at a restaurant in Alys Beach',
   },
   {
     key: 'move',
     title: 'Move',
-    meta: 'Airport transfers · Golf carts · Bikes',
+    meta: 'Golf carts · Bikes · Airport transfers',
     src: `${M}/explore-move.webp`,
-    alt: 'Guests cruising 30A in a rented golf cart',
+    alt: 'Guests cruising 30A in a golf cart',
   },
   {
     key: 'play',
     title: 'Play',
-    meta: 'Yacht charters · Fishing · Paddle & surf',
-    src: `${M}/explore-play.webp`,
-    alt: 'Luxury yacht charter on emerald water',
+    meta: 'Yacht charters · Paddle · Fishing',
+    src: '/vendors/glow-paddle.webp',
+    alt: 'Guests paddling illuminated clear kayaks at night',
   },
   {
     key: 'unwind',
     title: 'Unwind',
-    meta: 'Beach setups · Bonfires · Wellness',
+    meta: 'Spas · Beach setups · Bonfires',
     src: `${M}/explore-unwind.webp`,
     alt: 'Sunset beach bonfire setup with chairs and tiki torches',
   },
+  {
+    key: 'events',
+    title: 'Events',
+    meta: '~600 a month · Live music · Markets',
+    src: '/restaurants/north-beach-social.webp',
+    alt: 'String lights over a bayside deck at sunset',
+  },
+  {
+    key: 'beaches',
+    title: 'Beaches',
+    meta: 'All 59 public beach accesses',
+    src: `${M}/stay-aerial.webp`,
+    alt: 'Aerial view of white sand and emerald water on 30A',
+  },
 ]
 
-const ASK = [
+const GUIDE_CATEGORIES = [
+  'Dining',
+  'Beaches',
+  'Events & live music',
+  'On the water',
+  'Golf & outdoor',
+  'Family & kids',
+  'Wellness',
+  'Weddings & photography',
+  'Shopping',
+  'Arts',
+  'Local essentials',
+]
+
+const STEPS = [
   {
-    q: 'Where should we have dinner tonight?',
-    a: 'Vitoria checks live restaurant hours and suggests what is open near your rental right now.',
+    n: '01',
+    title: 'Open the app',
+    body: 'Create your guest account and add the address of your 30A rental. No download needed.',
   },
   {
-    q: 'Can we get a golf cart tomorrow?',
-    a: 'She connects you with vetted local golf cart rentals on 30A.',
+    n: '02',
+    title: 'Book what you need',
+    body: 'Airport transfer, a stocked kitchen, or both. Save a card: you are charged only after the ride or the delivery.',
   },
   {
-    q: 'What is the best beach for the kids?',
-    a: 'She knows all 79 public beach accesses and points you to the right one nearby.',
+    n: '03',
+    title: 'Arrive and enjoy',
+    body: 'Your driver tracks your flight, your groceries are put away, and Vitoria is one tap away for everything else.',
   },
 ]
+
+const CHAT = [
+  { from: 'guest', text: 'Dinner for four tonight in Rosemary Beach?' },
+  {
+    from: 'vitoria',
+    text: 'Here are the Rosemary Beach spots open tonight from our list of 241. I marked the ones you can book online.',
+    chips: ['Open now', 'Book on Resy / OpenTable'],
+  },
+  { from: 'guest', text: 'Which beach access near Seaside has parking and restrooms?' },
+  {
+    from: 'vitoria',
+    text: 'I know all 59 public beach accesses. These are the closest to Seaside with parking and restrooms.',
+    chips: ['Parking', 'Restrooms', 'Directions'],
+  },
+  { from: 'guest', text: 'Any live music this weekend?' },
+  {
+    from: 'vitoria',
+    text: 'Plenty. I follow about 600 events a month from 30a.com. Here is what is playing near your rental.',
+    chips: ['Live music', 'This weekend'],
+  },
+]
+
+/* ------------------------------------------------------------------------ */
+/* Helpers & hooks                                                           */
+/* ------------------------------------------------------------------------ */
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+const finePointer = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches
 
 /* Scroll-reveal: adds .is-in to every [data-reveal] once it enters the viewport. */
 function useReveal(rootRef) {
@@ -93,15 +197,74 @@ function useReveal(rootRef) {
           }
         })
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+      { rootMargin: '0px 0px -6% 0px', threshold: 0.1 },
     )
     els.forEach((el) => io.observe(el))
     return () => io.disconnect()
   }, [rootRef])
 }
 
+/* Pointer effects (desktop only): 3D tilt + spotlight on [data-tilt], magnetic pull on [data-magnetic]. */
+function usePointerFx(rootRef) {
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || prefersReducedMotion() || !finePointer()) return undefined
+    const cleanups = []
+
+    root.querySelectorAll('[data-tilt]').forEach((el) => {
+      let raf = 0
+      const onMove = (e) => {
+        const r = el.getBoundingClientRect()
+        const x = (e.clientX - r.left) / r.width
+        const y = (e.clientY - r.top) / r.height
+        cancelAnimationFrame(raf)
+        raf = requestAnimationFrame(() => {
+          el.style.setProperty('--rx', `${((0.5 - y) * 5).toFixed(2)}deg`)
+          el.style.setProperty('--ry', `${((x - 0.5) * 6).toFixed(2)}deg`)
+          el.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`)
+          el.style.setProperty('--my', `${(y * 100).toFixed(1)}%`)
+        })
+      }
+      const onLeave = () => {
+        cancelAnimationFrame(raf)
+        el.style.setProperty('--rx', '0deg')
+        el.style.setProperty('--ry', '0deg')
+      }
+      el.addEventListener('pointermove', onMove)
+      el.addEventListener('pointerleave', onLeave)
+      cleanups.push(() => {
+        cancelAnimationFrame(raf)
+        el.removeEventListener('pointermove', onMove)
+        el.removeEventListener('pointerleave', onLeave)
+      })
+    })
+
+    root.querySelectorAll('[data-magnetic]').forEach((el) => {
+      const onMove = (e) => {
+        const r = el.getBoundingClientRect()
+        const dx = e.clientX - (r.left + r.width / 2)
+        const dy = e.clientY - (r.top + r.height / 2)
+        el.style.setProperty('--tx', `${(dx * 0.18).toFixed(1)}px`)
+        el.style.setProperty('--ty', `${(dy * 0.28).toFixed(1)}px`)
+      }
+      const onLeave = () => {
+        el.style.setProperty('--tx', '0px')
+        el.style.setProperty('--ty', '0px')
+      }
+      el.addEventListener('pointermove', onMove)
+      el.addEventListener('pointerleave', onLeave)
+      cleanups.push(() => {
+        el.removeEventListener('pointermove', onMove)
+        el.removeEventListener('pointerleave', onLeave)
+      })
+    })
+
+    return () => cleanups.forEach((fn) => fn())
+  }, [rootRef])
+}
+
 /* Image with skeleton shimmer + fade-in once decoded. The parent sets the aspect ratio. */
-function Img({ src, alt, eager = false, className = '', onLoad, ...rest }) {
+function Img({ src, alt, eager = false, className = '', ...rest }) {
   const ref = useRef(null)
   const [loaded, setLoaded] = useState(false)
 
@@ -118,10 +281,7 @@ function Img({ src, alt, eager = false, className = '', onLoad, ...rest }) {
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
       className={`mkt-img${loaded ? ' is-loaded' : ''}${className ? ` ${className}` : ''}`}
-      onLoad={(e) => {
-        setLoaded(true)
-        onLoad?.(e)
-      }}
+      onLoad={() => setLoaded(true)}
       onError={() => setLoaded(true)}
       {...rest}
     />
@@ -129,7 +289,7 @@ function Img({ src, alt, eager = false, className = '', onLoad, ...rest }) {
 }
 
 /* Counts up from 0 once visible. */
-function CountUp({ to, duration = 1400 }) {
+function CountUp({ to, prefix = '', duration = 1800 }) {
   const ref = useRef(null)
   const [value, setValue] = useState(0)
 
@@ -148,12 +308,12 @@ function CountUp({ to, duration = 1400 }) {
         const start = performance.now()
         const tick = (now) => {
           const t = Math.min(1, (now - start) / duration)
-          setValue(Math.round(to * (1 - Math.pow(1 - t, 3))))
+          setValue(Math.round(to * (1 - Math.pow(1 - t, 4))))
           if (t < 1) raf = requestAnimationFrame(tick)
         }
         raf = requestAnimationFrame(tick)
       },
-      { threshold: 0.4 },
+      { threshold: 0.5 },
     )
     io.observe(el)
     return () => {
@@ -162,7 +322,126 @@ function CountUp({ to, duration = 1400 }) {
     }
   }, [to, duration])
 
-  return <span ref={ref}>{value}</span>
+  return (
+    <span ref={ref} className="mkt-count">
+      <span className="mkt-sr">
+        {prefix}
+        {to}
+      </span>
+      <span aria-hidden="true">
+        {prefix}
+        {value}
+      </span>
+    </span>
+  )
+}
+
+/* Animated chat preview for Vitoria: plays the example conversation while on screen. */
+function ChatDemo() {
+  const boxRef = useRef(null)
+  const [inView, setInView] = useState(false)
+  const [shown, setShown] = useState(0)
+  const [typing, setTyping] = useState(false)
+  const [fading, setFading] = useState(false)
+  const reduce = useRef(false)
+
+  useEffect(() => {
+    reduce.current = prefersReducedMotion()
+    if (reduce.current || !('IntersectionObserver' in window)) {
+      setShown(CHAT.length)
+      return undefined
+    }
+    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      threshold: 0.35,
+    })
+    if (boxRef.current) io.observe(boxRef.current)
+    return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (reduce.current || !inView) return undefined
+    let t
+    if (shown >= CHAT.length) {
+      t = setTimeout(() => {
+        setFading(true)
+        t = setTimeout(() => {
+          setShown(0)
+          setFading(false)
+        }, 600)
+      }, 4200)
+      return () => clearTimeout(t)
+    }
+    const next = CHAT[shown]
+    if (next.from === 'guest') {
+      t = setTimeout(() => setShown((s) => s + 1), shown === 0 ? 500 : 1100)
+    } else {
+      setTyping(true)
+      t = setTimeout(() => {
+        setTyping(false)
+        setShown((s) => s + 1)
+      }, 1500)
+    }
+    return () => clearTimeout(t)
+  }, [inView, shown])
+
+  return (
+    <div className="mkt-chat" ref={boxRef}>
+      <div className="mkt-chat-head">
+        <img
+          src={`${M}/vitoria-avatar.webp`}
+          alt=""
+          width="44"
+          height="44"
+          loading="lazy"
+          decoding="async"
+          className="mkt-chat-avatar"
+        />
+        <div className="mkt-chat-id">
+          <p className="mkt-chat-name">Vitoria</p>
+          <p className="mkt-chat-status">
+            <span className="mkt-live-dot" aria-hidden="true" /> Your AI concierge
+          </p>
+        </div>
+        <span className="mkt-chat-talk" aria-hidden="true">
+          <AudioLines size={15} /> Talk
+        </span>
+      </div>
+
+      <ol
+        className={`mkt-chat-body${fading ? ' is-fading' : ''}`}
+        aria-label="Example conversation with Vitoria"
+      >
+        {CHAT.slice(0, shown).map((m, i) => (
+          <li key={i} className={`mkt-bubble mkt-bubble-${m.from}`}>
+            <span className="mkt-sr">{m.from === 'guest' ? 'Guest: ' : 'Vitoria: '}</span>
+            {m.text}
+            {m.chips && (
+              <span className="mkt-bubble-chips" aria-hidden="true">
+                {m.chips.map((c) => (
+                  <span key={c}>{c}</span>
+                ))}
+              </span>
+            )}
+          </li>
+        ))}
+        {typing && (
+          <li className="mkt-bubble mkt-bubble-vitoria mkt-typing" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </li>
+        )}
+      </ol>
+
+      <div className="mkt-chat-input" aria-hidden="true">
+        <span>Ask anything about 30A…</span>
+        <span className="mkt-chat-mic">
+          <Mic size={16} />
+        </span>
+      </div>
+      <p className="mkt-chat-caption">Example conversation</p>
+    </div>
+  )
 }
 
 function prepVideo(video) {
@@ -179,50 +458,168 @@ function safePlay(video) {
   if (result?.catch) result.catch(() => {})
 }
 
+/* Loads a background video only when it approaches the viewport; pauses it offscreen. */
+function useLazyVideo(
+  videoRef,
+  src,
+  { rootMargin = '200px 0px', afterLoad = false, start: from = 0, end = Infinity } = {},
+) {
+  const [active, setActive] = useState(null)
+  const [playing, setPlaying] = useState(false)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || prefersReducedMotion()) return undefined
+    if (navigator.connection?.saveData) return undefined
+    prepVideo(video)
+    // The source clips carry baked-in title cards at the start/end; loop only the clean middle.
+    const onMeta = () => {
+      if (video.currentTime < from) video.currentTime = from
+    }
+    const onTime = () => {
+      const t = video.currentTime
+      if (t >= end || t < from - 0.05) {
+        video.currentTime = from
+        return
+      }
+      if (!video.paused) setPlaying(true)
+    }
+    const onEnded = () => {
+      video.currentTime = from
+      safePlay(video)
+    }
+    video.addEventListener('loadedmetadata', onMeta)
+    video.addEventListener('timeupdate', onTime)
+    video.addEventListener('ended', onEnded)
+
+    let io
+    let cancelled = false
+    const start = () => {
+      if (cancelled) return
+      if (!('IntersectionObserver' in window)) {
+        setActive(src)
+        return
+      }
+      io = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setActive((s) => s || src)
+            safePlay(video)
+          } else {
+            video.pause()
+          }
+        },
+        { rootMargin },
+      )
+      io.observe(video)
+    }
+
+    // The hero waits for the page (poster, fonts, above-the-fold images) before fetching video.
+    let idle
+    const onLoad = () => {
+      idle = setTimeout(start, 250)
+    }
+    if (afterLoad && document.readyState !== 'complete') window.addEventListener('load', onLoad)
+    else start()
+
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') video.pause()
+    }
+    document.addEventListener('visibilitychange', onVis)
+
+    return () => {
+      cancelled = true
+      clearTimeout(idle)
+      window.removeEventListener('load', onLoad)
+      video.removeEventListener('loadedmetadata', onMeta)
+      video.removeEventListener('timeupdate', onTime)
+      video.removeEventListener('ended', onEnded)
+      document.removeEventListener('visibilitychange', onVis)
+      io?.disconnect()
+    }
+  }, [videoRef, src, rootMargin, afterLoad, from, end])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (video && active) safePlay(video)
+  }, [videoRef, active])
+
+  return { active, playing }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Page                                                                      */
+/* ------------------------------------------------------------------------ */
+
 export default function Home() {
   const rootRef = useRef(null)
   const heroRef = useRef(null)
-  const videoRef = useRef(null)
+  const heroVideoRef = useRef(null)
   const coastalVideoRef = useRef(null)
+  const stepsRef = useRef(null)
+  const railRef = useRef(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [heroReady, setHeroReady] = useState(false)
-  const [loaderGone, setLoaderGone] = useState(false)
-  const [heroVideoOn, setHeroVideoOn] = useState(false)
-  const [coastalSrc, setCoastalSrc] = useState(null)
+  const [railEdge, setRailEdge] = useState({ start: true, end: false })
 
   useReveal(rootRef)
+  usePointerFx(rootRef)
+
+  const hero = useLazyVideo(heroVideoRef, HERO_VIDEO, {
+    rootMargin: '0px',
+    afterLoad: true,
+    start: 4.2,
+    end: 41.4,
+  })
+  const coastal = useLazyVideo(coastalVideoRef, COASTAL_VIDEO, {
+    rootMargin: '300px 0px',
+    start: 3,
+    end: 38.8,
+  })
 
   useEffect(() => {
     document.title = 'My30A Host · Where 30A Feels Effortless'
-    document.documentElement.classList.add('mkt-smooth')
-    return () => document.documentElement.classList.remove('mkt-smooth')
+    const html = document.documentElement
+    html.classList.add('mkt-smooth')
+    return () => html.classList.remove('mkt-smooth')
   }, [])
 
-  // Intro loader: hide once the hero poster is ready (or after a short cap).
+  // Hero intro starts once the poster is decoded (or after a short cap).
   useEffect(() => {
-    const cap = setTimeout(() => setHeroReady(true), 1200)
+    const cap = setTimeout(() => setHeroReady(true), 900)
     return () => clearTimeout(cap)
   }, [])
 
+  // One rAF-throttled scroll loop: glass nav, hero parallax, [data-parallax] layers, steps progress.
   useEffect(() => {
-    if (!heroReady) return undefined
-    const t = setTimeout(() => setLoaderGone(true), 700)
-    return () => clearTimeout(t)
-  }, [heroReady])
-
-  // Sticky nav state + hero parallax, throttled to one rAF per frame.
-  useEffect(() => {
-    const hero = heroRef.current
+    const root = rootRef.current
+    const heroEl = heroRef.current
+    const steps = stepsRef.current
     const reduce = prefersReducedMotion()
+    const layers = reduce ? [] : Array.from(root?.querySelectorAll('[data-parallax]') || [])
     let raf = 0
     const update = () => {
       raf = 0
       const y = window.scrollY || 0
+      const vh = window.innerHeight || 1
       setScrolled(y > 24)
-      if (hero && !reduce && y < window.innerHeight * 1.2) {
-        hero.style.setProperty('--mkt-hero-shift', `${(y * 0.28).toFixed(1)}px`)
-        hero.style.setProperty('--mkt-hero-fade', `${Math.max(0, 1 - y / 700).toFixed(3)}`)
+      if (reduce) return
+      if (heroEl && y < vh * 1.3) {
+        heroEl.style.setProperty('--hero-shift', `${(y * 0.3).toFixed(1)}px`)
+        heroEl.style.setProperty('--hero-fade', `${Math.max(0, 1 - y / (vh * 0.75)).toFixed(3)}`)
+      }
+      for (const el of layers) {
+        const r = el.getBoundingClientRect()
+        if (r.bottom < -200 || r.top > vh + 200) continue
+        const speed = parseFloat(el.dataset.parallax) || 0.1
+        const offset = (r.top + r.height / 2 - vh / 2) * -speed
+        el.style.setProperty('--py', `${offset.toFixed(1)}px`)
+      }
+      if (steps) {
+        const r = steps.getBoundingClientRect()
+        const p = Math.min(1, Math.max(0, (vh * 0.8 - r.top) / (r.height + vh * 0.25)))
+        steps.style.setProperty('--p', p.toFixed(3))
       }
     }
     const onScroll = () => {
@@ -230,449 +627,766 @@ export default function Home() {
     }
     update()
     window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
     return () => {
       window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
       if (raf) cancelAnimationFrame(raf)
     }
   }, [])
 
-  // Hero video: play when visible, pause when scrolled away (saves CPU/battery).
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || prefersReducedMotion()) return undefined
-    prepVideo(video)
-    const onPlaying = () => setHeroVideoOn(true)
-    video.addEventListener('playing', onPlaying)
-    const onVis = () => {
-      if (document.visibilityState === 'visible') safePlay(video)
-    }
-    document.addEventListener('visibilitychange', onVis)
-    let io
-    if ('IntersectionObserver' in window) {
-      io = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) safePlay(video)
-        else video.pause()
-      })
-      io.observe(video)
-    } else {
-      safePlay(video)
-    }
-    return () => {
-      video.removeEventListener('playing', onPlaying)
-      document.removeEventListener('visibilitychange', onVis)
-      io?.disconnect()
-    }
-  }, [])
-
-  // Coastal video: don't download until it is about to scroll into view.
-  useEffect(() => {
-    const video = coastalVideoRef.current
-    if (!video || prefersReducedMotion()) return undefined
-    prepVideo(video)
-    if (!('IntersectionObserver' in window)) {
-      setCoastalSrc(COASTAL_VIDEO)
-      return undefined
-    }
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setCoastalSrc((s) => s || COASTAL_VIDEO)
-          safePlay(video)
-        } else {
-          video.pause()
-        }
-      },
-      { rootMargin: '300px 0px' },
-    )
-    io.observe(video)
-    return () => io.disconnect()
-  }, [])
-
-  useEffect(() => {
-    const video = coastalVideoRef.current
-    if (video && coastalSrc) safePlay(video)
-  }, [coastalSrc])
-
+  // Mobile menu: Escape closes, page scroll locked while open.
   useEffect(() => {
     if (!menuOpen) return undefined
     const onKey = (e) => e.key === 'Escape' && setMenuOpen(false)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
   }, [menuOpen])
+
+  useEffect(() => {
+    const close = () => window.innerWidth > 980 && setMenuOpen(false)
+    window.addEventListener('resize', close)
+    return () => window.removeEventListener('resize', close)
+  }, [])
+
+  const updateRail = useCallback(() => {
+    const rail = railRef.current
+    if (!rail) return
+    const max = rail.scrollWidth - rail.clientWidth - 4
+    setRailEdge({ start: rail.scrollLeft <= 4, end: rail.scrollLeft >= max })
+  }, [])
+
+  useEffect(() => {
+    updateRail()
+    window.addEventListener('resize', updateRail)
+    return () => window.removeEventListener('resize', updateRail)
+  }, [updateRail])
+
+  const scrollRail = (dir) => {
+    const rail = railRef.current
+    if (!rail) return
+    const card = rail.querySelector('.mkt-rail-card')
+    const step = card ? card.getBoundingClientRect().width + 20 : rail.clientWidth * 0.8
+    rail.scrollBy({ left: dir * step, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  }
+
+  const closeMenu = () => setMenuOpen(false)
 
   return (
     <div className={`mkt${heroReady ? ' is-ready' : ''}`} ref={rootRef}>
-      {!loaderGone && (
-        <div className={`mkt-loader${heroReady ? ' is-done' : ''}`} aria-hidden="true">
-          <img src="/logo-nav.png" alt="" className="mkt-loader-logo" />
-          <span className="mkt-loader-bar" />
-        </div>
-      )}
+      <a className="mkt-skip" href="#arrive">
+        Skip to content
+      </a>
 
-      <header className={`mkt-nav${scrolled || menuOpen ? ' is-scrolled' : ''}`}>
+      {/* ------------------------------------------------------------ Nav */}
+      <header className={`mkt-nav${scrolled ? ' is-scrolled' : ''}${menuOpen ? ' is-open' : ''}`}>
         <div className="mkt-nav-inner">
-          <a className="mkt-brand" href="#home" onClick={() => setMenuOpen(false)}>
-            <img src="/logo-nav.png" alt="My30A Host — Your personal 30A concierge" />
+          <a className="mkt-brand" href="#home" onClick={closeMenu}>
+            <img
+              src="/logo-nav.png"
+              alt="My30A Host — Your personal 30A concierge"
+              width="321"
+              height="135"
+            />
           </a>
-          <nav
-            id="mkt-primary-nav"
-            className={`mkt-nav-links${menuOpen ? ' is-open' : ''}`}
-            aria-label="Primary"
-          >
+          <nav className="mkt-nav-links" aria-label="Primary">
             {NAV.map((item) => (
-              <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
-                <span>{item.label}</span>
+              <a key={item.href} href={item.href}>
+                {item.label}
               </a>
             ))}
           </nav>
-          <Link className="mkt-btn mkt-btn-sand mkt-nav-cta" to="/app">
-            Get Started
-          </Link>
-          <button
-            type="button"
-            className="mkt-nav-toggle"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            aria-controls="mkt-primary-nav"
-            onClick={() => setMenuOpen((o) => !o)}
-          >
-            {menuOpen ? (
-              <X size={22} strokeWidth={1.8} aria-hidden="true" />
-            ) : (
-              <Menu size={22} strokeWidth={1.8} aria-hidden="true" />
-            )}
-          </button>
+          <div className="mkt-nav-actions">
+            <Link className="mkt-nav-signin" to="/app/login">
+              Sign in
+            </Link>
+            <Link className="mkt-btn mkt-btn-gold mkt-btn-sm mkt-nav-cta" to="/app">
+              Get Started
+            </Link>
+            <button
+              type="button"
+              className="mkt-nav-toggle"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              aria-controls="mkt-mobile-menu"
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              {menuOpen ? (
+                <X size={22} strokeWidth={1.8} aria-hidden="true" />
+              ) : (
+                <Menu size={22} strokeWidth={1.8} aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="mkt-mobile-menu"
+          className={`mkt-menu${menuOpen ? ' is-open' : ''}`}
+          aria-hidden={!menuOpen}
+          inert={menuOpen ? undefined : ''}
+        >
+          <nav className="mkt-menu-links" aria-label="Mobile">
+            {NAV.map((item, i) => (
+              <a key={item.href} href={item.href} onClick={closeMenu} style={{ '--i': i }}>
+                <span>{item.label}</span>
+                <ArrowUpRight size={18} aria-hidden="true" />
+              </a>
+            ))}
+          </nav>
+          <div className="mkt-menu-ctas">
+            <Link className="mkt-btn mkt-btn-gold" to="/app" onClick={closeMenu}>
+              Get Started <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+            <Link className="mkt-btn mkt-btn-glass" to="/app/login" onClick={closeMenu}>
+              Sign in
+            </Link>
+          </div>
+          <a className="mkt-menu-phone" href="tel:+18509554577">
+            <Phone size={15} aria-hidden="true" /> (850) 955-4577
+          </a>
         </div>
       </header>
 
-      <section className="mkt-hero" id="home" ref={heroRef}>
-        <div className="mkt-hero-media" aria-hidden="true">
-          <img
-            className="mkt-hero-poster"
-            src={HERO_POSTER}
-            alt=""
-            fetchpriority="high"
-            decoding="async"
-            onLoad={() => setHeroReady(true)}
-            onError={() => setHeroReady(true)}
-          />
-          <video
-            ref={videoRef}
-            className={`mkt-hero-video${heroVideoOn ? ' is-on' : ''}`}
-            src={HERO_VIDEO}
-            poster={HERO_POSTER}
-            muted
-            loop
-            playsInline
-            autoPlay
-            preload="auto"
-            disablePictureInPicture
-            controlsList="nodownload nofullscreen noremoteplayback"
-          />
-          <div className="mkt-hero-overlay" />
-        </div>
-
-        <div className="mkt-hero-content">
-          <p className="mkt-eyebrow mkt-hero-in" style={{ '--d': '0.1s' }}>
-            Scenic Highway 30A · Florida
-          </p>
-          <h1 className="mkt-hero-title mkt-hero-in" style={{ '--d': '0.22s' }}>
-            Where 30A Feels Effortless.
-          </h1>
-          <div className="mkt-hero-aside mkt-hero-in" style={{ '--d': '0.38s' }}>
-            <p>
-              Airport pickup, a stocked kitchen and a local concierge who knows every beach —
-              My30A Host takes care of your stay before you even arrive.
-            </p>
-            <div className="mkt-hero-ctas">
-              <Link className="mkt-btn mkt-btn-sand" to="/app">
-                Get Started <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-              <a className="mkt-btn mkt-btn-ghost" href="#meet-vitoria">
-                Meet Vitoria
-              </a>
+      <main>
+        {/* ------------------------------------------------------------ Hero */}
+        <section className="mkt-hero" id="home" ref={heroRef} aria-labelledby="mkt-hero-title">
+          <div className="mkt-hero-media" aria-hidden="true">
+            <div className="mkt-hero-kb">
+              <img
+                className="mkt-hero-poster"
+                src={HERO_POSTER}
+                alt=""
+                fetchpriority="high"
+                decoding="async"
+                onLoad={() => setHeroReady(true)}
+                onError={() => setHeroReady(true)}
+              />
+              <video
+                ref={heroVideoRef}
+                className={`mkt-hero-video${hero.playing ? ' is-on' : ''}`}
+                src={hero.active || undefined}
+                poster={HERO_POSTER}
+                muted
+                playsInline
+                preload="none"
+                disablePictureInPicture
+                tabIndex={-1}
+              />
             </div>
-          </div>
-        </div>
-
-        <a className="mkt-scroll-cue" href="#experience" aria-label="Scroll to learn more">
-          <span />
-        </a>
-      </section>
-
-      <section className="mkt-stay" id="experience">
-        <div className="mkt-wrap mkt-stay-intro">
-          <p className="mkt-stay-copy" data-reveal>
-            30A is for people who want to live well. My30A Host is for people who want nothing to
-            get in the way of that.
-          </p>
-          <h2 className="mkt-h2 mkt-stay-title" data-reveal style={{ '--d': '0.1s' }}>
-            Your stay, already <em>taken care of.</em>
-          </h2>
-        </div>
-
-        <div className="mkt-stay-gallery" aria-label="30A stay moments">
-          {STAY_IMAGES.map((image, i) => (
-            <figure
-              key={image.src}
-              className="mkt-stay-shot mkt-frame"
-              data-reveal
-              style={{ '--d': `${i * 0.08}s` }}
-            >
-              <Img src={image.src} alt={image.alt} />
-            </figure>
-          ))}
-        </div>
-      </section>
-
-      <section className="mkt-vitoria" id="meet-vitoria">
-        <div className="mkt-wrap mkt-vitoria-grid">
-          <figure className="mkt-vitoria-media mkt-frame" data-reveal="zoom">
-            <Img src={`${M}/vitoria-deck.webp`} alt="Wooden deck with beach umbrellas overlooking turquoise water" />
-          </figure>
-          <div className="mkt-vitoria-card mkt-card" data-reveal style={{ '--d': '0.12s' }}>
-            <p className="mkt-eyebrow mkt-eyebrow-dark">Your AI concierge</p>
-            <h2 className="mkt-h2 mkt-vitoria-title">
-              Meet Vitoria.
-              <span>The local who knows everything.</span>
-            </h2>
-            <p className="mkt-lead">
-              She knows the quiet beaches, the best tables, the captains worth calling and the
-              places most visitors never find.
-            </p>
-            <p className="mkt-body">
-              Vitoria is built into the My30A Host app and draws on our own directory of vetted
-              local partners — yacht charters, golf carts, private chefs, photographers, spas and
-              more — plus every public beach access on 30A and live restaurant hours. Ask in plain
-              English and get a real answer, not a search result.
-            </p>
-            <dl className="mkt-stats">
-              <div>
-                <dt>
-                  <CountUp to={160} />
-                </dt>
-                <dd>Vetted local partners</dd>
-              </div>
-              <div>
-                <dt>
-                  <CountUp to={79} />
-                </dt>
-                <dd>Public beach accesses</dd>
-              </div>
-              <div>
-                <dt>Live</dt>
-                <dd>Restaurant hours</dd>
-              </div>
-            </dl>
-            <Link className="mkt-btn mkt-btn-sand" to="/app">
-              Ask Vitoria <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="mkt-arrive" id="arrive">
-        <header className="mkt-wrap mkt-section-head" data-reveal>
-          <p className="mkt-eyebrow mkt-eyebrow-dark">Services</p>
-          <h2 className="mkt-h2">Arrive. Everything&apos;s ready.</h2>
-          <p className="mkt-sub">
-            The little things are already handled, so you can get straight to the good part.
-          </p>
-        </header>
-
-        <div className="mkt-wrap mkt-feature" id="grocery">
-          <figure className="mkt-feature-media mkt-frame" data-reveal="zoom">
-            <Img src="/services/grocery-stocked-kitchen.webp" alt="Bright kitchen with an open fridge and pantry fully stocked with fresh groceries" />
-          </figure>
-          <div className="mkt-feature-card mkt-card" data-reveal style={{ '--d': '0.12s' }}>
-            <p className="mkt-eyebrow mkt-eyebrow-dark">Grocery Delivery</p>
-            <h3 className="mkt-h3">Your kitchen, stocked before you arrive.</h3>
-            <p className="mkt-body">
-              Send us your list. We shop at Publix, deliver everything to your rental and stock the
-              kitchen before you walk through the door.
-            </p>
-            <ul className="mkt-checks">
-              <li>
-                <Check size={16} aria-hidden="true" /> Shopped fresh at Publix
-              </li>
-              <li>
-                <Check size={16} aria-hidden="true" /> Unpacked and put away for you
-              </li>
-              <li>
-                <Check size={16} aria-hidden="true" /> Card charged only after delivery
-              </li>
-            </ul>
-            <div className="mkt-price">
-              <span className="mkt-price-label">From</span>
-              <span className="mkt-price-value">$229</span>
-              <span className="mkt-price-note">+ your exact Publix receipt</span>
-            </div>
-            <Link className="mkt-btn mkt-btn-sand" to="/app">
-              Arrange Groceries <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-
-        <div className="mkt-wrap mkt-feature mkt-feature-flip" id="airport-transfer">
-          <figure className="mkt-feature-media mkt-frame" data-reveal="zoom">
-            <Img src={`${M}/transfer-arrival.webp`} alt="Private jet and luxury SUV waiting on the tarmac" />
-          </figure>
-          <div className="mkt-feature-card mkt-card" data-reveal style={{ '--d': '0.12s' }}>
-            <p className="mkt-eyebrow mkt-eyebrow-dark">Airport Transfer</p>
-            <h3 className="mkt-h3">Your ride is waiting.</h3>
-            <p className="mkt-body">
-              Personalized airport pickup and a comfortable drive directly to your rental — from
-              any of the three airports that serve 30A.
-            </p>
-            <ul className="mkt-airports" aria-label="Airports served">
-              <li>
-                <strong>ECP</strong> Panama City Beach
-              </li>
-              <li>
-                <strong>VPS</strong> Destin–Fort Walton
-              </li>
-              <li>
-                <strong>PNS</strong> Pensacola
-              </li>
-            </ul>
-            <div className="mkt-price">
-              <span className="mkt-price-label">From</span>
-              <span className="mkt-price-value">$85</span>
-              <span className="mkt-price-note">varies by airport and community</span>
-            </div>
-            <Link className="mkt-btn mkt-btn-sand" to="/app">
-              Arrange Transfer <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="mkt-need" id="explore">
-        <div className="mkt-wrap mkt-need-head">
-          <div data-reveal>
-            <p className="mkt-eyebrow mkt-eyebrow-dark">Explore 30A</p>
-            <h2 className="mkt-h2">
-              Everything you need.
-              <br />
-              Nothing you don&apos;t.
-            </h2>
-          </div>
-          <div className="mkt-need-copy" data-reveal style={{ '--d': '0.12s' }}>
-            <p className="mkt-body mkt-body-lg">
-              Explore 30A is your local guide in the app: 160 vetted partners, from yacht charters
-              and golf carts to private chefs and beach setups, plus all 79 public beach accesses
-              from Inlet Beach to Dune Allen. No endless scrolling — just the places locals
-              actually use.
-            </p>
-            <Link className="mkt-btn mkt-btn-navy" to="/app">
-              Explore More <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-
-        <div className="mkt-wrap mkt-need-cards" aria-label="Explore categories">
-          {EXPLORE.map((card, i) => (
-            <Link
-              key={card.key}
-              to="/app"
-              className="mkt-need-card mkt-frame"
-              data-reveal
-              style={{ '--d': `${i * 0.09}s` }}
-            >
-              <Img src={card.src} alt={card.alt} />
-              <span className="mkt-need-card-shade" aria-hidden="true" />
-              <span className="mkt-need-card-text">
-                <span className="mkt-need-card-title">{card.title}</span>
-                <span className="mkt-need-card-meta">{card.meta}</span>
-              </span>
-              <span className="mkt-need-card-arrow" aria-hidden="true">
-                <ArrowUpRight size={18} />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mkt-coastal" id="coastal">
-        <div className="mkt-coastal-media" aria-hidden="true">
-          <video
-            ref={coastalVideoRef}
-            className="mkt-coastal-video"
-            src={coastalSrc || undefined}
-            poster={COASTAL_POSTER}
-            muted
-            loop
-            playsInline
-            preload="none"
-          />
-          <div className="mkt-coastal-overlay" />
-        </div>
-        <div className="mkt-wrap mkt-coastal-content">
-          <h2 className="mkt-coastal-title" data-reveal>
-            Where coastal living
-            <br />
-            became <em>an art form.</em>
-          </h2>
-          <a className="mkt-btn mkt-btn-sand" href="#explore" data-reveal style={{ '--d': '0.15s' }}>
-            Explore 30A
-          </a>
-        </div>
-      </section>
-
-      <section className="mkt-ask" id="ask">
-        <div className="mkt-wrap mkt-ask-inner">
-          <div className="mkt-ask-copy" data-reveal>
-            <p className="mkt-eyebrow mkt-eyebrow-dark">Ask anything</p>
-            <h2 className="mkt-h2 mkt-ask-title">
-              You ask.
-              <br />
-              Vitoria knows.
-            </h2>
-            <p className="mkt-body mkt-body-lg">
-              Skip the ten open browser tabs. Vitoria answers from our own database first — real
-              partners, real beach accesses, today&apos;s hours — and your airport ride and
-              groceries are booked in the very same app.
-            </p>
-            <Link className="mkt-btn mkt-btn-sand" to="/app">
-              Ask Vitoria <ArrowRight size={16} aria-hidden="true" />
-            </Link>
+            <div className="mkt-hero-overlay" />
+            <div className="mkt-hero-vignette" />
           </div>
 
-          <ul className="mkt-chat" aria-label="Example questions">
-            {ASK.map((item, i) => (
-              <li key={item.q} data-reveal style={{ '--d': `${0.1 + i * 0.12}s` }}>
-                <p className="mkt-chat-q">{item.q}</p>
-                <div className="mkt-chat-a">
-                  <span className="mkt-chat-avatar" aria-hidden="true">
-                    V
+          <div className="mkt-wrap mkt-hero-grid">
+            <div className="mkt-hero-content">
+              <p className="mkt-eyebrow mkt-hero-in" style={{ '--d': '0.05s' }}>
+                <MapPin size={14} aria-hidden="true" /> Scenic Highway 30A · Florida
+              </p>
+              <h1 className="mkt-hero-title" id="mkt-hero-title">
+                {HERO_WORDS.map((w, i) => (
+                  <span key={w}>
+                    <span className="mkt-word">
+                      <span style={{ '--d': `${0.15 + i * 0.1}s` }}>{w}</span>
+                    </span>{' '}
                   </span>
-                  <p>{item.a}</p>
-                </div>
-              </li>
+                ))}
+                <span className="mkt-word">
+                  <em style={{ '--d': `${0.15 + HERO_WORDS.length * 0.1}s` }}>effortless.</em>
+                </span>
+              </h1>
+              <p className="mkt-hero-sub mkt-hero-in" style={{ '--d': '0.65s' }}>
+                Private airport transfers, a kitchen stocked from Publix before you arrive, and
+                Vitoria, an AI concierge who knows 30A's tables, beaches and events.
+              </p>
+              <div className="mkt-hero-ctas mkt-hero-in" style={{ '--d': '0.8s' }}>
+                <Link className="mkt-btn mkt-btn-gold mkt-btn-lg" to="/app" data-magnetic>
+                  Get Started <ArrowRight size={17} aria-hidden="true" />
+                </Link>
+                <a className="mkt-btn mkt-btn-glass mkt-btn-lg" href="#meet-vitoria" data-magnetic>
+                  <Sparkles size={16} aria-hidden="true" /> Meet Vitoria
+                </a>
+              </div>
+            </div>
+
+            <aside className="mkt-quick mkt-hero-in" style={{ '--d': '0.95s' }} aria-label="Quick booking">
+              <p className="mkt-quick-title">Plan your arrival</p>
+              <a className="mkt-quick-row" href="#airport-transfer">
+                <span className="mkt-quick-icon">
+                  <Plane size={18} aria-hidden="true" />
+                </span>
+                <span className="mkt-quick-text">
+                  <strong>Airport transfer</strong>
+                  <small>ECP · VPS · PNS</small>
+                </span>
+                <span className="mkt-quick-price">
+                  <small>from</small>$85
+                </span>
+              </a>
+              <a className="mkt-quick-row" href="#grocery">
+                <span className="mkt-quick-icon">
+                  <ShoppingBag size={18} aria-hidden="true" />
+                </span>
+                <span className="mkt-quick-text">
+                  <strong>Groceries</strong>
+                  <small>Publix, put away for you</small>
+                </span>
+                <span className="mkt-quick-price">
+                  <small>from</small>$229
+                </span>
+              </a>
+              <a className="mkt-quick-row" href="#meet-vitoria">
+                <span className="mkt-quick-icon">
+                  <Sparkles size={18} aria-hidden="true" />
+                </span>
+                <span className="mkt-quick-text">
+                  <strong>Ask Vitoria</strong>
+                  <small>Text or real-time voice</small>
+                </span>
+                <span className="mkt-quick-go">
+                  <ArrowUpRight size={18} aria-hidden="true" />
+                </span>
+              </a>
+              <p className="mkt-quick-note">
+                <CreditCard size={14} aria-hidden="true" /> Card charged only after your ride or
+                delivery
+              </p>
+            </aside>
+          </div>
+
+          <a className="mkt-scroll-cue" href="#communities" aria-label="Scroll to learn more">
+            <span />
+          </a>
+        </section>
+
+        {/* ------------------------------------------------------------ Communities marquee */}
+        <section className="mkt-marquee" id="communities" aria-label="30A communities we serve">
+          <ul className="mkt-sr">
+            {COMMUNITIES.map((c) => (
+              <li key={c}>{c}</li>
             ))}
           </ul>
-        </div>
-      </section>
+          <div className="mkt-marquee-track" aria-hidden="true">
+            {[0, 1].map((k) => (
+              <div className="mkt-marquee-group" key={k}>
+                {COMMUNITIES.map((c) => (
+                  <span key={c} className="mkt-marquee-item">
+                    {c}
+                    <i />
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
 
-      <section className="mkt-cta-wrap" id="get-started">
-        <div className="mkt-brand-cta" data-reveal>
-          <p className="mkt-brand-cta-name">MY30A HOST</p>
-          <p className="mkt-brand-cta-tag">The effortless way to experience 30A.</p>
-          <Link className="mkt-btn mkt-btn-sand" to="/app">
-            Get Started <ArrowRight size={16} aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
+        {/* ------------------------------------------------------------ Intro + stats */}
+        <section className="mkt-intro" id="experience" aria-labelledby="mkt-intro-title">
+          <div className="mkt-wrap">
+            <div className="mkt-intro-head">
+              <p className="mkt-eyebrow mkt-eyebrow-dark" data-reveal>
+                Your 30A concierge
+              </p>
+              <h2 className="mkt-h2" id="mkt-intro-title" data-reveal style={{ '--d': '0.08s' }}>
+                Your stay, already <em>taken care of.</em>
+              </h2>
+              <p className="mkt-intro-copy" data-reveal style={{ '--d': '0.16s' }}>
+                30A is for people who want to live well. My30A Host is for people who want nothing
+                to get in the way of that — built on our own local database, not a search engine.
+              </p>
+            </div>
 
-      <footer className="mkt-footer">
+            <dl className="mkt-stats">
+              {STATS.map((s, i) => (
+                <div className="mkt-stat" key={s.label} data-reveal style={{ '--d': `${i * 0.08}s` }}>
+                  <dt>{s.label}</dt>
+                  <dd className="mkt-stat-num">
+                    <CountUp to={s.value} prefix={s.prefix} />
+                  </dd>
+                  <dd className="mkt-stat-note">{s.note}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ Services bento */}
+        <section className="mkt-services" id="arrive" aria-labelledby="mkt-services-title">
+          <div className="mkt-wrap">
+            <header className="mkt-section-head">
+              <p className="mkt-eyebrow mkt-eyebrow-dark" data-reveal>
+                Services
+              </p>
+              <h2 className="mkt-h2" id="mkt-services-title" data-reveal style={{ '--d': '0.08s' }}>
+                Arrive. <em>Everything&apos;s ready.</em>
+              </h2>
+              <p className="mkt-sub" data-reveal style={{ '--d': '0.16s' }}>
+                The little things are handled before you land, so you can get straight to the
+                good part.
+              </p>
+            </header>
+
+            <div className="mkt-bento">
+              {/* Grocery */}
+              <article className="mkt-tile mkt-tile-grocery" id="grocery" data-reveal data-tilt>
+                <div className="mkt-tile-inner">
+                  <div className="mkt-tile-media">
+                    <Img
+                      src="/services/grocery-stocked-kitchen.webp"
+                      alt="Bright kitchen with an open fridge and pantry fully stocked with fresh groceries"
+                    />
+                  </div>
+                  <div className="mkt-tile-shade" aria-hidden="true" />
+                  <div className="mkt-tile-body">
+                    <p className="mkt-tile-tag">
+                      <ShoppingBag size={14} aria-hidden="true" /> Grocery delivery
+                    </p>
+                    <h3 className="mkt-tile-title">Your kitchen, stocked before you arrive.</h3>
+                    <p className="mkt-tile-copy">
+                      Send us your list. We shop Publix at Watersound Town Center, deliver to your
+                      rental, unpack and put everything away.
+                    </p>
+                    <ul className="mkt-ticks">
+                      <li>
+                        <Check size={15} aria-hidden="true" /> Your exact Publix receipt, no markup
+                      </li>
+                      <li>
+                        <Check size={15} aria-hidden="true" /> Unpacked and put away
+                      </li>
+                      <li>
+                        <Check size={15} aria-hidden="true" /> Charged only after delivery
+                      </li>
+                    </ul>
+                    <div className="mkt-tile-foot">
+                      <p className="mkt-price">
+                        <small>From</small> <strong>$229</strong>
+                        <span>+ your Publix receipt</span>
+                      </p>
+                      <Link className="mkt-btn mkt-btn-gold" to="/app">
+                        Arrange Groceries <ArrowRight size={16} aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              {/* Airport transfer */}
+              <article
+                className="mkt-tile mkt-tile-transfer"
+                id="airport-transfer"
+                data-reveal
+                data-tilt
+                style={{ '--d': '0.08s' }}
+              >
+                <div className="mkt-tile-inner">
+                  <div className="mkt-tile-media">
+                    <Img
+                      src={`${M}/transfer-arrival.webp`}
+                      alt="Private jet and a black luxury SUV waiting on the tarmac"
+                    />
+                  </div>
+                  <div className="mkt-tile-shade" aria-hidden="true" />
+                  <div className="mkt-tile-body">
+                    <p className="mkt-tile-tag">
+                      <Plane size={14} aria-hidden="true" /> Airport transfer
+                    </p>
+                    <h3 className="mkt-tile-title">Your ride is waiting.</h3>
+                    <p className="mkt-tile-copy">
+                      Private, door-to-door, with flight tracking and vetted drivers. Free
+                      cancellation 48h+ before pickup.
+                    </p>
+                    <ul className="mkt-airports" aria-label="Airports served">
+                      <li>
+                        <strong>ECP</strong> Panama City Beach
+                      </li>
+                      <li>
+                        <strong>VPS</strong> Destin–Fort Walton
+                      </li>
+                      <li>
+                        <strong>PNS</strong> Pensacola
+                      </li>
+                    </ul>
+                    <div className="mkt-tile-foot">
+                      <p className="mkt-price">
+                        <small>From</small> <strong>$85</strong>
+                      </p>
+                      <Link className="mkt-btn mkt-btn-gold" to="/app">
+                        Arrange Transfer <ArrowRight size={16} aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              {/* Vitoria */}
+              <article className="mkt-tile mkt-tile-vitoria" data-reveal data-tilt style={{ '--d': '0.12s' }}>
+                <div className="mkt-tile-inner">
+                  <div className="mkt-orb" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <div className="mkt-tile-body">
+                    <p className="mkt-tile-tag">
+                      <Sparkles size={14} aria-hidden="true" /> AI concierge
+                    </p>
+                    <h3 className="mkt-tile-title">Ask Vitoria anything.</h3>
+                    <p className="mkt-tile-copy">
+                      Tables, beaches, charters, tonight&apos;s live music — answered from our own
+                      database first. Type, or just talk to her.
+                    </p>
+                    <a className="mkt-link" href="#meet-vitoria">
+                      Meet Vitoria <ArrowRight size={16} aria-hidden="true" />
+                    </a>
+                  </div>
+                </div>
+              </article>
+
+              {/* Explore */}
+              <article className="mkt-tile mkt-tile-explore" data-reveal data-tilt>
+                <div className="mkt-tile-inner">
+                  <div className="mkt-tile-media">
+                    <Img src={`${M}/stay-sunset-paddle.webp`} alt="Paddleboarders heading out at sunset on 30A" />
+                  </div>
+                  <div className="mkt-tile-shade" aria-hidden="true" />
+                  <div className="mkt-tile-body">
+                    <p className="mkt-tile-tag">
+                      <Compass size={14} aria-hidden="true" /> Explore 30A guide
+                    </p>
+                    <h3 className="mkt-tile-title">160 vetted locals, one guide.</h3>
+                    <a className="mkt-link mkt-link-light" href="#explore">
+                      Browse the guide <ArrowRight size={16} aria-hidden="true" />
+                    </a>
+                  </div>
+                </div>
+              </article>
+
+              {/* Events */}
+              <article className="mkt-tile mkt-tile-events" data-reveal data-tilt style={{ '--d': '0.08s' }}>
+                <div className="mkt-tile-inner">
+                  <div className="mkt-tile-media">
+                    <Img src="/vendors/seaside-farmers-market.webp" alt="Fresh produce in wooden crates at a 30A farmers market" />
+                  </div>
+                  <div className="mkt-tile-shade" aria-hidden="true" />
+                  <div className="mkt-tile-body">
+                    <p className="mkt-tile-tag">
+                      <CalendarDays size={14} aria-hidden="true" /> Events & live music
+                    </p>
+                    <h3 className="mkt-tile-title">~600 events a month.</h3>
+                    <Link className="mkt-link mkt-link-light" to="/app">
+                      See what&apos;s on <ArrowRight size={16} aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ Meet Vitoria */}
+        <section className="mkt-vitoria" id="meet-vitoria" aria-labelledby="mkt-vitoria-title">
+          <div className="mkt-aurora" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="mkt-wrap mkt-vitoria-grid">
+            <div className="mkt-vitoria-copy">
+              <p className="mkt-eyebrow" data-reveal>
+                Your AI concierge
+              </p>
+              <h2 className="mkt-h2 mkt-h2-light" id="mkt-vitoria-title" data-reveal style={{ '--d': '0.08s' }}>
+                Meet Vitoria. <em>The local who knows everything.</em>
+              </h2>
+              <p className="mkt-lead" data-reveal style={{ '--d': '0.16s' }}>
+                She answers from our own local database first, then from broader 30A knowledge. Ask
+                in plain English and get a real answer, not ten browser tabs.
+              </p>
+              <ul className="mkt-vfeatures">
+                <li data-reveal style={{ '--d': '0.2s' }}>
+                  <span className="mkt-vf-icon">
+                    <UtensilsCrossed size={18} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <strong>241 restaurants, bars & cafés</strong>
+                    By community, cuisine and open now — with online booking via Resy or OpenTable.
+                  </span>
+                </li>
+                <li data-reveal style={{ '--d': '0.26s' }}>
+                  <span className="mkt-vf-icon">
+                    <Compass size={18} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <strong>160 vetted local partners</strong>
+                    Yacht charters, golf carts, private chefs, photographers, spas and more.
+                  </span>
+                </li>
+                <li data-reveal style={{ '--d': '0.32s' }}>
+                  <span className="mkt-vf-icon">
+                    <Waves size={18} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <strong>All 59 public beach accesses</strong>
+                    With parking and restrooms, so you pick the right one.
+                  </span>
+                </li>
+                <li data-reveal style={{ '--d': '0.38s' }}>
+                  <span className="mkt-vf-icon">
+                    <CalendarDays size={18} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <strong>~600 events a month</strong>
+                    Live music, markets and festivals from 30a.com.
+                  </span>
+                </li>
+              </ul>
+              <div className="mkt-voice" data-reveal style={{ '--d': '0.44s' }}>
+                <span className="mkt-wave" aria-hidden="true">
+                  {Array.from({ length: 7 }, (_, i) => (
+                    <i key={i} style={{ '--i': i }} />
+                  ))}
+                </span>
+                <p>
+                  <strong>Real-time voice.</strong> Tap Talk and have a conversation — hands free on
+                  the beach.
+                </p>
+              </div>
+              <Link className="mkt-btn mkt-btn-gold mkt-btn-lg" to="/app" data-reveal data-magnetic style={{ '--d': '0.5s' }}>
+                Ask Vitoria <ArrowRight size={17} aria-hidden="true" />
+              </Link>
+            </div>
+
+            <div className="mkt-vitoria-demo" data-reveal="zoom" style={{ '--d': '0.1s' }}>
+              <ChatDemo />
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ How it works */}
+        <section className="mkt-how" id="how" aria-labelledby="mkt-how-title">
+          <div className="mkt-wrap">
+            <header className="mkt-section-head">
+              <p className="mkt-eyebrow mkt-eyebrow-dark" data-reveal>
+                How it works
+              </p>
+              <h2 className="mkt-h2" id="mkt-how-title" data-reveal style={{ '--d': '0.08s' }}>
+                Three steps to <em>effortless.</em>
+              </h2>
+            </header>
+            <ol className="mkt-steps" ref={stepsRef}>
+              <span className="mkt-steps-line" aria-hidden="true">
+                <span />
+              </span>
+              {STEPS.map((s, i) => (
+                <li className="mkt-step" key={s.n} data-reveal style={{ '--d': `${i * 0.12}s` }}>
+                  <span className="mkt-step-n" aria-hidden="true">
+                    {s.n}
+                  </span>
+                  <h3 className="mkt-step-title">{s.title}</h3>
+                  <p className="mkt-step-body">{s.body}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ Explore rail */}
+        <section className="mkt-explore" id="explore" aria-labelledby="mkt-explore-title">
+          <div className="mkt-wrap mkt-explore-head">
+            <div>
+              <p className="mkt-eyebrow" data-reveal>
+                Explore 30A
+              </p>
+              <h2 className="mkt-h2 mkt-h2-light" id="mkt-explore-title" data-reveal style={{ '--d': '0.08s' }}>
+                Everything you need. <em>Nothing you don&apos;t.</em>
+              </h2>
+            </div>
+            <div className="mkt-explore-side" data-reveal style={{ '--d': '0.16s' }}>
+              <p>
+                The places locals actually use — from Inlet Beach to Miramar Beach — in one guide
+                inside the app.
+              </p>
+              <div className="mkt-rail-nav">
+                <button
+                  type="button"
+                  onClick={() => scrollRail(-1)}
+                  disabled={railEdge.start}
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={20} aria-hidden="true" />
+                </button>
+                <button type="button" onClick={() => scrollRail(1)} disabled={railEdge.end} aria-label="Next">
+                  <ChevronRight size={20} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="mkt-rail"
+            ref={railRef}
+            onScroll={updateRail}
+            role="region"
+            aria-label="Explore categories"
+            data-reveal
+          >
+            {EXPLORE.map((card, i) => (
+              <Link key={card.key} to="/app" className="mkt-rail-card" style={{ '--i': i }}>
+                <span className="mkt-rail-media">
+                  <Img src={card.src} alt={card.alt} />
+                </span>
+                <span className="mkt-rail-shade" aria-hidden="true" />
+                <span className="mkt-rail-text">
+                  <span className="mkt-rail-num" aria-hidden="true">
+                    0{i + 1}
+                  </span>
+                  <span className="mkt-rail-title">{card.title}</span>
+                  <span className="mkt-rail-meta">{card.meta}</span>
+                </span>
+                <span className="mkt-rail-arrow" aria-hidden="true">
+                  <ArrowUpRight size={18} />
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mkt-wrap">
+            <ul className="mkt-cats" aria-label="Guide categories">
+              {GUIDE_CATEGORIES.map((c, i) => (
+                <li key={c} data-reveal style={{ '--d': `${i * 0.04}s` }}>
+                  {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ Coastal band */}
+        <section className="mkt-coastal" id="coastal" aria-labelledby="mkt-coastal-title">
+          <div className="mkt-coastal-media" aria-hidden="true">
+            <div className="mkt-coastal-layer" data-parallax="0.12">
+              <video
+                ref={coastalVideoRef}
+                className={`mkt-coastal-video${coastal.playing ? ' is-on' : ''}`}
+                src={coastal.active || undefined}
+                poster={COASTAL_POSTER}
+                muted
+                playsInline
+                preload="none"
+                tabIndex={-1}
+              />
+            </div>
+            <div className="mkt-coastal-overlay" />
+          </div>
+          <div className="mkt-wrap mkt-coastal-content">
+            <h2 className="mkt-coastal-title" id="mkt-coastal-title" data-reveal>
+              Where coastal living
+              <br />
+              became <em>an art form.</em>
+            </h2>
+            <a className="mkt-btn mkt-btn-glass" href="#app" data-reveal style={{ '--d': '0.15s' }}>
+              See the app <ArrowRight size={16} aria-hidden="true" />
+            </a>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ App mockup */}
+        <section className="mkt-app" id="app" aria-labelledby="mkt-app-title">
+          <div className="mkt-wrap mkt-app-grid">
+            <div className="mkt-app-copy">
+              <p className="mkt-eyebrow mkt-eyebrow-dark" data-reveal>
+                The My30A Host app
+              </p>
+              <h2 className="mkt-h2" id="mkt-app-title" data-reveal style={{ '--d': '0.08s' }}>
+                Your whole stay, <em>in one app.</em>
+              </h2>
+              <p className="mkt-sub mkt-sub-left" data-reveal style={{ '--d': '0.16s' }}>
+                Book, pay after, track and ask — all from your phone. It runs right in your browser;
+                add it to your home screen in two taps.
+              </p>
+              <ul className="mkt-app-list">
+                {[
+                  'Book airport transfers and grocery stocking',
+                  'Ask Vitoria by text or real-time voice',
+                  'Browse the Explore 30A guide and events',
+                  'Track your orders with live notifications',
+                ].map((t, i) => (
+                  <li key={t} data-reveal style={{ '--d': `${0.2 + i * 0.06}s` }}>
+                    <Check size={16} aria-hidden="true" /> {t}
+                  </li>
+                ))}
+              </ul>
+              <div className="mkt-app-ctas" data-reveal style={{ '--d': '0.45s' }}>
+                <Link className="mkt-btn mkt-btn-navy mkt-btn-lg" to="/app/login" data-magnetic>
+                  Open the app <ArrowUpRight size={17} aria-hidden="true" />
+                </Link>
+                <Link className="mkt-btn mkt-btn-outline mkt-btn-lg" to="/app/signup" data-magnetic>
+                  Create an account
+                </Link>
+              </div>
+            </div>
+
+            <div className="mkt-app-stage" data-reveal="zoom" style={{ '--d': '0.1s' }}>
+              <div className="mkt-app-glow" aria-hidden="true" />
+              <div className="mkt-phone-pos mkt-phone-pos-left" data-parallax="0.06">
+                <figure className="mkt-phone mkt-phone-sm">
+                  <Img src={`${M}/app-vitoria.webp`} alt="Vitoria chat in the My30A Host app" width="620" height="1342" />
+                </figure>
+              </div>
+              <div className="mkt-phone-pos mkt-phone-pos-right" data-parallax="0.1">
+                <figure className="mkt-phone mkt-phone-sm">
+                  <Img src={`${M}/app-explore.webp`} alt="Explore 30A categories in the My30A Host app" width="620" height="1342" />
+                </figure>
+              </div>
+              <div className="mkt-phone-pos mkt-phone-pos-main" data-parallax="-0.04">
+                <figure className="mkt-phone">
+                  <Img src={`${M}/app-services.webp`} alt="Services screen of the My30A Host app with grocery delivery and airport transfer" width="620" height="1342" />
+                </figure>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ Final CTA */}
+        <section className="mkt-final" id="get-started" aria-labelledby="mkt-final-title">
+          <div className="mkt-wrap">
+            <div className="mkt-final-card" data-reveal="zoom">
+              <div className="mkt-final-bg" aria-hidden="true" />
+              <img className="mkt-final-logo" src="/logo-nav.png" alt="" width="321" height="135" loading="lazy" decoding="async" />
+              <h2 className="mkt-final-title" id="mkt-final-title">
+                The effortless way to <em>experience 30A.</em>
+              </h2>
+              <p className="mkt-final-sub">
+                Transfers from $85 · Groceries from $229 · Vitoria included in the app.
+              </p>
+              <div className="mkt-final-ctas">
+                <Link className="mkt-btn mkt-btn-gold mkt-btn-lg" to="/app" data-magnetic>
+                  Get Started <ArrowRight size={17} aria-hidden="true" />
+                </Link>
+                <a className="mkt-btn mkt-btn-glass mkt-btn-lg" href="tel:+18509554577">
+                  <Phone size={16} aria-hidden="true" /> (850) 955-4577
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* ------------------------------------------------------------ Footer */}
+      <footer className="mkt-footer" id="contact">
         <div className="mkt-wrap mkt-footer-inner">
           <div className="mkt-footer-brand">
             <a className="mkt-footer-logo" href="#home">
-              <img src="/logo-nav.png" alt="My30A Host — Your personal 30A concierge" loading="lazy" decoding="async" />
+              <img src="/logo-nav.png" alt="My30A Host — Your personal 30A concierge" width="321" height="135" loading="lazy" decoding="async" />
             </a>
             <p className="mkt-footer-about">
-              30A is for people who want to live well. My30A Host is for people who want nothing
-              to get in the way of that.
+              Concierge for vacation-rental guests on Scenic Highway 30A, Florida. Airport
+              transfers, grocery stocking and Vitoria, your AI local.
             </p>
             <div className="mkt-footer-social" aria-label="Social media">
               <a href="https://www.instagram.com/my30a_host/" target="_blank" rel="noreferrer" aria-label="My30A Host on Instagram">
@@ -693,7 +1407,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mkt-footer-col">
+          <nav className="mkt-footer-col" aria-label="Quick links">
             <h3 className="mkt-footer-heading">Quick Links</h3>
             <ul className="mkt-footer-links">
               <li>
@@ -703,18 +1417,18 @@ export default function Home() {
                 <a href="#arrive">Services</a>
               </li>
               <li>
+                <a href="#how">How it works</a>
+              </li>
+              <li>
                 <a href="#explore">Explore 30A</a>
               </li>
               <li>
-                <a href="#meet-vitoria">Meet Vitoria</a>
-              </li>
-              <li>
-                <a href="#ask">Contact</a>
+                <Link to="/app/login">Sign in</Link>
               </li>
             </ul>
-          </div>
+          </nav>
 
-          <div className="mkt-footer-col">
+          <nav className="mkt-footer-col" aria-label="Services">
             <h3 className="mkt-footer-heading">Services</h3>
             <ul className="mkt-footer-links">
               <li>
@@ -730,50 +1444,48 @@ export default function Home() {
                 <a href="#explore">Explore 30A Guide</a>
               </li>
             </ul>
-          </div>
+          </nav>
 
           <div className="mkt-footer-col">
-            <h3 className="mkt-footer-heading">Contact Info</h3>
-            <a className="mkt-footer-email" href="tel:+18509554577">
-              <span className="mkt-footer-email-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="14" height="14">
-                  <path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" />
-                </svg>
+            <h3 className="mkt-footer-heading">Contact</h3>
+            <a className="mkt-footer-contact" href="tel:+18509554577">
+              <span className="mkt-footer-icon" aria-hidden="true">
+                <Phone size={14} />
               </span>
               (850) 955-4577
             </a>
-            <a className="mkt-footer-email" href="mailto:my30ahost@gmail.com">
-              <span className="mkt-footer-email-icon" aria-hidden="true">
+            <a className="mkt-footer-contact" href="mailto:my30ahost@gmail.com">
+              <span className="mkt-footer-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="14" height="14">
-                  <path
-                    fill="currentColor"
-                    d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z"
-                  />
+                  <path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z" />
                 </svg>
               </span>
               my30ahost@gmail.com
             </a>
-            <a className="mkt-footer-email" href="https://www.instagram.com/my30a_host/" target="_blank" rel="noreferrer">
-              <span className="mkt-footer-email-icon" aria-hidden="true">
+            <a className="mkt-footer-contact" href="https://www.instagram.com/my30a_host/" target="_blank" rel="noreferrer">
+              <span className="mkt-footer-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="14" height="14">
-                  <path
-                    fill="currentColor"
-                    d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 2.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zM17.4 6.5a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"
-                  />
+                  <path fill="currentColor" d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 2.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zM17.4 6.5a1 1 0 1 1-1 1 1 1 0 0 1 1-1z" />
                 </svg>
               </span>
               @my30a_host
+            </a>
+            <a className="mkt-footer-contact" href="https://www.my30ahost.com" target="_blank" rel="noreferrer">
+              <span className="mkt-footer-icon" aria-hidden="true">
+                <Compass size={14} />
+              </span>
+              www.my30ahost.com
             </a>
           </div>
         </div>
 
         <div className="mkt-footer-bar">
           <div className="mkt-wrap mkt-footer-bar-inner">
-            <p>Copyright © 2026 My 30A Host. All rights reserved.</p>
+            <p>Copyright © 2026 My30A Host. All rights reserved.</p>
             <p>
               <a href="#privacy">Privacy Policy</a>
-              <span aria-hidden="true"> | </span>
-              <a href="#terms">Terms of Services</a>
+              <span aria-hidden="true"> · </span>
+              <a href="#terms">Terms of Service</a>
             </p>
           </div>
         </div>
