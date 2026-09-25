@@ -782,3 +782,11 @@
   margin-top: 1px;
   color: #f49300;
 }
+.app-groc-rush.is-info {
+  border-color: #cfe2f3;
+  background: #eef6fc;
+  color: #134a73;
+}
+.app-groc-rush.is-info svg {
+  color: #1d6fa8;
+}

@@ -429,7 +429,7 @@ export default function Grocery() {
                     {usd(order.prepay_amount)}{' '}
                     <small className="muted">
                       cart {usd(order.cart_estimate)} + {Number(order.buffer_percent)}% buffer
-                      {order.rush_fee > 0 ? ` + ${usd(order.rush_fee)} rush fee` : ''}
+                      {order.rush_fee > 0 ? ` + ${usd(order.rush_fee)} short-notice fee` : ''}
                     </small>
                   </span>
                   <span>Shopping budget</span>
@@ -438,7 +438,7 @@ export default function Grocery() {
               ) : null}
               {order.is_rush ? (
                 <>
-                  <span>Rush · Instant Payout</span>
+                  <span>Short notice · Instant Payout</span>
                   <span>
                     {order.instant_payout_status === 'sent' ? (
                       <Pill>Sent {usd(order.instant_payout_amount)}</Pill>

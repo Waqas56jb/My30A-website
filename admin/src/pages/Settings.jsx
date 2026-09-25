@@ -160,10 +160,10 @@ export default function Settings() {
                   onChange={(event) => setDraft({ ...settings, grocery_min_notice_days: event.target.value })}
                   style={{ maxWidth: 120 }}
                 />
-                <small className="muted">orders with less notice are rush orders</small>
+                <small className="muted">orders with less notice pay the short-notice fee</small>
               </div>
               <div className="field">
-                <label>Rush order fee</label>
+                <label>Short-notice fee</label>
                 <input
                   value={settings.grocery_rush_fee_percent}
                   onChange={(event) => setDraft({ ...settings, grocery_rush_fee_percent: event.target.value })}
@@ -179,7 +179,7 @@ export default function Settings() {
                     onChange={(event) => setDraft({ ...settings, grocery_instant_payouts: event.target.checked })}
                     style={{ width: 'auto', marginRight: 8 }}
                   />
-                  Send rush prepayments to my bank instantly (Stripe Instant Payouts)
+                  Send short-notice prepayments to my bank instantly (Stripe Instant Payouts)
                 </label>
                 <small className="muted">needs a debit card added in Stripe → Settings → Payouts</small>
               </div>

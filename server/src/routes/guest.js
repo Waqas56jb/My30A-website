@@ -8,6 +8,7 @@ import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase.js'
 import { memo } from '../lib/memo.js'
+import { ymdInTimeZone } from '../lib/timezone.js'
 import { openStatus } from '../lib/hours.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
@@ -572,29 +573,45 @@ async function quoteTransfer(body, booking) {
   }
 }
 
+export function packageBlocks(pkg, cartTotal) {
+  if (!/1k block/i.test(pkg?.unit || '')) return 1
+  const cart = Number(cartTotal)
+  return cart > 0 ? Math.max(1, Math.ceil(cart / 1000)) : 1
+}
+
 async function quoteGrocery(body) {
   const catalog = await loadCatalog()
   const pkg = catalog.grocery.packages.find((row) => row.key === body.package)
   if (!pkg) throw httpError(400, 'package must be one of: ' + catalog.grocery.packages.map((r) => r.key).join(', '))
+  // Bulk is priced per started $1,000 of groceries (unit "/ $1k block").
+  const blocks = packageBlocks(pkg, body.cart_estimate)
   const stockingKey = body.stocking || 'bags'
   const stocking = catalog.grocery.stocking.find((row) => row.key === stockingKey)
   if (!stocking) throw httpError(400, 'stocking must be one of: ' + catalog.grocery.stocking.map((r) => r.key).join(', '))
-  const requested = Array.isArray(body.addons)
+  let requested = Array.isArray(body.addons)
     ? body.addons
     : Object.entries(body.addons || {})
         .filter(([, on]) => Boolean(on))
         .map(([key]) => key)
+  // Rush = same-day delivery (Chicago time): always applied for a same-day order, never charged
+  // for a later day.
+  if (body.delivery_time && catalog.grocery.addons.some((a) => a.key === 'rush')) {
+    const sameDay = ymdInTimeZone(new Date(body.delivery_time)) === ymdInTimeZone(new Date())
+    requested = sameDay ? [...new Set([...requested, 'rush'])] : requested.filter((key) => key !== 'rush')
+  }
   const addons = catalog.grocery.addons
     .filter((addon) => requested.includes(addon.key))
     .map((addon) => ({ key: addon.key, name: addon.name, price: addon.price }))
   const addons_total = round2(addons.reduce((sum, addon) => sum + addon.price, 0))
-  const service_fee = round2(pkg.price + stocking.price + addons_total)
+  const package_fee = round2(pkg.price * blocks)
+  const service_fee = round2(package_fee + stocking.price + addons_total)
   return {
     package: { key: pkg.key, name: pkg.name, items: pkg.sub, price: pkg.price, unit: pkg.unit },
+    package_blocks: blocks,
     stocking: { key: stocking.key, name: stocking.name, desc: stocking.sub, price: stocking.price },
     addons,
     addons_total,
-    package_fee: pkg.price,
+    package_fee,
     stocking_fee: stocking.price,
     service_fee,
     total_label: `$${service_fee} + Publix`,
@@ -1895,6 +1912,10 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
     if (!body.delivery_time || Number.isNaN(new Date(body.delivery_time).getTime())) {
       return res.status(400).json({ error: 'delivery_time (ISO datetime) is required' })
     }
+    // Same-day delivery is allowed (Rush), but never a time that has already passed.
+    if (new Date(body.delivery_time).getTime() < Date.now() + 60 * 60 * 1000) {
+      return res.status(400).json({ error: 'Please pick a delivery time at least 1 hour from now.' })
+    }
     if (body.items !== undefined && !Array.isArray(body.items)) {
       return res.status(400).json({ error: 'items must be an array' })
     }
@@ -1918,6 +1939,7 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
       delivery_address,
       community_id: community?.id || null,
       package: quote.package.name,
+      package_blocks: quote.package_blocks,
       stocking: quote.stocking.name,
       addons: quote.addons,
       items: body.items || [],
@@ -2011,13 +2033,13 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
     await logOrder(data.id, 'requested', req.user.id)
     await notifyAdmins({
       grocery_order_id: data.id,
-      message: `New grocery request #${data.order_number} from ${insert.guest_name} · ${quote.package.name} · ${formatWhen(data.delivery_time)} · ${delivery_address}${prepay ? ` · prepaid $${prepay.prepay_amount.toFixed(2)}${prepay.is_rush ? ' · RUSH' : ''}` : ''}`,
+      message: `New grocery request #${data.order_number} from ${insert.guest_name} · ${quote.package.name} · ${formatWhen(data.delivery_time)} · ${delivery_address}${prepay ? ` · prepaid $${prepay.prepay_amount.toFixed(2)}${prepay.is_rush ? ' · SHORT NOTICE' : ''}` : ''}`,
     })
     await notify({
       user_id: req.user.id,
       grocery_order_id: data.id,
       message: prepay
-        ? `Vitoria has your grocery list (#${data.order_number}). ${data.card_label || 'Your card'} was charged $${prepay.prepay_amount.toFixed(2)} for your groceries${prepay.is_rush ? ' (incl. rush fee)' : ''}. After delivery you pay the service fee, adjusted to your exact Publix receipt.`
+        ? `Vitoria has your grocery list (#${data.order_number}). ${data.card_label || 'Your card'} was charged $${prepay.prepay_amount.toFixed(2)} for your groceries${prepay.is_rush ? ' (incl. short-notice fee)' : ''}. After delivery you pay the service fee, adjusted to your exact Publix receipt.`
         : `Vitoria has your grocery list (#${data.order_number}). We’ll confirm your exact total shortly.`,
     })
     // Rush order: get the money to the owner's bank in minutes for shopping day.

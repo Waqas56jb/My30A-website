@@ -91,12 +91,12 @@ export async function runInstantPayout(order, policy) {
       .from('grocery_orders')
       .update({ instant_payout_id: result.payout.id, instant_payout_status: 'sent', instant_payout_amount: result.amount, instant_payout_error: null })
       .eq('id', order.id)
-    await notifyAdmins(`Rush grocery #${order.order_number}: Instant Payout $${result.amount.toFixed(2)} sent to your bank for shopping.`, order.id)
+    await notifyAdmins(`Short-notice grocery #${order.order_number}: Instant Payout $${result.amount.toFixed(2)} sent to your bank for shopping.`, order.id)
   } else {
     const reason = result?.reason || 'Unknown error'
     await supabase.from('grocery_orders').update({ instant_payout_status: 'failed', instant_payout_error: reason }).eq('id', order.id)
     await notifyAdmins(
-      `⚠️ Rush grocery #${order.order_number}: the Instant Payout did not go through (${reason}). The guest has prepaid $${Number(order.grocery_prepaid).toFixed(2)} — it will reach your bank with Stripe's normal payout, or send it instantly from the Stripe dashboard.`,
+      `⚠️ Short-notice grocery #${order.order_number}: the Instant Payout did not go through (${reason}). The guest has prepaid $${Number(order.grocery_prepaid).toFixed(2)} — it will reach your bank with Stripe's normal payout, or send it instantly from the Stripe dashboard.`,
       order.id
     )
   }

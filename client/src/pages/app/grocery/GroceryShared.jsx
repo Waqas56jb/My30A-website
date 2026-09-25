@@ -6,14 +6,16 @@ import { guest } from '../../../lib/guestApi.js'
 // Static fallbacks — identical to the seeded service_catalog rows; the live catalog wins when loaded.
 export const PACKAGES = [
   { key: 'full', name: 'Full Pack', items: 'Up to 70 items', price: 229, unit: '+ Publix' },
-  { key: 'large', name: 'Large Pack', items: '71-120 items', price: 379, unit: '+ Publix' },
-  { key: 'xl', name: 'XL Pack', items: 'Over $1,000 in items', price: 229, unit: '+ Publix' },
-  { key: 'bulk', name: 'Bulk Order', items: '121-200 items', price: 379, unit: '/ $1k block' },
+  { key: 'large', name: 'Large Pack', items: '71-120 items', price: 329, unit: '+ Publix' },
+  { key: 'xl', name: 'XL Pack', items: '121-200 items', price: 379, unit: '+ Publix' },
+  { key: 'bulk', name: 'Bulk Order', items: 'Over $1,000 in items', price: 379, unit: '/ $1k block' },
 ]
 
-// Rush/Holiday add-ons were removed from grocery (client request) — deactivated in service_catalog,
-// so the live catalog now returns none. No static fallback needed.
-export const ADDONS = []
+// Client price sheet (Sep 2026). Rush = same-day delivery, applied by the server from the date.
+export const ADDONS = [
+  { key: 'rush', name: 'Rush', sub: 'Same-day, any pack', price: 50, tone: 'green', icon: 'Zap' },
+  { key: 'holiday', name: 'Holiday', sub: 'Holiday weekend', price: 75, tone: 'blue', icon: 'Calendar' },
+]
 
 export const STOCKING = [
   { key: 'bags', name: 'Leave In Bags', desc: 'Everything left in bags by the kitchen', price: 0 },
@@ -93,7 +95,7 @@ export const money = (n) => `$${Number(n || 0).toFixed(2)}`
 export const addonLabel = (g) =>
   addonList(g).length ? addonList(g).map((a) => `${a.name} +$${a.price}`).join(', ') : 'None'
 
-export function SummaryFooter({ grocery }) {
+export function SummaryFooter({ grocery, fee = null }) {
   return (
     <div className="app-groc-summary">
       <div className="app-groc-summary-row">
@@ -109,7 +111,7 @@ export function SummaryFooter({ grocery }) {
       <hr className="app-groc-hr" />
       <div className="app-groc-price">
         <span>Estimated price</span>
-        <strong>${serviceFee(grocery) + addonTotal(grocery)} + Publix</strong>
+        <strong>${fee ?? serviceFee(grocery) + addonTotal(grocery)} + Publix</strong>
       </div>
     </div>
   )
@@ -158,7 +160,7 @@ export function PrepayBreakdown({ p, serviceFee: fee, receipt = null, settled = 
       </div>
       {Number(p.rush_fee) > 0 ? (
         <div className="app-groc-bill-row">
-          <span>Rush order fee ({Number(p.rush_fee_percent ?? 2)}%)</span>
+          <span>Short-notice fee ({Number(p.rush_fee_percent ?? 2)}%)</span>
           <b>{usd(p.rush_fee)}</b>
         </div>
       ) : null}

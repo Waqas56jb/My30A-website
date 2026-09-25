@@ -205,6 +205,38 @@ const rushRefund = await stripe.paymentIntents.retrieve(rushRow.stripe_grocery_p
 const cancelRow = await orderRow(rush.data.id)
 ok(cancelled.status === 200 && cancelRow.grocery_payment_status === 'refunded' && rushRefund.latest_charge.refunded === true, 'cancelled before shopping → prepayment refunded in full', `$${rushRefund.latest_charge.amount_refunded / 100}`)
 
+// ---- 6b. grocery price sheet: packages, Bulk per $1k block, Rush = same-day, Holiday ----
+const quoteOf = async (body) => (await call('POST', '/api/guest/grocery/quote', { token: G, body: { stocking: 'bags', ...body } })).data
+const sheet = { full: 229, large: 329, xl: 379, bulk: 379 }
+const later = inHours(24 * 5)
+const got = {}
+for (const key of Object.keys(sheet)) got[key] = (await quoteOf({ package: key, delivery_time: later })).service_fee
+ok(Object.entries(sheet).every(([k, v]) => got[k] === v), 'package prices match the sheet (229 / 329 / 379 / 379)', JSON.stringify(got))
+const pkgs = (await call('GET', '/api/guest/catalog', { token: G })).data.grocery.packages
+ok(pkgs.find((p) => p.key === 'xl')?.sub === '121-200 items' && pkgs.find((p) => p.key === 'bulk')?.sub === 'Over $1,000 in items', 'XL = 121-200 items, Bulk = over $1,000 (no longer swapped)')
+const bulkQ = await quoteOf({ package: 'bulk', delivery_time: later, cart_estimate: 2500 })
+ok(bulkQ.service_fee === 379 * 3 && bulkQ.package_blocks === 3, 'Bulk $2,500 cart → 3 × $379 blocks', `$${bulkQ.service_fee}`)
+const holQ = await quoteOf({ package: 'full', delivery_time: later, addons: ['holiday'] })
+ok(holQ.service_fee === 229 + 75 && holQ.addons.some((a) => a.key === 'holiday' && a.price === 75), 'Holiday add-on +$75', `$${holQ.service_fee}`)
+const noRush = await quoteOf({ package: 'full', delivery_time: later, addons: ['rush'] })
+ok(noRush.service_fee === 229 && !noRush.addons.some((a) => a.key === 'rush'), 'Rush never charged for a later day', `$${noRush.service_fee}`)
+const chicagoDay = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(d)
+const soonToday = new Date(Date.now() + 75 * 60000)
+if (chicagoDay(soonToday) === chicagoDay(new Date())) {
+  const rushQ = await quoteOf({ package: 'large', delivery_time: soonToday.toISOString() })
+  ok(rushQ.service_fee === 329 + 50 && rushQ.addons.some((a) => a.key === 'rush' && a.price === 50), 'same-day delivery → Rush +$50 added automatically', `$${rushQ.service_fee}`)
+} else {
+  ok(true, 'same-day Rush check skipped (too late in the Central-time day to book same-day)')
+}
+const past = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(0.2, { cart_estimate: 50 }) })
+ok(past.status === 400 && /1 hour/.test(past.data.error), 'delivery time under 1 hour away → 400', `${past.status}`)
+// Bulk: blocks re-counted from the real receipt at delivery
+const bulkOrder = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(24 * 5, { package: 'bulk', stocking: 'bags', cart_estimate: 1500 }) })
+const bulkRow = await orderRow(bulkOrder.data.id)
+await deliverOrder(bulkOrder.data.id, 2100)
+const bulkAfter = await orderRow(bulkOrder.data.id)
+ok(Number(bulkRow.service_fee) === 758 && bulkRow.package_blocks === 2 && Number(bulkAfter.service_fee) === 1137 && bulkAfter.package_blocks === 3 && Number(bulkAfter.settlement_amount) === r2(1137 + 2100 - Number(bulkRow.grocery_prepaid)), 'Bulk: 2 blocks at checkout ($1,500) → 3 blocks from the $2,100 receipt, settled on $1,137', `settled $${bulkAfter.settlement_amount}`)
+
 // declined card → 402, no order
 const beforeDecl = await countOrders()
 const declined2 = await saveCard(G, 'pm_card_chargeCustomerFail') // the transfer test above removed the first one

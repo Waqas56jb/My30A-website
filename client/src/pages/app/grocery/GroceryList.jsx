@@ -5,6 +5,11 @@ import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import CheckoutPayment from '../../../components/CheckoutPayment.jsx'
 import { TransferShell } from '../transfer/TransferShell.jsx'
 import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
+
+const todayLocal = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 import { DEFAULT_POLICY, PrepayBreakdown, SummaryFooter, addonTotal, prepayFor, serviceFee, usd, useGrocery } from './GroceryShared.jsx'
 
 const STEPS = [
@@ -27,7 +32,7 @@ export default function GroceryList() {
   const [showSugg, setShowSugg] = useState(false)
   const [liveSuggestions, setLiveSuggestions] = useState([])
   const [suggLoading, setSuggLoading] = useState(false)
-  const [date, setDate] = useState(tomorrow())
+  const [date, setDate] = useState(() => (incoming.addons?.rush ? todayLocal() : tomorrow()))
   const [time, setTime] = useState('16:00')
   const [agree, setAgree] = useState(true)
   const [file, setFile] = useState(null)
@@ -87,15 +92,39 @@ export default function GroceryList() {
   const { data: me } = useGuestQuery(guest.me, [])
   const fee = serviceFee(grocery) + addonTotal(grocery)
 
-  // Live buffer / rush / notice settings from Admin → Settings (falls back to 5% · 2% · 72h).
-  useEffect(() => {
-    guest
-      .groceryQuote({ package: grocery.pkg, stocking: grocery.stocking })
-      .then((q) => q?.policy && setPolicy(q.policy))
-      .catch(() => {})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   const cart = Number(String(cartTotal).replace(/[^0-9.]/g, ''))
+  const addonKeys = Object.keys(grocery.addons || {}).filter((key) => grocery.addons[key])
+
+  // The server prices the order: Rush is added for a same-day delivery (Central time), Bulk is
+  // counted per $1,000 of the cart, and the buffer / rush fee / notice come from Admin → Settings.
+  const [quote, setQuote] = useState(null)
+  useEffect(() => {
+    let ignore = false
+    const t = setTimeout(() => {
+      guest
+        .groceryQuote({
+          package: grocery.pkg,
+          stocking: grocery.stocking,
+          addons: addonKeys,
+          delivery_time: grocery.deliveryAt,
+          cart_estimate: cart > 0 ? cart : undefined,
+        })
+        .then((q) => {
+          if (ignore) return
+          setQuote(q)
+          if (q?.policy) setPolicy(q.policy)
+        })
+        .catch(() => {})
+    }, 250)
+    return () => {
+      ignore = true
+      clearTimeout(t)
+    }
+  }, [grocery.deliveryAt, cart, grocery.pkg, grocery.stocking, addonKeys.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const serviceTotal = quote?.service_fee ?? fee
+  const sameDay = Boolean(quote?.addons?.some((a) => a.key === 'rush'))
+  const blocks = quote?.package_blocks || 1
   const prepay = prepayFor(cart, grocery.deliveryAt, policy)
   const rushSoon = (new Date(grocery.deliveryAt).getTime() - Date.now()) / 3600000 < policy.min_notice_hours
   const noticeDays = Math.round(policy.min_notice_hours / 24)
@@ -149,7 +178,7 @@ export default function GroceryList() {
       className="app-groc app-groc-tall"
       footer={
         <>
-          <SummaryFooter grocery={grocery} />
+          <SummaryFooter grocery={grocery} fee={serviceTotal} />
         </>
       }
     >
@@ -293,7 +322,7 @@ export default function GroceryList() {
               icon={Calendar}
               type="date"
               value={date}
-              min={tomorrow()}
+              min={todayLocal()}
               display={fmtDate(date)}
               onChange={setDate}
             />
@@ -305,11 +334,29 @@ export default function GroceryList() {
               onChange={setTime}
             />
           </div>
+          {sameDay ? (
+            <p className="app-groc-rush" role="note">
+              <Zap size={16} strokeWidth={2} aria-hidden="true" />
+              <span>
+                <b>Same-day delivery</b> — the Rush add-on (+${quote.addons.find((a) => a.key === 'rush')?.price ?? 50}) is
+                included.
+              </span>
+            </p>
+          ) : null}
+          {blocks > 1 ? (
+            <p className="app-groc-rush is-info" role="note">
+              <Info size={16} strokeWidth={2} aria-hidden="true" />
+              <span>
+                <b>Bulk Order</b> is priced per $1,000 of groceries: {blocks} × ${quote.package.price} for your cart. The final
+                count follows your actual Publix receipt.
+              </span>
+            </p>
+          ) : null}
           {rushSoon ? (
             <p className="app-groc-rush" role="note">
               <Zap size={16} strokeWidth={2} aria-hidden="true" />
               <span>
-                <b>Rush order</b> — delivery in less than {noticeDays} days. A {policy.rush_fee_percent}% rush fee
+                <b>Short notice</b> — delivery in less than {noticeDays} days. A {policy.rush_fee_percent}% short-notice fee
                 {prepay ? ` (${usd(prepay.rush_fee)})` : ''} applies so we can shop for you right away. Pick a date {noticeDays}+ days
                 out to avoid it.
               </span>
@@ -337,7 +384,7 @@ export default function GroceryList() {
           </button>
         </section>
 
-        <PrepayBreakdown p={prepay} serviceFee={fee} />
+        <PrepayBreakdown p={prepay} serviceFee={serviceTotal} />
 
         {error ? <p className="app-inline-error">{error}</p> : null}
         <CheckoutPayment
@@ -345,7 +392,7 @@ export default function GroceryList() {
           amountLabel={prepay ? `${usd(prepay.prepay_amount)} now` : `$${fee} + Publix`}
           note={
             prepay
-              ? `We charge ${usd(prepay.prepay_amount)} now to buy your groceries. After delivery your card is charged the ${usd(fee)} service fee, adjusted to your exact Publix receipt — no grocery markup.`
+              ? `We charge ${usd(prepay.prepay_amount)} now to buy your groceries. After delivery your card is charged the ${usd(serviceTotal)} service fee, adjusted to your exact Publix receipt — no grocery markup.`
               : 'Enter your Publix cart total above to see what’s charged today.'
           }
           submitLabel={prepay ? `Pay ${usd(prepay.prepay_amount)} & Place Order` : 'Place Order'}

@@ -473,6 +473,24 @@ router.post(
         return res.status(400).json({ error: 'Shopper agreement is required' })
       }
 
+      // Bulk is priced per started $1,000: re-count the blocks from the real receipt.
+      let serviceFee = money(order.service_fee)
+      let packageBlocks = order.package_blocks || 1
+      const { data: pkgRow } = await supabase
+        .from('service_catalog')
+        .select('price, unit')
+        .eq('kind', 'grocery_package')
+        .eq('name', order.package)
+        .maybeSingle()
+      if (pkgRow && /1k block/i.test(pkgRow.unit || '') && grocery_total > 0) {
+        const blocks = Math.max(1, Math.ceil(grocery_total / 1000))
+        if (blocks !== packageBlocks) {
+          serviceFee = Number((serviceFee + money(pkgRow.price) * (blocks - packageBlocks)).toFixed(2))
+          packageBlocks = blocks
+        }
+      }
+      order.service_fee = serviceFee
+
       const split = calculateGrocerySplit({
         service_fee: money(order.service_fee),
         agreement,
@@ -484,6 +502,8 @@ router.post(
         status: 'delivered',
         delivered_at,
         grocery_total,
+        service_fee: serviceFee,
+        package_blocks: packageBlocks,
         customer_charge: Number((money(order.service_fee) + grocery_total + (money(order.rush_fee) || 0)).toFixed(2)),
         shopper_payout: split.shopper_payout,
         my30ahost_amount: split.my30ahost_amount,

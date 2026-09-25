@@ -365,10 +365,10 @@ async function main() {
   await expect('cancel again → 400', 'POST', `/api/guest/transfers/${t2.id}/cancel`, G, 400)
 
   // ---------- 10. guest grocery request ----------
-  // Rush/Holiday add-ons were removed from grocery (client request, service_catalog rows
-  // deactivated) — quote with no add-ons selected should just be package + stocking.
+  // Client price sheet (Sep 2026): Rush (+$50) is same-day only, Holiday is +$75.
   await expect('POST /api/guest/grocery/quote', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'full', stocking: 'full-kitchen' } }, 200, (d) => d.service_fee === 259 && d.addons_total === 0)
-  await expect('POST /api/guest/grocery/quote deactivated add-on is ignored, not priced', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'full', stocking: 'full-kitchen', addons: ['rush'] } }, 200, (d) => d.service_fee === 259 && d.addons_total === 0 && d.addons.length === 0)
+  await expect('POST /api/guest/grocery/quote Rush is not charged for a later day', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'full', stocking: 'full-kitchen', addons: ['rush'], delivery_time: isoPlusHours(24 * 4) } }, 200, (d) => d.service_fee === 259 && d.addons_total === 0 && d.addons.length === 0)
+  await expect('POST /api/guest/grocery/quote Holiday add-on +$75', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'full', stocking: 'full-kitchen', addons: ['holiday'] } }, 200, (d) => d.service_fee === 334 && d.addons_total === 75)
   await expect('POST /api/guest/grocery/quote bad package → 400', 'POST', '/api/guest/grocery/quote', { ...G, body: { package: 'mega' } }, 400)
   const deliveryTime = isoPlusHours(28)
   const g1 = await expect(
@@ -383,7 +383,7 @@ async function main() {
   await expect('GET /api/guest/grocery/:id', 'GET', `/api/guest/grocery/${g1.id}`, G, 200, (d) => d.status_log.length === 1)
   await expect('POST /api/guest/grocery/:id/list-file (Publix screenshot)', 'POST', `/api/guest/grocery/${g1.id}/list-file`, { ...G, form: pngForm({}, { list_file: 'publix-cart.png' }) }, 200, (d) => d.list_file_url && d.list_file_signed_url)
   await expect('POST /api/guest/grocery/:id/pay', 'POST', `/api/guest/grocery/${g1.id}/pay`, { ...G, body: { payment_method: 'card' } }, 200, (d) => d.payment_method === 'card')
-  const g2 = await expect('POST /api/guest/grocery (G2, to cancel)', 'POST', '/api/guest/grocery', { ...G, body: { package: 'large', delivery_time: isoPlusHours(40) } }, 201, (d) => d.service_fee === 379)
+  const g2 = await expect('POST /api/guest/grocery (G2, to cancel)', 'POST', '/api/guest/grocery', { ...G, body: { package: 'large', delivery_time: isoPlusHours(40) } }, 201, (d) => d.service_fee === 329)
   await expect('POST /api/guest/grocery/:id/cancel (G2)', 'POST', `/api/guest/grocery/${g2.id}/cancel`, G, 200, (d) => d.status === 'cancelled')
 
   // "Vitoria's Pick" now highlights real, genuinely top-rated partners (not a curated category
