@@ -3,8 +3,8 @@
   "short_name": "My30A",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#EEF5F2",
-  "theme_color": "#0F6E56",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0A1628",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -17,6 +17,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -1,7 +1,9 @@
 {
   "framework": "vite",
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/favicon.svg" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!assets/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
