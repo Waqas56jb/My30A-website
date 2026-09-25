@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowRight, ChevronRight, Search } from 'lucide-react'
 import { guest, useGuestQuery } from '../../../lib/guestApi.js'
-import { BackButton, CategoryTile, DINING_KEYS, ExploreShell, TileSkeleton } from './ExploreShared.jsx'
+import { BackButton, CategoryTile, DINING_KEYS, ExploreShell, TileSkeleton, iconFor, themeOf } from './ExploreShared.jsx'
 
-// Live categories first; the photo grid only renders once real data (with real photos and
-// partner counts) is here — a shimmer grid holds the space on a cold load.
+// Explore = the main places (dining, events, beaches, public info) as big photo tiles, then every
+// one of the 20 local-service categories as its own tile, grouped under its family (Golf & Outdoor,
+// Family & Kids…). Guests pick "Private Chef" or "Pickleball" right here — no extra level.
 function ordered(categories) {
   // Lead with the biggest real category as the wide feature tile; "coming soon" tiles go last.
   const live = categories.filter((c) => !c.coming_soon)
@@ -14,20 +15,38 @@ function ordered(categories) {
   return lead ? [lead, ...live.filter((c) => c !== lead), ...soon] : categories
 }
 
+const partners = (n) => (n === 1 ? 'local partner' : 'local partners')
+
 export default function Explore() {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const { data } = useGuestQuery(guest.explore, [])
-  const categories = data?.categories ? ordered(data.categories) : null
-  const partners = categories?.reduce((sum, c) => sum + (c.coming_soon || DINING_KEYS.has(c.key) || c.key === 'events' ? 0 : c.count || 0), 0)
+  const services = data?.services || null
+
+  // Families that have service categories become section headings; the rest stay tiles.
+  const groups = useMemo(() => {
+    const out = []
+    for (const s of services || []) {
+      let g = out.find((x) => x.key === s.group)
+      if (!g) out.push((g = { key: s.group, label: s.group_label, items: [] }))
+      g.items.push(s)
+    }
+    return out
+  }, [services])
+  const grouped = new Set(groups.map((g) => g.key))
+  const categories = data?.categories ? ordered(data.categories.filter((c) => !grouped.has(c.key))) : null
+  const byKey = Object.fromEntries((data?.categories || []).map((c) => [c.key, c]))
+  const partnerTotal = (services || []).reduce((sum, s) => sum + (s.count || 0), 0)
   // Unique places — a restaurant with a bar is in two tabs but is still one place.
-  const dining = categories?.find((c) => DINING_KEYS.has(c.key))?.dining_total ?? 0
+  const dining = data?.categories?.find((c) => DINING_KEYS.has(c.key))?.dining_total ?? 0
 
   const onSearch = (e) => {
     e.preventDefault()
     const clean = q.trim()
     navigate(clean ? `/app/explore/guide?q=${encodeURIComponent(clean)}` : '/app/explore/guide')
   }
+
+  const jump = (key) => document.getElementById(`svc-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
     <ExploreShell>
@@ -41,9 +60,9 @@ export default function Explore() {
         <div className="app-exp-intro app-enter">
           <h2>Browse by Category</h2>
           <p>
-            {partners
-              ? `${dining ? `${dining} restaurants, bars & cafés · ` : ''}${partners} vetted local partners`
-              : 'Dining, beaches, activities and local essentials'}
+            {services
+              ? `${dining ? `${dining} restaurants, bars & cafés · ` : ''}${services.length} local services · ${partnerTotal} vetted partners`
+              : 'Dining, beaches, activities and local services'}
           </p>
         </div>
 
@@ -63,6 +82,22 @@ export default function Explore() {
           </label>
         </form>
 
+        {groups.length ? (
+          <nav className="app-svc-jump app-enter" aria-label="Jump to local services">
+            <span className="app-svc-jump-label">Services</span>
+            {groups.map((g) => {
+              const Icon = iconFor(byKey[g.key]?.icon)
+              return (
+                <button key={g.key} type="button" onClick={() => jump(g.key)}>
+                  <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
+                  {g.label}
+                  <small>{g.items.length}</small>
+                </button>
+              )
+            })}
+          </nav>
+        ) : null}
+
         <div className="app-exp-grid">
           {categories ? (
             categories.map((category, i) => (
@@ -72,6 +107,50 @@ export default function Explore() {
             <TileSkeleton />
           )}
         </div>
+
+        {groups.length ? (
+          <section className="app-svc" aria-labelledby="svc-title">
+            <div className="app-svc-head">
+              <h2 id="svc-title">Local Services</h2>
+              <p>{services.length} categories · tap one to see every partner</p>
+            </div>
+
+
+            {groups.map((g) => {
+              const Icon = iconFor(byKey[g.key]?.icon)
+              return (
+                <div key={g.key} className="app-svc-group" id={`svc-${g.key}`}>
+                  <div className="app-svc-group-head">
+                    <span className={`app-svc-group-ico is-${byKey[g.key]?.tone || 'sea'}`} aria-hidden="true">
+                      <Icon size={16} strokeWidth={1.8} />
+                    </span>
+                    <h3>{g.label}</h3>
+                    {g.items.length > 1 ? (
+                      <Link to={`/app/explore/guide?c=${encodeURIComponent(g.key)}`} state={{ label: g.label }} className="app-svc-all">
+                        See all <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+                      </Link>
+                    ) : null}
+                  </div>
+                  <div className="app-exp-grid">
+                    {g.items.map((s, i) => {
+                      const theme = themeOf(s.slug)
+                      return (
+                        <CategoryTile
+                          key={s.slug}
+                          className="is-service"
+                          Icon={theme.Icon}
+                          unit={partners(s.count)}
+                          index={i}
+                          category={{ key: s.slug, label: s.title, tone: theme.tone, image_url: s.image, count: s.count, to: s.to }}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </section>
+        ) : null}
       </div>
     </ExploreShell>
   )

@@ -267,12 +267,12 @@ export function Actions({ primary, secondary }) {
 // Dining tiles list local favorites from the client's list, not paid partners.
 export const DINING_KEYS = new Set(['restaurants', 'bars', 'coffee'])
 
-export function CategoryTile({ category, featured = false, index = 0 }) {
-  const Icon = iconFor(category.icon)
+export function CategoryTile({ category, featured = false, index = 0, Icon: IconProp = null, className = '', unit = null }) {
+  const Icon = IconProp || iconFor(category.icon)
   return (
     <Link
       to={category.to}
-      className={`app-exp-tile is-${category.tone}${featured ? ' is-featured' : ''}${category.coming_soon ? ' is-soon' : ''} app-rise`}
+      className={`app-exp-tile is-${category.tone}${featured ? ' is-featured' : ''}${category.coming_soon ? ' is-soon' : ''}${className ? ` ${className}` : ''} app-rise`}
       style={{ '--i': index }}
       state={{ label: category.label }}
     >
@@ -291,7 +291,7 @@ export function CategoryTile({ category, featured = false, index = 0 }) {
           {category.coming_soon
             ? 'Curated list on the way'
             : category.count
-              ? `${category.count} ${category.key === 'events' ? 'upcoming events' : DINING_KEYS.has(category.key) ? 'places' : 'local partners'}`
+              ? `${category.count} ${unit || (category.key === 'events' ? 'upcoming events' : DINING_KEYS.has(category.key) ? 'places' : 'local partners')}`
               : 'Explore'}
           {category.coming_soon ? null : <ChevronRight size={13} strokeWidth={2} aria-hidden="true" />}
         </small>

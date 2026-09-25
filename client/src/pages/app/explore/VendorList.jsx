@@ -13,7 +13,7 @@ export default function VendorList() {
       <ExploreHead
         title={data?.title || 'Local Vendors'}
         sub="Curated vendors to elevate your stay"
-        back="/app/explore/guide"
+        back="/app/explore"
       />
 
       <div className="app-exp-body">

@@ -1101,9 +1101,31 @@ function exploreCategories() {
   })
 }
 
+// Every vendor guide (Golf Cart Rentals, Private Chef, Medical…) as its own Explore option, grouped
+// under the tile it belongs to, so guests reach a specific service in one tap from Explore.
+function exploreServices() {
+  return memo('explore:services', async () => {
+    const [{ data: categories }, { data: guides, error }, { data: vendors }] = await Promise.all([
+      supabase.from('explore_categories').select('key, label, sort_order').eq('is_active', true),
+      supabase.from('explore_guides').select('*').eq('is_active', true).not('category_key', 'is', null).order('sort_order'),
+      supabase.from('explore_vendors').select('guide_slug').eq('is_active', true).eq('kind', 'vendor'),
+    ])
+    if (error) throw httpError(400, error.message)
+    const order = Object.fromEntries((categories || []).map((c) => [c.key, c.sort_order]))
+    const label = Object.fromEntries((categories || []).map((c) => [c.key, c.label]))
+    const counts = {}
+    for (const v of vendors || []) counts[v.guide_slug] = (counts[v.guide_slug] || 0) + 1
+    return (guides || [])
+      .filter((g) => order[g.category_key] !== undefined)
+      .sort((a, b) => order[a.category_key] - order[b.category_key] || a.sort_order - b.sort_order)
+      .map((g) => guideView(g, { group: g.category_key, group_label: label[g.category_key], count: counts[g.slug] || 0 }))
+  })
+}
+
 router.get('/explore', async (_req, res, next) => {
   try {
-    res.json({ categories: await exploreCategories() })
+    const [categories, services] = await Promise.all([exploreCategories(), exploreServices()])
+    res.json({ categories, services })
   } catch (error) {
     sendError(res, next, error)
   }
