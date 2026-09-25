@@ -9,13 +9,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
-  CreditCard,
   MapPin,
   Menu,
   Mic,
   Phone,
-  Plane,
-  ShoppingBag,
   Sparkles,
   UtensilsCrossed,
   Waves,
@@ -796,49 +793,6 @@ export default function Home() {
               </div>
             </div>
 
-            <aside className="mkt-quick mkt-hero-in" style={{ '--d': '0.95s' }} aria-label="Quick booking">
-              <p className="mkt-quick-title">Plan your arrival</p>
-              <a className="mkt-quick-row" href="#airport-transfer">
-                <span className="mkt-quick-icon">
-                  <Plane size={18} aria-hidden="true" />
-                </span>
-                <span className="mkt-quick-text">
-                  <strong>Airport transfer</strong>
-                  <small>ECP · VPS · PNS</small>
-                </span>
-                <span className="mkt-quick-price">
-                  <small>from</small>$85
-                </span>
-              </a>
-              <a className="mkt-quick-row" href="#grocery">
-                <span className="mkt-quick-icon">
-                  <ShoppingBag size={18} aria-hidden="true" />
-                </span>
-                <span className="mkt-quick-text">
-                  <strong>Groceries</strong>
-                  <small>Publix, put away for you</small>
-                </span>
-                <span className="mkt-quick-price">
-                  <small>from</small>$229
-                </span>
-              </a>
-              <a className="mkt-quick-row" href="#meet-vitoria">
-                <span className="mkt-quick-icon">
-                  <Sparkles size={18} aria-hidden="true" />
-                </span>
-                <span className="mkt-quick-text">
-                  <strong>Ask Vitoria</strong>
-                  <small>Text or real-time voice</small>
-                </span>
-                <span className="mkt-quick-go">
-                  <ArrowUpRight size={18} aria-hidden="true" />
-                </span>
-              </a>
-              <p className="mkt-quick-note">
-                <CreditCard size={14} aria-hidden="true" /> Card charged only after your ride or
-                delivery
-              </p>
-            </aside>
           </div>
 
           <a className="mkt-scroll-cue" href="#communities" aria-label="Scroll to learn more">

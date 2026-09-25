@@ -747,7 +747,7 @@ html.mkt-smooth {
 
 .mkt-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: end;
   gap: clamp(32px, 5vw, 80px);
   opacity: var(--hero-fade);
