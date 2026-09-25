@@ -144,6 +144,12 @@ function OrderCard({
         Deliver to <b>{order.delivery_address || 'Address'}</b>
         {order.door_code ? ` · door code ${order.door_code}` : ''}
       </div>
+      {order.grocery_budget ? (
+        <div className="meta">
+          Guest prepaid <b>${Number(order.grocery_budget).toFixed(2)}</b> for groceries
+          {order.cart_estimate ? ` (Publix cart $${Number(order.cart_estimate).toFixed(2)} + buffer)` : ''}
+        </div>
+      ) : null}
       {order.guest_name || call ? (
         <div className="guest">
           <span>{order.guest_name || 'Guest'}</span>

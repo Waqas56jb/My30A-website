@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Check, Clock, Info, Mail, MapPin, Upload, X } from 'lucide-react'
+import { Calendar, Check, Clock, DollarSign, Info, Mail, MapPin, Upload, X, Zap } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import CheckoutPayment from '../../../components/CheckoutPayment.jsx'
 import { TransferShell } from '../transfer/TransferShell.jsx'
 import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
-import { SummaryFooter, addonTotal, serviceFee, useGrocery } from './GroceryShared.jsx'
+import { DEFAULT_POLICY, PrepayBreakdown, SummaryFooter, addonTotal, prepayFor, serviceFee, usd, useGrocery } from './GroceryShared.jsx'
 
 const STEPS = [
   <>Open the Publix app or website</>,
@@ -33,6 +33,9 @@ export default function GroceryList() {
   const [file, setFile] = useState(null)
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
+  const [cartTotal, setCartTotal] = useState('')
+  const [policy, setPolicy] = useState(DEFAULT_POLICY)
+  const checkoutKey = useRef(globalThis.crypto?.randomUUID?.() || String(Date.now()))
 
   // Prefill from the guest's saved stay, same as the transfer flow — but always editable, since
   // groceries might go to a different address than the one on file.
@@ -84,13 +87,27 @@ export default function GroceryList() {
   const { data: me } = useGuestQuery(guest.me, [])
   const fee = serviceFee(grocery) + addonTotal(grocery)
 
-  // Checkout: the card is verified and saved first; only then is the order placed with it. Nothing
-  // is charged now — the service fee + the exact Publix receipt are charged once, after delivery.
-  const placeOrder = async (paymentMethodId) => {
+  // Live buffer / rush / notice settings from Admin → Settings (falls back to 5% · 2% · 72h).
+  useEffect(() => {
+    guest
+      .groceryQuote({ package: grocery.pkg, stocking: grocery.stocking })
+      .then((q) => q?.policy && setPolicy(q.policy))
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cart = Number(String(cartTotal).replace(/[^0-9.]/g, ''))
+  const prepay = prepayFor(cart, grocery.deliveryAt, policy)
+  const rushSoon = (new Date(grocery.deliveryAt).getTime() - Date.now()) / 3600000 < policy.min_notice_hours
+  const noticeDays = Math.round(policy.min_notice_hours / 24)
+
+  // Checkout: the guest prepays their Publix cart total + buffer (+ rush fee) now, so groceries are
+  // bought with their money; the service fee is settled against the real receipt after delivery.
+  const placeOrder = async (paymentMethodId, { handleAction } = {}) => {
     setError('')
     if (!address.trim()) throw new Error('Please enter your delivery address.')
+    if (!prepay) throw new Error('Please enter your Publix cart total.')
     if (!agree) throw new Error('Please agree to the cancellation policy to continue.')
-    let order = await guest.createGrocery({
+    const payload = {
       delivery_address: address.trim(),
       package: grocery.pkg,
       stocking: grocery.stocking,
@@ -100,7 +117,19 @@ export default function GroceryList() {
       notes: notes.trim() || undefined,
       payment_method: 'card_on_file',
       payment_method_id: paymentMethodId,
-    })
+      cart_estimate: prepay.cart_estimate,
+      checkout_key: checkoutKey.current,
+    }
+    let order = null
+    try {
+      order = await guest.createGrocery(payload)
+    } catch (err) {
+      // The bank wants the guest to approve the charge (3-D Secure): show it, then finish the order.
+      if (err.status === 402 && err.data?.requires_action && handleAction) {
+        await handleAction(err.data.client_secret)
+        order = await guest.createGrocery({ ...payload, payment_intent_id: err.data.client_secret.split('_secret_')[0] })
+      } else throw err
+    }
     if (file) {
       try {
         order = await guest.uploadList(order.id, file)
@@ -240,6 +269,24 @@ export default function GroceryList() {
         </section>
 
         <section className="app-xfer-section">
+          <div className="app-xfer-intro">
+            <h2 className="app-xfer-h is-20">Publix Cart Total</h2>
+            <p>The total at the bottom of your Publix cart (tax included). You prepay it + {policy.buffer_percent}% so we shop with your money, not ours — the unused part comes off your service fee.</p>
+          </div>
+          <label className="app-xfer-box app-groc-cart">
+            <DollarSign size={18} strokeWidth={1.8} aria-hidden="true" />
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              aria-label="Publix cart total"
+              value={cartTotal}
+              onChange={(e) => setCartTotal(e.target.value.replace(/[^0-9.]/g, ''))}
+            />
+          </label>
+        </section>
+
+        <section className="app-xfer-section">
           <h2 className="app-xfer-h">Delivery Date &amp; Time</h2>
           <div className="app-xfer-row-2 is-gap-10">
             <Picker
@@ -258,6 +305,16 @@ export default function GroceryList() {
               onChange={setTime}
             />
           </div>
+          {rushSoon ? (
+            <p className="app-groc-rush" role="note">
+              <Zap size={16} strokeWidth={2} aria-hidden="true" />
+              <span>
+                <b>Rush order</b> — delivery in less than {noticeDays} days. A {policy.rush_fee_percent}% rush fee
+                {prepay ? ` (${usd(prepay.rush_fee)})` : ''} applies so we can shop for you right away. Pick a date {noticeDays}+ days
+                out to avoid it.
+              </span>
+            </p>
+          ) : null}
           <label className="app-xfer-box" style={{ marginTop: 10 }}>
             <Info size={16} strokeWidth={1.5} aria-hidden="true" />
             <input
@@ -280,13 +337,19 @@ export default function GroceryList() {
           </button>
         </section>
 
+        <PrepayBreakdown p={prepay} serviceFee={fee} />
+
         {error ? <p className="app-inline-error">{error}</p> : null}
         <CheckoutPayment
           title="Payment"
-          amountLabel={`$${fee} + Publix receipt`}
-          note="Nothing is charged today. Your card is saved securely and charged once — the service fee plus your exact Publix receipt, no markup — after your groceries are delivered."
-          submitLabel="Place Order"
-          disabled={!address.trim() || !agree}
+          amountLabel={prepay ? `${usd(prepay.prepay_amount)} now` : `$${fee} + Publix`}
+          note={
+            prepay
+              ? `We charge ${usd(prepay.prepay_amount)} now to buy your groceries. After delivery your card is charged the ${usd(fee)} service fee, adjusted to your exact Publix receipt — no grocery markup.`
+              : 'Enter your Publix cart total above to see what’s charged today.'
+          }
+          submitLabel={prepay ? `Pay ${usd(prepay.prepay_amount)} & Place Order` : 'Place Order'}
+          disabled={!address.trim() || !agree || !prepay}
           onPay={placeOrder}
           profile={me}
         />

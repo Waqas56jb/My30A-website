@@ -4,7 +4,8 @@
 //   declined card → 402 and NO booking created
 //   3-D Secure card → 402 requires_action with a client secret (the app shows the bank check)
 //   someone else's card → rejected
-//   grocery → card saved at checkout, order placed, charged once at delivery
+//   grocery → Publix cart + buffer prepaid at checkout; one settlement at delivery (charge or refund);
+//             rush orders pay a rush fee + trigger an Instant Payout; cancel refunds the prepayment
 //   holiday fee added after booking → hold captured + the difference charged to the saved card
 // Refuses to run when the target API reports Stripe LIVE mode (never charges real cards).
 //   cd server && node scripts/e2e-checkout.mjs            (API :4000; E2E_API_URL to override)
@@ -134,21 +135,88 @@ const foreign = await stripe.paymentMethods.create({ type: 'card', card: { token
 const stolen = await call('POST', '/api/guest/transfers', { token: G, body: transferBody(30, { payment_method_id: foreign.id }) })
 ok(stolen.status === 400, 'card not saved on this guest → rejected', `${stolen.status} "${stolen.data.error}"`)
 
-// ---- 6. grocery: card at checkout, one charge at delivery ----
-const order = await call('POST', '/api/guest/grocery', { token: G, body: { package: 'full', stocking: 'full-kitchen', delivery_time: inHours(28), items: ['Eggs'], payment_method: 'card_on_file', payment_method_id: visa.pm } })
-ok(order.status === 201 && order.data.card_saved && /Visa/.test(order.data.card_label), 'grocery order placed with saved card, nothing charged', `${order.status} ${order.data.card_label}`)
-await call('POST', `/api/grocery/${order.data.id}/assign`, { token: A, body: { shopper_id: shopper.id } })
-await call('POST', `/api/grocery/${order.data.id}/shopping`, { token: S })
-await call('POST', `/api/grocery/${order.data.id}/on-the-way`, { token: S })
-const form = new FormData()
-form.append('grocery_total', '150.25')
-form.append('payment_method', 'card_on_file')
-form.append('receipt', tinyPng(), 'r.png')
-form.append('kitchen_photo', tinyPng(), 'k.png')
-const delivered = await call('POST', `/api/grocery/${order.data.id}/deliver`, { token: S, form })
-const { data: orderRow } = await db.from('grocery_orders').select('stripe_payment_intent_id, customer_charge, payment_status').eq('id', order.data.id).single()
-const groceryPi = orderRow.stripe_payment_intent_id ? await stripe.paymentIntents.retrieve(orderRow.stripe_payment_intent_id) : null
-ok(delivered.status === 200 && groceryPi?.status === 'succeeded' && groceryPi.amount === Math.round(orderRow.customer_charge * 100) && groceryPi.payment_method === visa.pm, 'delivered → one charge (fee + Publix) on the checkout card', `$${groceryPi?.amount / 100}`)
+// ---- 6. grocery prepayment: cart + buffer charged at checkout, one settlement at delivery ----
+const policyRow = (await db.from('settings').select('grocery_buffer_percent, grocery_rush_fee_percent, grocery_min_notice_hours').eq('id', 1).single()).data
+const BUF = Number(policyRow.grocery_buffer_percent)
+const RUSH = Number(policyRow.grocery_rush_fee_percent)
+const r2 = (n) => Math.round(n * 100) / 100
+const groceryBody = (hours, extra = {}) => ({ package: 'full', stocking: 'full-kitchen', delivery_time: inHours(hours), items: ['Eggs'], payment_method: 'card_on_file', payment_method_id: visa.pm, checkout_key: `g-${Date.now()}-${Math.random()}`, ...extra })
+const countOrders = async () => (await call('GET', '/api/guest/grocery', { token: G })).data.length
+async function deliverOrder(id, total) {
+  await call('POST', `/api/grocery/${id}/assign`, { token: A, body: { shopper_id: shopper.id } })
+  await call('POST', `/api/grocery/${id}/shopping`, { token: S })
+  await call('POST', `/api/grocery/${id}/on-the-way`, { token: S })
+  const f = new FormData()
+  f.append('grocery_total', String(total))
+  f.append('payment_method', 'card_on_file')
+  f.append('receipt', tinyPng(), 'r.png')
+  f.append('kitchen_photo', tinyPng(), 'k.png')
+  return call('POST', `/api/grocery/${id}/deliver`, { token: S, form: f })
+}
+const orderRow = async (id) => (await db.from('grocery_orders').select('*').eq('id', id).single()).data
+
+// quote shows the same numbers the app shows
+const gq = await call('POST', '/api/guest/grocery/quote', { token: G, body: { package: 'full', stocking: 'full-kitchen', cart_estimate: 300, delivery_time: inHours(24 * 5) } })
+ok(gq.status === 200 && gq.data.prepay?.prepay_amount === r2(300 * (1 + BUF / 100)) && gq.data.prepay.is_rush === false && gq.data.policy.buffer_percent === BUF, 'grocery quote: cart + buffer, not rush at 5 days', `$${gq.data.prepay?.prepay_amount}`)
+
+// no cart total → rejected, nothing created
+const beforeNoCart = await countOrders()
+const noCart = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(24 * 5) })
+ok(noCart.status === 400 && /cart total/i.test(noCart.data.error) && (await countOrders()) === beforeNoCart, 'grocery without Publix cart total → 400, no order', `${noCart.status}`)
+
+// standard order: prepaid now, receipt below the estimate → fee minus the unused buffer
+const std = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(24 * 5, { cart_estimate: 300 }) })
+const stdRow = await orderRow(std.data.id)
+const stdPi = stdRow?.stripe_grocery_payment_intent_id ? await stripe.paymentIntents.retrieve(stdRow.stripe_grocery_payment_intent_id) : null
+ok(std.status === 201 && stdPi?.status === 'succeeded' && stdPi.amount === Math.round(r2(300 * (1 + BUF / 100)) * 100) && stdPi.payment_method === visa.pm && stdRow.is_rush === false && Number(stdRow.rush_fee) === 0 && !stdRow.instant_payout_status, `standard order → $300 cart + ${BUF}% charged at checkout, no rush fee`, `$${stdPi?.amount / 100}`)
+const stdDone = await deliverOrder(std.data.id, 305.4)
+const stdAfter = await orderRow(std.data.id)
+const stdDue = r2(Number(stdAfter.service_fee) + 305.4 - Number(stdAfter.grocery_prepaid))
+const stdSettle = stdAfter.stripe_payment_intent_id ? await stripe.paymentIntents.retrieve(stdAfter.stripe_payment_intent_id) : null
+ok(stdDone.status === 200 && Number(stdAfter.settlement_amount) === stdDue && stdSettle?.status === 'succeeded' && stdSettle.amount === Math.round(stdDue * 100) && stdAfter.payment_status === 'captured', 'delivered under estimate → one settlement = fee − unused buffer', `fee $${stdAfter.service_fee} → charged $${stdDue}`)
+ok(Number(stdAfter.customer_charge) === r2(Number(stdAfter.service_fee) + 305.4) && stdPi.amount + stdSettle.amount === Math.round(Number(stdAfter.customer_charge) * 100), 'prepay + settlement = service fee + exact receipt (no double charge)', `$${(stdPi.amount + stdSettle.amount) / 100}`)
+
+// receipt above the estimate → fee + the difference
+const over = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(24 * 5, { cart_estimate: 100 }) })
+await deliverOrder(over.data.id, 130)
+const overAfter = await orderRow(over.data.id)
+const overSettle = overAfter.stripe_payment_intent_id ? await stripe.paymentIntents.retrieve(overAfter.stripe_payment_intent_id) : null
+ok(overSettle?.status === 'succeeded' && overSettle.amount === Math.round(r2(Number(overAfter.service_fee) + 130 - r2(100 * (1 + BUF / 100))) * 100), 'receipt over the estimate → fee + difference charged', `$${overSettle?.amount / 100}`)
+
+// huge cart where the unused buffer is bigger than the fee → only then a partial refund
+const big = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(24 * 5, { cart_estimate: 5000 }) })
+await deliverOrder(big.data.id, 4600)
+const bigAfter = await orderRow(big.data.id)
+const bigPi = await stripe.paymentIntents.retrieve(bigAfter.stripe_grocery_payment_intent_id, { expand: ['latest_charge'] })
+const bigDue = r2(Number(bigAfter.service_fee) + 4600 - Number(bigAfter.grocery_prepaid))
+ok(bigDue < 0 && Number(bigAfter.settlement_amount) === bigDue && bigPi.latest_charge.amount_refunded === Math.round(-bigDue * 100) && !bigAfter.stripe_payment_intent_id, 'credit bigger than the fee → the rest refunded, no extra charge', `refunded $${bigPi.latest_charge.amount_refunded / 100}`)
+
+// rush order: rush fee shown + charged, Instant Payout attempted and recorded
+const rush = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(28, { cart_estimate: 200 }) })
+const rushRow = await orderRow(rush.data.id)
+const rushPi = await stripe.paymentIntents.retrieve(rushRow.stripe_grocery_payment_intent_id)
+ok(rush.status === 201 && rushRow.is_rush && Number(rushRow.rush_fee) === r2(200 * RUSH / 100) && rushPi.amount === Math.round(r2(200 * (1 + BUF / 100) + 200 * RUSH / 100) * 100), `rush order (<${policyRow.grocery_min_notice_hours}h) → ${RUSH}% rush fee added to the prepayment`, `$${rushPi.amount / 100} incl. $${rushRow.rush_fee}`)
+const { data: payoutNote } = await db.from('notifications').select('message').eq('grocery_order_id', rush.data.id).ilike('message', '%Instant Payout%').limit(1)
+ok(['sent', 'failed'].includes(rushRow.instant_payout_status) && payoutNote?.length === 1, 'rush → Instant Payout attempted, result saved + admin notified', `${rushRow.instant_payout_status}${rushRow.instant_payout_error ? `: ${rushRow.instant_payout_error}` : ''}`)
+
+// guest cancels before shopping → prepayment refunded in full
+const cancelled = await call('POST', `/api/guest/grocery/${rush.data.id}/cancel`, { token: G })
+const rushRefund = await stripe.paymentIntents.retrieve(rushRow.stripe_grocery_payment_intent_id, { expand: ['latest_charge'] })
+const cancelRow = await orderRow(rush.data.id)
+ok(cancelled.status === 200 && cancelRow.grocery_payment_status === 'refunded' && rushRefund.latest_charge.refunded === true, 'cancelled before shopping → prepayment refunded in full', `$${rushRefund.latest_charge.amount_refunded / 100}`)
+
+// declined card → 402, no order
+const beforeDecl = await countOrders()
+const declined2 = await saveCard(G, 'pm_card_chargeCustomerFail') // the transfer test above removed the first one
+const gBad = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(24 * 5, { cart_estimate: 120, payment_method_id: declined2.pm }) })
+ok(gBad.status === 402 && (await countOrders()) === beforeDecl, 'grocery with declined card → 402, no order created', `${gBad.status} "${gBad.data.error}"`)
+
+// 3-D Secure → requires_action, then no order until approved
+if (sca.status === 'succeeded') {
+  const gSca = await call('POST', '/api/guest/grocery', { token: G, body: groceryBody(24 * 5, { cart_estimate: 90, payment_method_id: sca.pm }) })
+  ok(gSca.status === 402 && gSca.data.requires_action && gSca.data.client_secret?.includes('_secret_'), 'grocery 3-D Secure → requires_action for the bank check', `${gSca.status}`)
+  if (gSca.data.client_secret) await stripe.paymentIntents.cancel(gSca.data.client_secret.split('_secret_')[0]).catch(() => {})
+}
 
 // ---- 7. holiday fee after booking: hold captured + difference charged ----
 const hol = await call('POST', '/api/guest/transfers', { token: G, body: transferBody(30, { payment_method_id: visa.pm, checkout_key: `h-${Date.now()}` }) })

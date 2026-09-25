@@ -422,9 +422,49 @@ export default function Grocery() {
                   </span>
                 </>
               ) : null}
+              {order.prepay_amount > 0 ? (
+                <>
+                  <span>Prepaid at checkout</span>
+                  <span>
+                    {usd(order.prepay_amount)}{' '}
+                    <small className="muted">
+                      cart {usd(order.cart_estimate)} + {Number(order.buffer_percent)}% buffer
+                      {order.rush_fee > 0 ? ` + ${usd(order.rush_fee)} rush fee` : ''}
+                    </small>
+                  </span>
+                  <span>Shopping budget</span>
+                  <span>{usd(order.grocery_prepaid)}</span>
+                </>
+              ) : null}
+              {order.is_rush ? (
+                <>
+                  <span>Rush · Instant Payout</span>
+                  <span>
+                    {order.instant_payout_status === 'sent' ? (
+                      <Pill>Sent {usd(order.instant_payout_amount)}</Pill>
+                    ) : order.instant_payout_status === 'failed' ? (
+                      <>
+                        <Pill warn>Failed</Pill> <small className="muted">{order.instant_payout_error}</small>
+                      </>
+                    ) : (
+                      <Pill neutral>{order.instant_payout_status || 'Pending'}</Pill>
+                    )}
+                  </span>
+                </>
+              ) : null}
+              {order.settlement_amount != null ? (
+                <>
+                  <span>Settled at delivery</span>
+                  <span>
+                    {order.settlement_amount >= 0
+                      ? `${usd(order.settlement_amount)} charged`
+                      : `${usd(-order.settlement_amount)} refunded`}
+                  </span>
+                </>
+              ) : null}
               {order.grocery_payment_status && order.grocery_payment_status !== 'pending' ? (
                 <>
-                  <span>Publix total charge</span>
+                  <span>{order.prepay_amount > 0 ? 'Prepayment' : 'Publix total charge'}</span>
                   <span>
                     <Pill {...paymentStatusPill(order.grocery_payment_status)}>
                       {statusLabel(order.grocery_payment_status)}

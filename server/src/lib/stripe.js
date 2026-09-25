@@ -374,3 +374,54 @@ export async function detachCardSafe(paymentMethodId) {
     return null
   }
 }
+
+// Charges a saved card right now, with the guest present (checkout). Returns { intent } — status
+// 'succeeded', or 'requires_action' when the bank wants 3-D Secure — or { error } on a decline.
+export async function chargeNow({ customerId, paymentMethodId, amount, metadata }) {
+  const stripe = await getStripe()
+  if (!stripe) return notConfigured
+  try {
+    const intent = await stripe.paymentIntents.create({
+      amount: Math.round(Number(amount) * 100),
+      currency: 'usd',
+      customer: customerId,
+      payment_method: paymentMethodId,
+      payment_method_types: ['card'],
+      confirm: true,
+      metadata,
+    })
+    return { intent }
+  } catch (error) {
+    return { error: error?.raw?.message || error.message, code: error?.code, decline_code: error?.decline_code, intent: error?.raw?.payment_intent || null }
+  }
+}
+
+// Refunds part of a charge (e.g. the unused grocery prepayment). Never throws.
+export async function refundAmount(intentId, amount, metadata) {
+  const stripe = await getStripe()
+  if (!stripe) return notConfigured
+  const cents = Math.round(Number(amount) * 100)
+  if (!intentId || !(cents > 0)) return { skipped: true, reason: 'NOTHING_TO_REFUND' }
+  try {
+    return await stripe.refunds.create({ payment_intent: intentId, amount: cents, metadata })
+  } catch (error) {
+    return { skipped: true, reason: error?.raw?.message || error.message }
+  }
+}
+
+// Sends up to `amount` from the Stripe balance to the owner's debit card within minutes (Stripe
+// Instant Payouts, ~1.5%). Uses what Stripe says is instantly available; never throws.
+export async function instantPayout({ amount, description, metadata }) {
+  const stripe = await getStripe()
+  if (!stripe) return notConfigured
+  try {
+    const balance = await stripe.balance.retrieve()
+    const available = (balance.instant_available || []).find((b) => b.currency === 'usd')?.amount || 0
+    const cents = Math.min(Math.round(Number(amount) * 100), available)
+    if (!(cents > 0)) return { skipped: true, reason: 'No instantly available balance for an Instant Payout yet.' }
+    const payout = await stripe.payouts.create({ amount: cents, currency: 'usd', method: 'instant', description, metadata })
+    return { payout, amount: cents / 100 }
+  } catch (error) {
+    return { skipped: true, reason: error?.raw?.message || error.message }
+  }
+}

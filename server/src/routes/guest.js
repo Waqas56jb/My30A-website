@@ -30,7 +30,10 @@ import {
   mapIntentStatus,
   releasePaymentHold,
   retrievePaymentIntent,
+  chargeNow,
+  refundAmount,
 } from '../lib/stripe.js'
+import { groceryPolicy, isPrepaid, prepayQuote, refundPrepayment, runInstantPayout } from '../services/groceryPay.js'
 import { maskedCallNumber } from '../lib/sms.js'
 import { geocodeQuery } from '../lib/nominatim.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
@@ -474,6 +477,14 @@ function orderView(order, extra = {}) {
     payment_method: order.payment_method,
     payment_status: order.payment_status,
     grocery_payment_status: order.grocery_payment_status,
+    cart_estimate: money(order.cart_estimate) || null,
+    buffer_percent: order.buffer_percent == null ? null : Number(order.buffer_percent),
+    grocery_prepaid: money(order.grocery_prepaid) || 0,
+    rush_fee: money(order.rush_fee) || 0,
+    is_rush: Boolean(order.is_rush),
+    prepay_amount: money(order.prepay_amount) || 0,
+    prepaid_at: order.prepaid_at || null,
+    settlement_amount: order.settlement_amount == null ? null : money(order.settlement_amount),
     card_saved: Boolean(order.card_saved_at),
     card_label: order.card_label || null,
     shopper: order.shopper ? { id: order.shopper.id, name: order.shopper.name } : null,
@@ -1861,7 +1872,15 @@ router.post('/transfers/:id/tip', guestOnly, async (req, res, next) => {
 
 router.post('/grocery/quote', guestOnly, async (req, res, next) => {
   try {
-    res.json(await quoteGrocery(req.body || {}))
+    const body = req.body || {}
+    const quote = await quoteGrocery(body)
+    const policy = await groceryPolicy()
+    const cart = Number(body.cart_estimate)
+    res.json({
+      ...quote,
+      policy,
+      prepay: cart > 0 && body.delivery_time ? prepayQuote({ cart_estimate: cart, delivery_time: body.delivery_time, policy }) : null,
+    })
   } catch (error) {
     sendError(res, next, error)
   }
@@ -1912,15 +1931,69 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
       created_by: req.user.id,
     }
 
-    // Card checkout: the verified, saved card is charged once — after delivery (service fee + the
-    // exact Publix receipt).
+    // Card checkout: the guest prepays their Publix cart total + buffer (+ rush fee) now, so we
+    // never shop with our own money; the service fee is settled against the real receipt at
+    // delivery (services/groceryPay.js). The charge happens BEFORE the order is created.
+    let prepay = null
+    let prepayIntentId = null
     if (body.payment_method_id) {
+      const cart = Number(body.cart_estimate)
+      if (!(cart > 0) || cart > 20000) {
+        return res.status(400).json({ error: 'Please enter your Publix cart total (it’s shown in your Publix cart, tax included).' })
+      }
       const card = await checkoutCard(req.user, String(body.payment_method_id))
+      const policy = await groceryPolicy()
+      prepay = prepayQuote({ cart_estimate: cart, delivery_time: body.delivery_time, policy })
+      const checkoutKey = String(body.checkout_key || crypto.randomUUID())
+      if (body.payment_intent_id) {
+        // Second attempt after the guest approved a bank check (3-D Secure) for this exact charge.
+        const intent = await retrieveIntentSafe(String(body.payment_intent_id))
+        const valid =
+          intent &&
+          intent.status === 'succeeded' &&
+          intent.customer === card.customerId &&
+          intent.amount === Math.round(prepay.prepay_amount * 100) &&
+          intent.metadata?.checkout_key === checkoutKey
+        if (!valid) return res.status(402).json({ error: 'Your payment could not be confirmed. Please try again.' })
+        prepayIntentId = intent.id
+      } else {
+        const paid = await chargeNow({
+          customerId: card.customerId,
+          paymentMethodId: String(body.payment_method_id),
+          amount: prepay.prepay_amount,
+          metadata: { kind: 'grocery_prepay', checkout_key: checkoutKey },
+        })
+        if (paid.skipped) return res.status(503).json({ error: 'Card payments are unavailable right now. Please try again shortly.' })
+        if (paid.intent?.status === 'requires_action') {
+          return res.status(402).json({
+            requires_action: true,
+            client_secret: paid.intent.client_secret,
+            checkout_key: checkoutKey,
+            error: 'Your bank needs you to approve this payment.',
+          })
+        }
+        if (paid.error || paid.intent?.status !== 'succeeded') {
+          if (paid.intent?.id) await cancelIntentSafe(paid.intent.id)
+          await detachCardSafe(String(body.payment_method_id))
+          return res.status(402).json({ error: paid.error ? (/declin/i.test(paid.error) ? `${paid.error} Please try another card.` : `Your card was declined: ${paid.error}`) : 'Your card could not be charged. Please try another card.' })
+        }
+        prepayIntentId = paid.intent.id
+      }
       Object.assign(insert, {
         payment_method: 'card_on_file',
         stripe_payment_method_id: String(body.payment_method_id),
         card_label: card.label,
         card_saved_at: new Date().toISOString(),
+        cart_estimate: prepay.cart_estimate,
+        buffer_percent: prepay.buffer_percent,
+        grocery_prepaid: prepay.grocery_prepaid,
+        is_rush: prepay.is_rush,
+        rush_fee: prepay.rush_fee,
+        prepay_amount: prepay.prepay_amount,
+        prepaid_at: new Date().toISOString(),
+        stripe_grocery_payment_intent_id: prepayIntentId,
+        grocery_payment_status: 'captured',
+        customer_charge: Math.round((quote.service_fee + prepay.rush_fee) * 100) / 100,
       })
     }
 
@@ -1929,20 +2002,28 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
       .insert(insert)
       .select(ORDER_SELECT)
       .single()
-    if (error) return res.status(400).json({ error: error.message })
+    if (error) {
+      // Never keep the guest's money for an order that doesn't exist.
+      if (prepayIntentId) await refundAmount(prepayIntentId, prepay.prepay_amount, { kind: 'grocery_prepay_rollback' })
+      return res.status(400).json({ error: error.message })
+    }
 
     await logOrder(data.id, 'requested', req.user.id)
     await notifyAdmins({
       grocery_order_id: data.id,
-      message: `New grocery request #${data.order_number} from ${insert.guest_name} · ${quote.package.name} · ${formatWhen(data.delivery_time)} · ${delivery_address}`,
+      message: `New grocery request #${data.order_number} from ${insert.guest_name} · ${quote.package.name} · ${formatWhen(data.delivery_time)} · ${delivery_address}${prepay ? ` · prepaid $${prepay.prepay_amount.toFixed(2)}${prepay.is_rush ? ' · RUSH' : ''}` : ''}`,
     })
     await notify({
       user_id: req.user.id,
       grocery_order_id: data.id,
-      message: `Vitoria has your grocery list (#${data.order_number}). We’ll confirm your exact total shortly.`,
+      message: prepay
+        ? `Vitoria has your grocery list (#${data.order_number}). ${data.card_label || 'Your card'} was charged $${prepay.prepay_amount.toFixed(2)} for your groceries${prepay.is_rush ? ' (incl. rush fee)' : ''}. After delivery you pay the service fee, adjusted to your exact Publix receipt.`
+        : `Vitoria has your grocery list (#${data.order_number}). We’ll confirm your exact total shortly.`,
     })
+    // Rush order: get the money to the owner's bank in minutes for shopping day.
+    if (prepay?.is_rush) await runInstantPayout(data, await groceryPolicy()).catch((err) => console.log('Instant payout skipped:', err.message))
 
-    res.status(201).json(orderView(data, { quote }))
+    res.status(201).json(orderView(data, { quote, prepay }))
   } catch (error) {
     sendError(res, next, error)
   }
@@ -2117,10 +2198,18 @@ router.post('/grocery/:id/cancel', guestOnly, async (req, res, next) => {
         console.log('Stripe release skipped:', err.message)
       )
     }
+    const cancelUpdates = { status: 'cancelled' }
+    if (isPrepaid(order) && order.grocery_payment_status === 'captured') {
+      const refund = await refundPrepayment(order)
+      if (refund?.skipped) {
+        cancelUpdates.notes = `${order.notes ? `${order.notes}\n` : ''}Prepayment refund failed: ${refund.reason}`
+        await notifyAdmins({ grocery_order_id: order.id, message: `⚠️ Grocery #${order.order_number} cancelled but the $${money(order.prepay_amount)} prepayment refund failed (${refund.reason}). Refund it from Stripe.` })
+      } else cancelUpdates.grocery_payment_status = 'refunded'
+    }
 
     const { data, error } = await supabase
       .from('grocery_orders')
-      .update({ status: 'cancelled' })
+      .update(cancelUpdates)
       .eq('id', order.id)
       .select(ORDER_SELECT)
       .single()

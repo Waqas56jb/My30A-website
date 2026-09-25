@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronRight, MapPin, MessageSquare, Package, ShieldCheck } from 'lucide-react'
 import { errorText, guest } from '../../../lib/guestApi.js'
 import { Cta, TransferShell, clock } from '../transfer/TransferShell.jsx'
-import { useOrderId } from './GroceryShared.jsx'
+import { PrepayBreakdown, useOrderId } from './GroceryShared.jsx'
 
 const ORDER = ['requested', 'assigned', 'shopping', 'on_the_way', 'delivered']
 
@@ -107,12 +107,18 @@ export default function GroceryTrack() {
           {order.card_label && order.status !== 'cancelled' ? (
             <p className="app-co-onfile">
               <ShieldCheck size={15} strokeWidth={2} aria-hidden="true" />
-              {order.card_label} · {order.payment_status === 'captured' ? 'paid' : 'charged once, after delivery'}
+              {order.card_label} ·{' '}
+              {order.payment_status === 'captured'
+                ? 'paid'
+                : order.prepay_amount > 0
+                  ? 'groceries prepaid · service fee after delivery'
+                  : 'charged once, after delivery'}
             </p>
           ) : null}
           {['requested', 'assigned'].includes(order.status) &&
           order.payment_method !== 'cash' &&
-          !order.card_saved ? (
+          !order.card_saved &&
+          !(order.prepay_amount > 0) ? (
             <Cta to={`/app/grocery/payment?id=${order.id}`}>Save Card for Delivery</Cta>
           ) : null}
           {order.status === 'requested' ? (
@@ -152,6 +158,14 @@ export default function GroceryTrack() {
         </section>
 
         {error ? <p className="app-inline-error">{error}</p> : null}
+
+        <PrepayBreakdown
+          p={order}
+          serviceFee={order.service_fee}
+          receipt={order.status === 'delivered' || order.status === 'refunded' ? order.grocery_total : null}
+          settled={order.settlement_amount}
+          title={order.status === 'cancelled' && order.grocery_payment_status === 'refunded' ? 'Refunded in full' : 'Your payment'}
+        />
 
         <ol className="app-xfer-tl">
           {steps.map((s) => (

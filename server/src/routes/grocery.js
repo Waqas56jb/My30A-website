@@ -6,9 +6,11 @@ import { calculateGrocerySplit } from '../services/earnings.js'
 import { notify } from '../services/notifications.js'
 import {
   chargeSavedCard,
+  refundAmount,
   refundPaymentIntent,
   releasePaymentHold,
 } from '../lib/stripe.js'
+import { STRIPE_MIN_CHARGE, isPrepaid, refundPrepayment, settlement } from '../services/groceryPay.js'
 import { getSignedUrl, uploadFile } from '../lib/storage.js'
 import { addDays, monthRange as tzMonthRange, startOfDay } from '../lib/timezone.js'
 
@@ -110,6 +112,12 @@ function adminView(order, extra = {}) {
     shopper_payout: money(order.shopper_payout),
     tip_amount: money(order.tip_amount),
     my30ahost_amount: money(order.my30ahost_amount),
+    cart_estimate: order.cart_estimate == null ? null : money(order.cart_estimate),
+    grocery_prepaid: order.grocery_prepaid == null ? null : money(order.grocery_prepaid),
+    prepay_amount: order.prepay_amount == null ? null : money(order.prepay_amount),
+    rush_fee: money(order.rush_fee) || 0,
+    settlement_amount: order.settlement_amount == null ? null : money(order.settlement_amount),
+    instant_payout_amount: order.instant_payout_amount == null ? null : money(order.instant_payout_amount),
     shopper_name: order.shopper?.name || null,
     addons: order.addons || [],
     is_guest_request: Boolean(order.guest_id),
@@ -133,6 +141,9 @@ function shopperView(order) {
     guest_name: order.guest_name,
     guest_phone: order.guest_phone,
     status: order.status,
+    // The guest prepaid their Publix cart + buffer: the shopper's budget at the register.
+    grocery_budget: money(order.grocery_prepaid) || null,
+    cart_estimate: money(order.cart_estimate) || null,
     shopper_payout,
     tip_amount,
     total: Number((shopper_payout + tip_amount).toFixed(2)),
@@ -473,7 +484,7 @@ router.post(
         status: 'delivered',
         delivered_at,
         grocery_total,
-        customer_charge: Number((money(order.service_fee) + grocery_total).toFixed(2)),
+        customer_charge: Number((money(order.service_fee) + grocery_total + (money(order.rush_fee) || 0)).toFixed(2)),
         shopper_payout: split.shopper_payout,
         my30ahost_amount: split.my30ahost_amount,
         comp_snapshot: split.snapshot,
@@ -490,7 +501,48 @@ router.post(
         updates.flag_reason = 'NEGATIVE_PLATFORM_AMOUNT'
       }
 
-      if (payment_method === 'card_on_file') {
+      if (payment_method === 'card_on_file' && isPrepaid(order) && order.grocery_payment_status === 'captured') {
+        // Prepaid order: one settlement — service fee + real receipt − what the guest prepaid.
+        // The unused buffer is netted against the service fee, so normally nothing is refunded.
+        const due = settlement({ service_fee: money(order.service_fee), grocery_total, grocery_prepaid: money(order.grocery_prepaid) })
+        updates.settlement_amount = due
+        if (due >= STRIPE_MIN_CHARGE) {
+          const charge = await chargeSavedCard({
+            customerId: order.guest?.stripe_customer_id,
+            paymentMethodId: order.stripe_payment_method_id || undefined,
+            amount: due,
+            metadata: { my30a_grocery_order_id: order.id, kind: 'grocery_settlement' },
+          })
+          if (charge?.skipped) {
+            updates.payment_status = 'pending'
+            updates.notes = appendNote(
+              order.notes,
+              `Settlement charge of $${due.toFixed(2)} failed: ${charge.reason}. Ask the guest to update their card, or collect it in person.`
+            )
+            await notifyAdmins({
+              grocery_order_id: order.id,
+              message: `⚠️ Grocery #${order.order_number}: settlement charge of $${due.toFixed(2)} failed (${charge.reason}).`,
+            })
+          } else {
+            updates.stripe_payment_intent_id = charge.id
+            updates.payment_status = 'captured'
+          }
+        } else if (due <= -0.01) {
+          const refund = await refundAmount(order.stripe_grocery_payment_intent_id, -due, {
+            my30a_grocery_order_id: order.id,
+            kind: 'grocery_settlement_refund',
+          })
+          if (refund?.skipped) {
+            updates.notes = appendNote(order.notes, `Refund of $${(-due).toFixed(2)} unused prepayment failed: ${refund.reason}. Refund it from Stripe.`)
+            await notifyAdmins({ grocery_order_id: order.id, message: `⚠️ Grocery #${order.order_number}: refund of $${(-due).toFixed(2)} failed (${refund.reason}).` })
+          }
+          updates.payment_status = 'captured'
+        } else {
+          // Settled to the cent (or under Stripe's 50¢ minimum charge — not worth a card charge).
+          updates.payment_status = 'captured'
+          if (due > 0) updates.notes = appendNote(order.notes, `Settlement of $${due.toFixed(2)} waived (under Stripe’s $0.50 minimum).`)
+        }
+      } else if (payment_method === 'card_on_file') {
         // No hold was placed up front — the guest only saved a card (POST /guest/grocery/:id/pay
         // creates a SetupIntent, not a PaymentIntent). Now that both the service fee and the
         // exact Publix receipt are known, charge the combined total in one off-session charge.
@@ -527,9 +579,12 @@ router.post(
 
       if (updateError) return res.status(400).json({ error: updateError.message })
       await logStatus(order.id, 'delivered', req.user.id)
+      const settled = updates.settlement_amount
       await notifyGuest(
         data,
-        `Order #${data.order_number} delivered · Publix total $${grocery_total} + service fee $${money(order.service_fee)}. Your kitchen is ready!`
+        settled == null
+          ? `Order #${data.order_number} delivered · Publix total $${grocery_total} + service fee $${money(order.service_fee)}. Your kitchen is ready!`
+          : `Order #${data.order_number} delivered · Publix receipt $${grocery_total.toFixed(2)} (you prepaid $${money(order.grocery_prepaid).toFixed(2)}) + service fee $${money(order.service_fee).toFixed(2)} → ${settled >= 0 ? `$${settled.toFixed(2)} charged` : `$${(-settled).toFixed(2)} refunded`} to ${data.card_label || 'your card'}. Your kitchen is ready!`
       )
       await notifyAdmins({
         grocery_order_id: data.id,
@@ -595,6 +650,11 @@ router.post('/:id/cancel', requireRole('admin'), async (req, res, next) => {
       await releasePaymentHold(order.stripe_payment_intent_id).catch((err) =>
         console.log('Stripe release skipped:', err.message)
       )
+    }
+    if (isPrepaid(order) && order.grocery_payment_status === 'captured') {
+      const refund = await refundPrepayment(order)
+      if (refund?.skipped) updates.notes = appendNote(order.notes, `Prepayment refund failed: ${refund.reason}. Refund it from Stripe.`)
+      else updates.grocery_payment_status = 'refunded'
     }
 
     const { data, error: updateError } = await supabase

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { guest } from '../../../lib/guestApi.js'
 import { Cta, DetailRow, TransferShell } from '../transfer/TransferShell.jsx'
-import { addonLabel, pkgOf, serviceFee, stockingOf, useGrocery, useOrderId } from './GroceryShared.jsx'
+import { PrepayBreakdown, addonLabel, pkgOf, serviceFee, stockingOf, useGrocery, useOrderId } from './GroceryShared.jsx'
 
 export default function GroceryPending() {
   const grocery = useGrocery()
@@ -71,7 +71,11 @@ export default function GroceryPending() {
             />
           </span>
           <h2 className="app-xfer-hero-title">Vitoria Has Your Grocery List</h2>
-          <p className="app-xfer-hero-sub">We’ll review your items and confirm the exact total shortly.</p>
+          <p className="app-xfer-hero-sub">
+            {order?.prepay_amount > 0
+              ? 'Your groceries are paid for — we’ll confirm your shopper shortly.'
+              : 'We’ll review your items and confirm the exact total shortly.'}
+          </p>
         </div>
 
         <section className="app-xfer-card">
@@ -88,6 +92,8 @@ export default function GroceryPending() {
             <DetailRow icon={Zap} label="Add-ons" value={addons} />
           </div>
         </section>
+
+        <PrepayBreakdown p={order} serviceFee={order?.service_fee ?? serviceFee(grocery)} />
       </div>
     </TransferShell>
   )
