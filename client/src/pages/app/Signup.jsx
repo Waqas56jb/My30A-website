@@ -3,16 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { errorText, guest } from '../../lib/guestApi.js'
-import {
-  IconArrowLeft,
-  IconUser,
-  IconMail,
-  IconLock,
-  IconEyeOff,
-  IconEye,
-  IconApple,
-  IconGoogle,
-} from './AuthIcons.jsx'
+import { IconArrowLeft, IconUser, IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
 
 const LEAD =
   'Create your My30A Host account to book airport transfers, order groceries, and get Vitoria’s local picks for your stay.'
@@ -205,21 +196,6 @@ export default function Signup() {
             <button type="submit" className="app-signup-continue" disabled={busy}>
               {busy ? 'Creating account…' : 'Continue'}
             </button>
-
-            <div className="app-signup-or" role="separator">
-              <span>OR CONTINUE WITH</span>
-            </div>
-
-            <div className="app-signup-social">
-              <button type="button" className="app-social app-social-apple">
-                <IconApple />
-                <span>With Apple</span>
-              </button>
-              <button type="button" className="app-social app-social-google">
-                <IconGoogle />
-                <span>With Google</span>
-              </button>
-            </div>
 
             <p className="app-signup-footer">
               Have an Account? <Link to="/app/login">Login</Link>

@@ -2,15 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { errorText, guest, rememberedName } from '../../lib/guestApi.js'
-import {
-  IconArrowLeft,
-  IconMail,
-  IconLock,
-  IconEyeOff,
-  IconEye,
-  IconApple,
-  IconGoogle,
-} from './AuthIcons.jsx'
+import { IconArrowLeft, IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
 
 const LEAD =
   'Log in to see your stay, track your airport transfer and grocery orders, and chat with Vitoria.'
@@ -134,21 +126,6 @@ export default function AppLogin() {
             <button type="submit" className="app-signup-continue" disabled={busy}>
               {busy ? 'Logging in…' : 'Log in'}
             </button>
-
-            <div className="app-signup-or" role="separator">
-              <span>OR CONTINUE WITH</span>
-            </div>
-
-            <div className="app-signup-social">
-              <button type="button" className="app-social app-social-apple">
-                <IconApple />
-                <span>With Apple</span>
-              </button>
-              <button type="button" className="app-social app-social-google">
-                <IconGoogle />
-                <span>With Google</span>
-              </button>
-            </div>
 
             <p className="app-signup-footer">
               Don&apos;t have an account? <Link to="/app/signup">Sign up</Link>
