@@ -1,0 +1,39 @@
+[
+  {
+    "name": "Canopy Road Café – Rosemary Beach",
+    "venue_type": "coffee",
+    "cuisine": "Breakfast & Lunch Café",
+    "address": "12805 US-98, Inlet Beach, FL 32413",
+    "line1": "12805 US-98",
+    "line2": "Inlet Beach, FL 32413",
+    "lat": 30.281479,
+    "lng": -86.011457,
+    "phone": "(850) 909-0104",
+    "website_url": "https://www.canopyroadcafe.com/",
+    "hours": { "mon": [["06:30", "14:15"]], "tue": [["06:30", "14:15"]], "wed": [["06:30", "14:15"]], "thu": [["06:30", "14:15"]], "fri": [["06:30", "14:15"]], "sat": [["06:30", "14:15"]], "sun": [["06:30", "14:15"]] },
+    "tags": ["Breakfast & Brunch", "Coffee", "American", "Takeout", "Outdoor Seating", "Dog Friendly", "Family Friendly"],
+    "description": "Modern twists on the classic American diner — waffles, pancakes, breakfast tacos, bowls and lunch plates, with Canopy Road coffee. Breakfast and lunch all day, 7 days a week. First come, first served (no reservations); order online for pickup. Pets welcome on the patio.",
+    "photo": "https://cdn.prod.website-files.com/5f90506754314629f944f2f9/647e95f8bd3f03d1719ff2b3_latest%20menu%20shoot%20sized%20for%20web-7409396.jpeg",
+    "photo_crop_top": 0.3,
+    "source_url": "https://www.canopyroadcafe.com/locations/30a"
+  },
+  {
+    "name": "Canopy Road Café – Seagrove Beach",
+    "venue_type": "coffee",
+    "cuisine": "Breakfast & Lunch Café",
+    "address": "4785 E County Hwy 30A, Building 5, Santa Rosa Beach, FL 32459",
+    "line1": "4785 E County Hwy 30A, Building 5",
+    "line2": "Santa Rosa Beach, FL 32459",
+    "lat": 30.311567,
+    "lng": -86.099861,
+    "community": "Seagrove Beach",
+    "phone": "(850) 213-4170",
+    "website_url": "https://www.canopyroadcafe.com/",
+    "hours": { "mon": [["06:30", "14:15"]], "tue": [["06:30", "14:15"]], "wed": [["06:30", "14:15"]], "thu": [["06:30", "14:15"]], "fri": [["06:30", "14:15"]], "sat": [["06:30", "14:15"]], "sun": [["06:30", "14:15"]] },
+    "tags": ["Breakfast & Brunch", "Coffee", "American", "Takeout", "Outdoor Seating", "Dog Friendly", "Family Friendly"],
+    "description": "Modern twists on the classic American diner — waffles, pancakes, breakfast tacos, bowls and lunch plates, with Canopy Road coffee. Breakfast and lunch all day, 7 days a week. First come, first served (no reservations); order online for pickup. Pets welcome on the patio.",
+    "photo": "https://cdn.prod.website-files.com/5f90506754314629f944f2f9/63c5b80814f5795ea0c375cc_Cookie%20Dough%20Waffle.JPG",
+    "photo_crop_top": 0.28,
+    "source_url": "https://www.canopyroadcafe.com/locations/30a"
+  }
+]

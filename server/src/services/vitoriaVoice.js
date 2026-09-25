@@ -19,7 +19,7 @@ export const VOICE_TOOLS = [
     type: 'function',
     name: 'find_restaurants',
     description:
-      'Recommend real restaurants, bars or coffee & breakfast spots from the My30A Host dining guide (241 local favorites). Use for any food or drink question. Returns picks with cuisine, community, today’s hours and how to book.',
+      'Recommend real restaurants, bars or coffee & breakfast spots from the My30A Host dining guide (every local favorite on our list). Use for any food or drink question. Returns picks with cuisine, community, today’s hours and how to book.',
     parameters: {
       type: 'object',
       properties: {

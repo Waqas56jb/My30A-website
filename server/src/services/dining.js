@@ -1,4 +1,4 @@
-// Vitoria's dining brain: the client's real list of 241 restaurants, bars and coffee & breakfast
+// Vitoria's dining brain: the client's real list of restaurants, bars and coffee & breakfast
 // spots (explore_vendors kind='restaurant'), with
 //   - findDining(name)      loose name matching ("Bud & Alley's Waterfront Restaurant" → Bud & Alley's)
 //   - diningCard(row)       a render-ready chat card: real photo, today's hours + open now, links
@@ -35,6 +35,23 @@ const FILLER = new Set([
   'kitchen', 'co', 'company', 'waterfront', 'eatery', 'bistro', 'lounge', 'house', '30a', 'fl', 'beach', 'seaside',
   'rosemary', 'grayton', 'watercolor', 'santa', 'rosa', 'miramar', 'destin', 'inlet', 'seagrove', 'alys', 'shop',
 ])
+// Ordinary words a place name can start with ("Sunset Grille", "Local Catch", "Coffee Bar") —
+// never enough on their own to mean the guest named that place.
+const COMMON = new Set([
+  'coffee', 'tea', 'pizza', 'pizzeria', 'sushi', 'taco', 'tacos', 'burger', 'burgers', 'bbq', 'fish', 'seafood',
+  'oyster', 'oysters', 'wine', 'beer', 'brewing', 'brewery', 'ice', 'cream', 'donut', 'donuts', 'bakery', 'breakfast',
+  'brunch', 'lunch', 'dinner', 'sunset', 'sunrise', 'coastal', 'local', 'little', 'happy', 'golden', 'blue', 'surf',
+  'harbor', 'harbour', 'island', 'garden', 'market', 'central', 'southern', 'italian', 'mexican', 'french', 'grand',
+  'royal', 'salty', 'sandy', 'summer', 'ocean', 'gulf', 'coast', 'bay', 'bayou', 'dune', 'dunes', 'rooftop', 'open',
+  'tonight', 'today', 'best', 'good', 'great', 'food', 'dining', 'drinks', 'cocktails', 'place', 'spot', 'club',
+  'hotel', 'resort', 'social', 'tavern', 'pub', 'cantina', 'deli', 'diner', 'juice', 'smoothie', 'crab', 'shrimp',
+  'steak', 'steakhouse', 'chicken', 'tavern', 'table', 'bistro', 'kitchen', 'canteen', 'station', 'porch', 'deck',
+  'another', 'barefoot', 'barefoots', 'buffalo', 'cabana', 'friends', 'gather', 'hurricane', 'marble', 'marina',
+  'parlor', 'pickles', 'scratch', 'shades', 'seacrest', 'freeport', 'formula', 'mezcal', 'growler', 'surfing',
+  'crabby', 'causeway', 'pompano', 'hibiscus', 'whales', 'landshark', 'havana', 'edwards', 'johnny', 'sunquest',
+  'steamboat', 'sandcastles', 'marcos', 'littles',
+])
+
 const plain = (s) =>
   String(s || '')
     .toLowerCase()
@@ -80,8 +97,18 @@ export async function diningMentionedIn(text) {
   const { rows } = await loadDining()
   const hay = ` ${plain(text)} `
   const hits = rows.filter((r) => {
-    const n = plain(r.name).replace(/\s*-\s*.*$/, '')
-    return n.length >= 4 && hay.includes(` ${n} `)
+    // Match the brand without its location suffix: "Canopy Road Café – Rosemary Beach",
+    // "Big Bad Breakfast-Inlet Beach", "Amavida Coffee & Tea (Rosemary Beach)".
+    const brand = plain(String(r.name).replace(/\s*[-–—(].*$/, ''))
+    const n = brand.length >= 4 ? brand : plain(r.name)
+    if (n.length >= 4 && hay.includes(` ${n} `)) return true
+    // Guests shorten names: "is canopy road open?", "pescado tonight", "amavida coffee".
+    const words = n.split(' ').filter(Boolean)
+    const distinct = (w) => w.length >= 3 && !FILLER.has(w) && !COMMON.has(w)
+    if (words.length >= 2 && `${words[0]} ${words[1]}`.length >= 9 && (distinct(words[0]) || distinct(words[1]))) {
+      if (hay.includes(` ${words[0]} ${words[1]} `)) return true
+    }
+    return words[0]?.length >= 6 && distinct(words[0]) && hay.includes(` ${words[0]} `)
   })
   return hits.sort((a, b) => b.name.length - a.name.length).slice(0, 3)
 }

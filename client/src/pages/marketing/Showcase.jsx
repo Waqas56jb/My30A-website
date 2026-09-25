@@ -103,7 +103,7 @@ const SERVICES = [
     Icon: UtensilsCrossed,
     label: 'Dining & Beaches',
     short: 'Dining',
-    title: '241 places. Every beach access.',
+    title: '243 places. Every beach access.',
     copy: 'Restaurants, bars and coffee by community, cuisine and open now, plus all 59 public beach accesses with parking and restrooms.',
     ticks: ['Book online on Resy & OpenTable', 'Opening hours on every place', '59 beach accesses with directions'],
     price: null,
@@ -418,7 +418,7 @@ const GALLERY = [
   {
     key: 'eat',
     title: 'Eat',
-    meta: '241 restaurants, bars & cafés',
+    meta: '243 restaurants, bars & cafés',
     chips: ['Open now', 'By community', 'Book online'],
     src: '/marketing/hd/eat.webp',
     pos: '42% 55%',

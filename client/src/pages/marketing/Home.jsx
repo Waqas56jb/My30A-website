@@ -59,7 +59,7 @@ const COMMUNITIES = [
 ]
 
 const STATS = [
-  { value: 241, label: 'Restaurants, bars & cafés', note: 'by community, cuisine & open now' },
+  { value: 243, label: 'Restaurants, bars & cafés', note: 'by community, cuisine & open now' },
   { value: 160, label: 'Vetted local partners', note: 'charters, carts, chefs, spas & more' },
   { value: 59, label: 'Public beach accesses', note: 'with parking & restrooms noted' },
   { value: 600, prefix: '~', label: 'Events every month', note: 'live music, markets & festivals' },
@@ -88,7 +88,7 @@ const CHAT = [
   { from: 'guest', text: 'Dinner for four tonight in Rosemary Beach?' },
   {
     from: 'vitoria',
-    text: 'Here are the Rosemary Beach spots open tonight from our list of 241. I marked the ones you can book online.',
+    text: 'Here are the Rosemary Beach spots open tonight from our list of 243. I marked the ones you can book online.',
     chips: ['Open now', 'Book on Resy / OpenTable'],
   },
   { from: 'guest', text: 'Which beach access near Seaside has parking and restrooms?' },
@@ -827,7 +827,7 @@ export default function Home() {
                     <UtensilsCrossed size={18} aria-hidden="true" />
                   </span>
                   <span>
-                    <strong>241 restaurants, bars & cafés</strong>
+                    <strong>243 restaurants, bars & cafés</strong>
                     By community, cuisine and open now — with online booking via Resy or OpenTable.
                   </span>
                 </li>
