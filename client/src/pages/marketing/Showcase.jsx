@@ -242,7 +242,9 @@ export function ServicesShowcase() {
         {SERVICES.map((x, i) => (
           <li
             key={x.key}
-            className={`mkt-sx-item${i === active ? ' is-on' : ''}`}
+            // Active state lives in data-on: the scroll-reveal adds a class React must not overwrite.
+            className="mkt-sx-item"
+            data-on={i === active ? '' : undefined}
             data-reveal
             style={{ '--d': `${i * 0.07}s` }}
           >

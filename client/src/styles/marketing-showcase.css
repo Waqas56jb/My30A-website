@@ -208,14 +208,14 @@ html.mkt-smooth {
     border-color 0.5s ease;
 }
 
-.mkt-sx-item.is-on {
+.mkt-sx-item[data-on] {
   border-color: rgba(255, 255, 255, 0.9);
   background: var(--mkt-white);
   box-shadow: var(--mkt-shadow);
 }
 
 @media (hover: hover) {
-  .mkt-sx-item:not(.is-on):hover {
+  .mkt-sx-item:not([data-on]):hover {
     background: rgba(255, 255, 255, 0.85);
   }
 }
@@ -250,7 +250,7 @@ html.mkt-smooth {
     box-shadow 0.5s ease;
 }
 
-.mkt-sx-item.is-on .mkt-sx-ico {
+.mkt-sx-item[data-on] .mkt-sx-ico {
   background: var(--mkt-navy);
   color: var(--mkt-gold-2);
   transform: rotate(-6deg);
@@ -281,7 +281,7 @@ html.mkt-smooth {
   transition: color 0.4s ease;
 }
 
-.mkt-sx-item.is-on .mkt-sx-label strong {
+.mkt-sx-item[data-on] .mkt-sx-label strong {
   color: var(--mkt-ink);
 }
 
@@ -299,7 +299,7 @@ html.mkt-smooth {
   transition: grid-template-rows 0.7s var(--mkt-ease);
 }
 
-.mkt-sx-item.is-on .mkt-sx-body {
+.mkt-sx-item[data-on] .mkt-sx-body {
   grid-template-rows: 1fr;
 }
 
@@ -323,7 +323,7 @@ html.mkt-smooth {
     transform 0.6s var(--mkt-ease);
 }
 
-.mkt-sx-item.is-on .mkt-sx-body > div > * {
+.mkt-sx-item[data-on] .mkt-sx-body > div > * {
   opacity: 1;
   transform: none;
   transition-delay: 0.18s;
@@ -577,12 +577,12 @@ html.mkt-smooth {
 
 .mkt-sx-float.is-a {
   top: 17%;
-  right: calc(50% + 96px);
+  left: max(-12px, calc(50% - 262px));
 }
 
 .mkt-sx-float.is-b {
   bottom: 19%;
-  left: calc(50% + 96px);
+  right: max(-12px, calc(50% - 262px));
 }
 
 .mkt-sx-floats.is-on .mkt-sx-float {

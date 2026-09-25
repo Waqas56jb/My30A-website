@@ -15,13 +15,13 @@ export default function ProfileInfo() {
   const [error, setError] = useState('')
   const fileRef = useRef(null)
 
-  // Fill from the profile once it loads — but never overwrite what the guest already typed.
-  const touched = useRef(false)
+  // Fill from the profile once it loads, field by field: never overwrite what the guest already
+  // typed, but still fill the fields they haven't touched (typing the phone early kept the name empty).
+  const touched = useRef({})
   useEffect(() => {
-    if (profile && !touched.current) {
-      setName(profile.name || '')
-      setPhone(profile.phone || '')
-    }
+    if (!profile) return
+    if (!touched.current.name) setName(profile.name || '')
+    if (!touched.current.phone) setPhone(profile.phone || '')
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = async (e) => {
@@ -84,11 +84,11 @@ export default function ProfileInfo() {
 
         <label className="app-co-field">
           <span>Full name</span>
-          <input value={name} onChange={(e) => ((touched.current = true), setName(e.target.value))} autoComplete="name" placeholder="Your full name" />
+          <input value={name} onChange={(e) => ((touched.current.name = true), setName(e.target.value))} autoComplete="name" placeholder="Your full name" />
         </label>
         <label className="app-co-field">
           <span>Mobile number</span>
-          <input value={phone} onChange={(e) => ((touched.current = true), setPhone(e.target.value))} autoComplete="tel" inputMode="tel" placeholder="(850) 555-0123" />
+          <input value={phone} onChange={(e) => ((touched.current.phone = true), setPhone(e.target.value))} autoComplete="tel" inputMode="tel" placeholder="(850) 555-0123" />
         </label>
         <label className="app-co-field is-locked">
           <span>
