@@ -21,6 +21,7 @@ import {
   Waves,
   X,
 } from 'lucide-react'
+import { GuideGrid, ServicesShowcase } from './Showcase.jsx'
 
 /* ------------------------------------------------------------------------ */
 /* Content                                                                   */
@@ -112,20 +113,6 @@ const EXPLORE = [
     src: `${M}/stay-aerial.webp`,
     alt: 'Aerial view of white sand and emerald water on 30A',
   },
-]
-
-const GUIDE_CATEGORIES = [
-  'Dining',
-  'Beaches',
-  'Events & live music',
-  'On the water',
-  'Golf & outdoor',
-  'Family & kids',
-  'Wellness',
-  'Weddings & photography',
-  'Shopping',
-  'Arts',
-  'Local essentials',
 ]
 
 const STEPS = [
@@ -687,12 +674,7 @@ export default function Home() {
       <header className={`mkt-nav${scrolled ? ' is-scrolled' : ''}${menuOpen ? ' is-open' : ''}`}>
         <div className="mkt-nav-inner">
           <a className="mkt-brand" href="#home" onClick={closeMenu}>
-            <img
-              src="/logo-nav.png"
-              alt="My30A Host — Your personal 30A concierge"
-              width="321"
-              height="135"
-            />
+            <img src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
           </a>
           <nav className="mkt-nav-links" aria-label="Primary">
             {NAV.map((item) => (
@@ -931,160 +913,7 @@ export default function Home() {
               </p>
             </header>
 
-            <div className="mkt-bento">
-              {/* Grocery */}
-              <article className="mkt-tile mkt-tile-grocery" id="grocery" data-reveal data-tilt>
-                <div className="mkt-tile-inner">
-                  <div className="mkt-tile-media">
-                    <Img
-                      src="/services/grocery-stocked-kitchen.webp"
-                      alt="Bright kitchen with an open fridge and pantry fully stocked with fresh groceries"
-                    />
-                  </div>
-                  <div className="mkt-tile-shade" aria-hidden="true" />
-                  <div className="mkt-tile-body">
-                    <p className="mkt-tile-tag">
-                      <ShoppingBag size={14} aria-hidden="true" /> Grocery delivery
-                    </p>
-                    <h3 className="mkt-tile-title">Your kitchen, stocked before you arrive.</h3>
-                    <p className="mkt-tile-copy">
-                      Send us your list. We shop Publix at Watersound Town Center, deliver to your
-                      rental, unpack and put everything away.
-                    </p>
-                    <ul className="mkt-ticks">
-                      <li>
-                        <Check size={15} aria-hidden="true" /> Your exact Publix receipt, no markup
-                      </li>
-                      <li>
-                        <Check size={15} aria-hidden="true" /> Unpacked and put away
-                      </li>
-                      <li>
-                        <Check size={15} aria-hidden="true" /> Charged only after delivery
-                      </li>
-                    </ul>
-                    <div className="mkt-tile-foot">
-                      <p className="mkt-price">
-                        <small>From</small> <strong>$229</strong>
-                        <span>+ your Publix receipt</span>
-                      </p>
-                      <Link className="mkt-btn mkt-btn-gold" to="/app">
-                        Arrange Groceries <ArrowRight size={16} aria-hidden="true" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </article>
-
-              {/* Airport transfer */}
-              <article
-                className="mkt-tile mkt-tile-transfer"
-                id="airport-transfer"
-                data-reveal
-                data-tilt
-                style={{ '--d': '0.08s' }}
-              >
-                <div className="mkt-tile-inner">
-                  <div className="mkt-tile-media">
-                    <Img
-                      src={`${M}/transfer-arrival.webp`}
-                      alt="Private jet and a black luxury SUV waiting on the tarmac"
-                    />
-                  </div>
-                  <div className="mkt-tile-shade" aria-hidden="true" />
-                  <div className="mkt-tile-body">
-                    <p className="mkt-tile-tag">
-                      <Plane size={14} aria-hidden="true" /> Airport transfer
-                    </p>
-                    <h3 className="mkt-tile-title">Your ride is waiting.</h3>
-                    <p className="mkt-tile-copy">
-                      Private, door-to-door, with flight tracking and vetted drivers. Free
-                      cancellation 48h+ before pickup.
-                    </p>
-                    <ul className="mkt-airports" aria-label="Airports served">
-                      <li>
-                        <strong>ECP</strong> Panama City Beach
-                      </li>
-                      <li>
-                        <strong>VPS</strong> Destin–Fort Walton
-                      </li>
-                      <li>
-                        <strong>PNS</strong> Pensacola
-                      </li>
-                    </ul>
-                    <div className="mkt-tile-foot">
-                      <p className="mkt-price">
-                        <small>From</small> <strong>$85</strong>
-                      </p>
-                      <Link className="mkt-btn mkt-btn-gold" to="/app">
-                        Arrange Transfer <ArrowRight size={16} aria-hidden="true" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </article>
-
-              {/* Vitoria */}
-              <article className="mkt-tile mkt-tile-vitoria" data-reveal data-tilt style={{ '--d': '0.12s' }}>
-                <div className="mkt-tile-inner">
-                  <div className="mkt-orb" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <div className="mkt-tile-body">
-                    <p className="mkt-tile-tag">
-                      <Sparkles size={14} aria-hidden="true" /> AI concierge
-                    </p>
-                    <h3 className="mkt-tile-title">Ask Vitoria anything.</h3>
-                    <p className="mkt-tile-copy">
-                      Tables, beaches, charters, tonight&apos;s live music — answered from our own
-                      database first. Type, or just talk to her.
-                    </p>
-                    <a className="mkt-link" href="#meet-vitoria">
-                      Meet Vitoria <ArrowRight size={16} aria-hidden="true" />
-                    </a>
-                  </div>
-                </div>
-              </article>
-
-              {/* Explore */}
-              <article className="mkt-tile mkt-tile-explore" data-reveal data-tilt>
-                <div className="mkt-tile-inner">
-                  <div className="mkt-tile-media">
-                    <Img src={`${M}/stay-sunset-paddle.webp`} alt="Paddleboarders heading out at sunset on 30A" />
-                  </div>
-                  <div className="mkt-tile-shade" aria-hidden="true" />
-                  <div className="mkt-tile-body">
-                    <p className="mkt-tile-tag">
-                      <Compass size={14} aria-hidden="true" /> Explore 30A guide
-                    </p>
-                    <h3 className="mkt-tile-title">160 vetted locals, one guide.</h3>
-                    <a className="mkt-link mkt-link-light" href="#explore">
-                      Browse the guide <ArrowRight size={16} aria-hidden="true" />
-                    </a>
-                  </div>
-                </div>
-              </article>
-
-              {/* Events */}
-              <article className="mkt-tile mkt-tile-events" data-reveal data-tilt style={{ '--d': '0.08s' }}>
-                <div className="mkt-tile-inner">
-                  <div className="mkt-tile-media">
-                    <Img src="/vendors/seaside-farmers-market.webp" alt="Fresh produce in wooden crates at a 30A farmers market" />
-                  </div>
-                  <div className="mkt-tile-shade" aria-hidden="true" />
-                  <div className="mkt-tile-body">
-                    <p className="mkt-tile-tag">
-                      <CalendarDays size={14} aria-hidden="true" /> Events & live music
-                    </p>
-                    <h3 className="mkt-tile-title">~600 events a month.</h3>
-                    <Link className="mkt-link mkt-link-light" to="/app">
-                      See what&apos;s on <ArrowRight size={16} aria-hidden="true" />
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            </div>
+            <ServicesShowcase />
           </div>
         </section>
 
@@ -1256,13 +1085,7 @@ export default function Home() {
           </div>
 
           <div className="mkt-wrap">
-            <ul className="mkt-cats" aria-label="Guide categories">
-              {GUIDE_CATEGORIES.map((c, i) => (
-                <li key={c} data-reveal style={{ '--d': `${i * 0.04}s` }}>
-                  {c}
-                </li>
-              ))}
-            </ul>
+            <GuideGrid />
           </div>
         </section>
 
@@ -1357,7 +1180,7 @@ export default function Home() {
           <div className="mkt-wrap">
             <div className="mkt-final-card" data-reveal="zoom">
               <div className="mkt-final-bg" aria-hidden="true" />
-              <img className="mkt-final-logo" src="/logo-nav.png" alt="" width="321" height="135" loading="lazy" decoding="async" />
+              <img className="mkt-final-logo" src="/brand/my30a-logo-light.png" alt="" width="720" height="319" loading="lazy" decoding="async" />
               <h2 className="mkt-final-title" id="mkt-final-title">
                 The effortless way to <em>experience 30A.</em>
               </h2>
@@ -1382,7 +1205,7 @@ export default function Home() {
         <div className="mkt-wrap mkt-footer-inner">
           <div className="mkt-footer-brand">
             <a className="mkt-footer-logo" href="#home">
-              <img src="/logo-nav.png" alt="My30A Host — Your personal 30A concierge" width="321" height="135" loading="lazy" decoding="async" />
+              <img src="/brand/my30a-logo-light.png" alt="My30A Host — Your personal 30A concierge" width="720" height="319" loading="lazy" decoding="async" />
             </a>
             <p className="mkt-footer-about">
               Concierge for vacation-rental guests on Scenic Highway 30A, Florida. Airport

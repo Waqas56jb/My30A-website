@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { errorText, guest, rememberedName } from '../../lib/guestApi.js'
-import { IconArrowLeft, IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
+import { IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
+import AuthLayout from './AuthLayout.jsx'
 
 const LEAD =
   'Log in to see your stay, track your airport transfer and grocery orders, and chat with Vitoria.'
 
 export default function AppLogin() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { session, loading } = useAuth()
   const [email, setEmail] = useState('')
@@ -43,96 +44,74 @@ export default function AppLogin() {
   }
 
   return (
-    <div className="app-guest">
-      <div className="app-phone">
-        <div className="app-signup app-login">
-          <div className="app-signup-bg" aria-hidden="true" />
-          <div className="app-signup-overlay" aria-hidden="true" />
+    <AuthLayout>
+      <form className="auth-form" onSubmit={onSubmit} noValidate>
+        <img className="auth-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
+        <p className="auth-kicker">Guest sign in</p>
+        <h1 className="auth-title">
+          Welcome back, <em>{name}</em>
+        </h1>
+        <p className="auth-lead">{LEAD}</p>
 
-          <header className="app-signup-top">
+        <label className="auth-field">
+          <span className="auth-label">Email</span>
+          <span className="auth-input">
+            <IconMail />
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </span>
+        </label>
+
+        <div className="auth-field">
+          <span className="auth-label">
+            <label htmlFor="auth-password">Password</label>
+            <a href="mailto:my30ahost@gmail.com?subject=Password%20reset">Forgot password?</a>
+          </span>
+          <span className="auth-input">
+            <IconLock />
+            <input
+              id="auth-password"
+              type={showPass ? 'text' : 'password'}
+              name="password"
+              autoComplete="current-password"
+              placeholder="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
             <button
               type="button"
-              className="app-signup-back"
-              aria-label="Back"
-              onClick={() => navigate('/app')}
+              className="auth-eye"
+              aria-label={showPass ? 'Hide password' : 'Show password'}
+              onClick={() => setShowPass((v) => !v)}
             >
-              <IconArrowLeft />
+              {showPass ? <IconEye /> : <IconEyeOff />}
             </button>
-            <img
-              className="app-signup-logo"
-              src="/logoforApp.png"
-              alt="M30A"
-              width={194}
-              height={100}
-            />
-          </header>
-
-          <form className="app-signup-card" onSubmit={onSubmit}>
-            <div className="app-signup-head">
-              <h1 className="app-signup-title">
-                Welcome Back, <span>{name}</span>
-              </h1>
-              <p className="app-signup-lead">{LEAD}</p>
-            </div>
-
-            <div className="app-signup-fields">
-              <label className="app-field">
-                <span className="app-field-icon">
-                  <IconMail />
-                </span>
-                <input
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder="Email Address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </label>
-
-              <label className="app-field">
-                <span className="app-field-icon">
-                  <IconLock />
-                </span>
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  name="password"
-                  autoComplete="current-password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="app-field-toggle"
-                  aria-label={showPass ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPass((v) => !v)}
-                >
-                  {showPass ? <IconEye /> : <IconEyeOff />}
-                </button>
-              </label>
-            </div>
-
-            <div className="app-signup-forgot">
-              <a href="mailto:my30ahost@gmail.com?subject=Password%20reset">Forgot Password?</a>
-            </div>
-
-            {error ? (
-              <p className="app-form-error" role="alert">
-                {error}
-              </p>
-            ) : null}
-
-            <button type="submit" className="app-signup-continue" disabled={busy}>
-              {busy ? 'Logging in…' : 'Log in'}
-            </button>
-
-            <p className="app-signup-footer">
-              Don&apos;t have an account? <Link to="/app/signup">Sign up</Link>
-            </p>
-          </form>
+          </span>
         </div>
-      </div>
-    </div>
+
+        {error ? (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <button type="submit" className="auth-submit" disabled={busy}>
+          {busy ? <span className="auth-spin" aria-hidden="true" /> : null}
+          {busy ? 'Logging in…' : 'Log in'}
+          {busy ? null : <ArrowRight size={18} strokeWidth={2} aria-hidden="true" />}
+        </button>
+
+        <p className="auth-switch">
+          New to My30A Host? <Link to="/app/signup">Create an account</Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
 }

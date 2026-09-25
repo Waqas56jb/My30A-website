@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { errorText, guest } from '../../lib/guestApi.js'
-import { IconArrowLeft, IconUser, IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
+import { IconUser, IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
+import AuthLayout from './AuthLayout.jsx'
 
 const LEAD =
   'Create your My30A Host account to book airport transfers, order groceries, and get Vitoria’s local picks for your stay.'
@@ -64,145 +65,120 @@ export default function Signup() {
   }
 
   return (
-    <div className="app-guest">
-      <div className="app-phone">
-        <div className="app-signup">
-          <div className="app-signup-bg" aria-hidden="true" />
-          <div className="app-signup-overlay" aria-hidden="true" />
+    <AuthLayout>
+      <form className="auth-form" onSubmit={onSubmit} noValidate>
+        <img className="auth-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
+        <p className="auth-kicker">Create your guest account</p>
+        <h1 className="auth-title">
+          Start your <em>30A stay.</em>
+        </h1>
+        <p className="auth-lead">{LEAD}</p>
 
-          <header className="app-signup-top">
-            <button
-              type="button"
-              className="app-signup-back"
-              aria-label="Back"
-              onClick={() => navigate('/app')}
-            >
-              <IconArrowLeft />
-            </button>
-            <img
-              className="app-signup-logo"
-              src="/logoforApp.png"
-              alt="M30A"
-              width={194}
-              height={100}
+        <label className="auth-field">
+          <span className="auth-label">Full name</span>
+          <span className="auth-input">
+            <IconUser />
+            <input
+              type="text"
+              name="name"
+              autoComplete="name"
+              placeholder="Alex Morgan"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
-          </header>
+          </span>
+        </label>
 
-          <form className="app-signup-card" onSubmit={onSubmit}>
-            <div className="app-signup-head">
-              <h1 className="app-signup-title">
-                Create an <span>Account</span>
-              </h1>
-              <p className="app-signup-lead">{LEAD}</p>
-            </div>
+        <label className="auth-field">
+          <span className="auth-label">Email</span>
+          <span className="auth-input">
+            <IconMail />
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </span>
+        </label>
 
-            <div className="app-signup-fields">
-              <label className="app-field">
-                <span className="app-field-icon">
-                  <IconUser />
-                </span>
-                <input
-                  type="text"
-                  name="name"
-                  autoComplete="name"
-                  placeholder="Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </label>
-
-              <label className="app-field">
-                <span className="app-field-icon">
-                  <IconMail />
-                </span>
-                <input
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder="Email Address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </label>
-
-              <label className="app-field">
-                <span className="app-field-icon">
-                  <IconLock />
-                </span>
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  name="password"
-                  autoComplete="new-password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="app-field-toggle"
-                  aria-label={showPass ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPass((v) => !v)}
-                >
-                  {showPass ? <IconEye /> : <IconEyeOff />}
-                </button>
-              </label>
-
-              <label className="app-field">
-                <span className="app-field-icon">
-                  <IconLock />
-                </span>
-                <input
-                  type={showConfirm ? 'text' : 'password'}
-                  name="confirmPassword"
-                  autoComplete="new-password"
-                  placeholder="Confirm Password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="app-field-toggle"
-                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowConfirm((v) => !v)}
-                >
-                  {showConfirm ? <IconEye /> : <IconEyeOff />}
-                </button>
-              </label>
-            </div>
-
-            <label className="app-signup-agree">
+        <div className="auth-row">
+          <label className="auth-field">
+            <span className="auth-label">Password</span>
+            <span className="auth-input">
+              <IconLock />
               <input
-                type="checkbox"
-                className="app-cb-input"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
+                type={showPass ? 'text' : 'password'}
+                name="password"
+                autoComplete="new-password"
+                placeholder="8+ characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
-              <span className={`app-cb${agreed ? ' is-on' : ''}`} aria-hidden="true">
-                {agreed ? <Check size={12} strokeWidth={2.5} /> : null}
-              </span>
-              <span>
-                I agree with the <a href="#terms">Terms of Service</a>
-                {' | '}
-                <a href="#privacy">Privacy Policy</a>
-              </span>
-            </label>
+              <button
+                type="button"
+                className="auth-eye"
+                aria-label={showPass ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPass((v) => !v)}
+              >
+                {showPass ? <IconEye /> : <IconEyeOff />}
+              </button>
+            </span>
+          </label>
 
-            {error ? (
-              <p className="app-form-error" role="alert">
-                {error}
-              </p>
-            ) : null}
-
-            <button type="submit" className="app-signup-continue" disabled={busy}>
-              {busy ? 'Creating account…' : 'Continue'}
-            </button>
-
-            <p className="app-signup-footer">
-              Have an Account? <Link to="/app/login">Login</Link>
-            </p>
-          </form>
+          <label className="auth-field">
+            <span className="auth-label">Confirm password</span>
+            <span className="auth-input">
+              <IconLock />
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                name="confirmPassword"
+                autoComplete="new-password"
+                placeholder="Repeat it"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+              <button
+                type="button"
+                className="auth-eye"
+                aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                onClick={() => setShowConfirm((v) => !v)}
+              >
+                {showConfirm ? <IconEye /> : <IconEyeOff />}
+              </button>
+            </span>
+          </label>
         </div>
-      </div>
-    </div>
+
+        <label className="auth-agree">
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+          <span className="auth-check" aria-hidden="true">
+            <Check size={13} strokeWidth={3} />
+          </span>
+          <span>
+            I agree to the <a href="/#terms">Terms of Service</a> and <a href="/#privacy">Privacy Policy</a>
+          </span>
+        </label>
+
+        {error ? (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <button type="submit" className="auth-submit" disabled={busy}>
+          {busy ? <span className="auth-spin" aria-hidden="true" /> : null}
+          {busy ? 'Creating account…' : 'Create account'}
+          {busy ? null : <ArrowRight size={18} strokeWidth={2} aria-hidden="true" />}
+        </button>
+
+        <p className="auth-switch">
+          Already have an account? <Link to="/app/login">Log in</Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
 }

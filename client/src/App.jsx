@@ -4,6 +4,7 @@ import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import GuestRoute from './components/GuestRoute.jsx'
 import { ToastProvider } from './components/Toast.jsx'
+import { useFreshBuild } from './lib/appUpdate.js'
 import Login from './pages/Login.jsx'
 import Home from './pages/marketing/Home.jsx'
 import Splash from './pages/app/Splash.jsx'
@@ -185,6 +186,7 @@ const GUEST_ROUTES = [
 ]
 
 function AppRoutes() {
+  useFreshBuild()
   return (
     <Routes>
       <Route path="/" element={<Home />} />
