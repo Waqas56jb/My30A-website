@@ -115,7 +115,8 @@ export default function Grocery() {
   const [status, setStatus] = useState('')
   const [shopperId, setShopperId] = useState('')
   const [dateFrom, setDateFrom] = useState(monthStart())
-  const [dateTo, setDateTo] = useState(chicagoToday())
+  // No end date by default: bookings for upcoming days (most of them) must show up right away.
+  const [dateTo, setDateTo] = useState('')
 
   const listPath = useMemo(() => {
     const rangeFrom = dateFrom ? chicagoDayIsoRange(dateFrom) : null

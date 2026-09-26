@@ -159,7 +159,8 @@ export default function Transfers() {
   const [status, setStatus] = useState('')
   const [driverId, setDriverId] = useState('')
   const [dateFrom, setDateFrom] = useState(monthStart())
-  const [dateTo, setDateTo] = useState(chicagoToday())
+  // No end date by default: bookings for upcoming days (most of them) must show up right away.
+  const [dateTo, setDateTo] = useState('')
   const [flaggedOnly, setFlaggedOnly] = useState(false)
 
   const listPath = useMemo(() => {
