@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useQuery } from '../lib/useQuery.js'
+import AdminAlerts from './AdminAlerts.jsx'
 import ChangePassword from './ChangePassword.jsx'
 import { useToast } from './Toast.jsx'
 
@@ -110,6 +111,7 @@ export default function Layout() {
           </button>
         </div>
       </aside>
+      <AdminAlerts />
       <main ref={mainRef} className={scrolled ? 'is-scrolled' : ''}>
         <Outlet />
       </main>

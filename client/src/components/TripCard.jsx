@@ -89,7 +89,10 @@ function ActionButton({ pending, busyLabel, icon: Icon, label, onClick, ghost })
 }
 
 // Driver flow: Assigned → On the way → Arrived → Guest in vehicle → Complete trip.
-export default function TripCard({ trip, pending, onStart, onArrive, onPickup, onComplete, onMessage, style }) {
+const UPCOMING_DAY = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric' })
+
+// `upcoming`: a trip on a later day — shows its date, and no status buttons until that day.
+export default function TripCard({ trip, pending, onStart, onArrive, onPickup, onComplete, onMessage, style, upcoming = false }) {
   const pill = statusPill(trip)
   const done = trip.status === 'completed'
   const active = ACTIVE.includes(trip.status)
@@ -106,7 +109,10 @@ export default function TripCard({ trip, pending, onStart, onArrive, onPickup, o
     <article className={`trip${done ? ' trip-done' : ''}`} style={style}>
       <div className="hd">
         <div>
-          <span className="time">{formatTime(trip.scheduled_at)}</span>{' '}
+          <span className="time">
+            {upcoming ? `${UPCOMING_DAY.format(new Date(trip.scheduled_at))} · ` : ''}
+            {formatTime(trip.scheduled_at)}
+          </span>{' '}
           <span className="num">· Trip #{trip.trip_number}</span>
         </div>
         <span className={pill.className}>{pill.label}</span>
@@ -155,7 +161,7 @@ export default function TripCard({ trip, pending, onStart, onArrive, onPickup, o
       {moneyBlock(trip)}
       {footer ? <div className="meta">{footer}</div> : null}
 
-      {trip.status === 'assigned' ? (
+      {trip.status === 'assigned' && !upcoming ? (
         <ActionButton pending={pending} busyLabel="Updating…" icon={Play} label="On the way" onClick={() => onStart?.(trip)} ghost />
       ) : null}
       {trip.status === 'started' ? (

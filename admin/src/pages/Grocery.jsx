@@ -67,18 +67,21 @@ function settled(order) {
   return order.status === 'delivered' || order.status === 'refunded'
 }
 
+// Confirms a guest request, or — once assigned — swaps the shopper. Pre-filled with the current one.
 function AssignOrder({ order, shoppers, working, onAssign }) {
-  const [shopperId, setShopperId] = useState('')
+  const reassign = order.status === 'assigned'
+  const [shopperId, setShopperId] = useState(reassign ? order.shopper_id || '' : '')
+  const unchanged = reassign && shopperId === order.shopper_id
   const path = `/api/grocery/${order.id}/assign`
   return (
     <form
       className="assign-box"
       onSubmit={(event) => {
         event.preventDefault()
-        if (shopperId) onAssign({ shopper_id: shopperId })
+        if (shopperId && !unchanged) onAssign({ shopper_id: shopperId })
       }}
     >
-      <b>Guest request · confirm shopper</b>
+      <b>{reassign ? 'Change shopper' : 'Guest request · confirm shopper'}</b>
       <div className="row2">
         <div className="field">
           <label>Shopper</label>
@@ -97,8 +100,8 @@ function AssignOrder({ order, shoppers, working, onAssign }) {
         </div>
       </div>
       <div className="actions">
-        <Button type="submit" className="btn" pending={working === path}>
-          Confirm &amp; assign
+        <Button type="submit" className="btn" pending={working === path} disabled={unchanged}>
+          {reassign ? 'Save change' : 'Confirm & assign'}
         </Button>
       </div>
     </form>
@@ -130,6 +133,13 @@ export default function Grocery() {
   }, [status, shopperId, dateFrom, dateTo])
 
   const listQuery = useQuery(listPath)
+  // A new-order alert (components/AdminAlerts.jsx) reloads this list so the order shows at once.
+  const refetchList = listQuery.refetch
+  useEffect(() => {
+    const onAlert = () => refetchList()
+    window.addEventListener('my30a-admin-refresh', onAlert)
+    return () => window.removeEventListener('my30a-admin-refresh', onAlert)
+  }, [refetchList])
   const usersQuery = useQuery('/api/users')
   const detailQuery = useQuery(openId ? `/api/grocery/${openId}` : null, { enabled: Boolean(openId) })
 
@@ -526,13 +536,14 @@ export default function Grocery() {
                 </li>
               ))}
             </ul>
-            {order.status === 'requested' ? (
+            {['requested', 'assigned'].includes(order.status) ? (
               <AssignOrder
+                key={`${order.id}-${order.status}-${order.shopper_id || ''}`}
                 order={order}
                 shoppers={shoppers}
                 working={working}
                 onAssign={(body) =>
-                  act(`/api/grocery/${order.id}/assign`, body, `Order #${order.order_number} assigned`)
+                  act(`/api/grocery/${order.id}/assign`, body, order.status === 'assigned' ? `Order #${order.order_number} reassigned` : `Order #${order.order_number} assigned`)
                 }
               />
             ) : null}

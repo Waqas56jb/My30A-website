@@ -30,7 +30,7 @@ router.patch('/', async (req, res, next) => {
     const updates = { updated_at: new Date().toISOString() }
     const body = req.body || {}
     const { platform_fee_percent, default_owner_fee_percent } = body
-    const GROCERY = ['grocery_buffer_percent', 'grocery_rush_fee_percent', 'grocery_min_notice_hours', 'grocery_instant_payouts']
+    const GROCERY = ['grocery_buffer_percent', 'grocery_rush_fee_percent', 'grocery_min_notice_hours', 'grocery_instant_payouts', 'alert_emails']
 
     if (platform_fee_percent === undefined && default_owner_fee_percent === undefined && !GROCERY.some((k) => body[k] !== undefined)) {
       return res.status(400).json({
@@ -53,6 +53,13 @@ router.patch('/', async (req, res, next) => {
       updates.grocery_min_notice_hours = hours
     }
     if (body.grocery_instant_payouts !== undefined) updates.grocery_instant_payouts = Boolean(body.grocery_instant_payouts)
+    // Where new-order / cancellation alert emails go (services/adminAlerts.js).
+    if (body.alert_emails !== undefined) {
+      const list = String(body.alert_emails || '').split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean)
+      const bad = list.find((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))
+      if (bad) return res.status(400).json({ error: `"${bad}" is not a valid email address` })
+      updates.alert_emails = list.join(', ') || null
+    }
 
     if (platform_fee_percent !== undefined) {
       const parsed = parsePercent(platform_fee_percent, 'platform_fee_percent')

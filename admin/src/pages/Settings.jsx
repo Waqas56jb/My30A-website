@@ -52,6 +52,7 @@ export default function Settings() {
     grocery_rush_fee_percent: String(settingsQuery.data?.grocery_rush_fee_percent ?? ''),
     grocery_min_notice_days: String(settingsQuery.data?.grocery_min_notice_hours != null ? settingsQuery.data.grocery_min_notice_hours / 24 : ''),
     grocery_instant_payouts: settingsQuery.data?.grocery_instant_payouts ?? true,
+    alert_emails: settingsQuery.data?.alert_emails ?? '',
   }
   const communities = groupPricing(pricingQuery.data)
   const loading = settingsQuery.loading || pricingQuery.loading
@@ -71,6 +72,7 @@ export default function Settings() {
           grocery_rush_fee_percent: Number(settings.grocery_rush_fee_percent),
           grocery_min_notice_hours: Math.round(Number(settings.grocery_min_notice_days) * 24),
           grocery_instant_payouts: Boolean(settings.grocery_instant_payouts),
+          alert_emails: settings.alert_emails,
         },
       })
       setDraft({
@@ -80,6 +82,7 @@ export default function Settings() {
         grocery_rush_fee_percent: String(saved.grocery_rush_fee_percent),
         grocery_min_notice_days: String(saved.grocery_min_notice_hours / 24),
         grocery_instant_payouts: saved.grocery_instant_payouts,
+        alert_emails: saved.alert_emails || '',
       })
       invalidateQuery('/api/settings')
       await settingsQuery.refetch()
@@ -142,6 +145,20 @@ export default function Settings() {
                   }
                   style={{ maxWidth: 120 }}
                 />
+              </div>
+              <h3 style={{ margin: '18px 0 12px' }}>Alerts</h3>
+              <div className="field">
+                <label>Email me new orders at</label>
+                <input
+                  type="text"
+                  value={settings.alert_emails}
+                  placeholder="you@example.com, partner@example.com"
+                  onChange={(event) => setDraft({ ...settings, alert_emails: event.target.value })}
+                />
+                <small className="muted">
+                  New transfers, new grocery orders and guest cancellations are emailed here (separate several with commas).
+                  They also pop up in this panel with a sound.
+                </small>
               </div>
               <h3 style={{ margin: '18px 0 12px' }}>Grocery prepayment</h3>
               <div className="field">

@@ -245,13 +245,13 @@ router.get('/mine', requireRole('driver', 'partner', 'admin'), async (req, res, 
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10)
     const { start, end } = dayRange(date)
-    const { data, error } = await supabase
-      .from('transfers')
-      .select(TRANSFER_SELECT)
-      .eq('driver_id', req.user.id)
-      .gte('scheduled_at', start)
-      .lt('scheduled_at', end)
-      .order('scheduled_at', { ascending: true })
+    let query = supabase.from('transfers').select(TRANSFER_SELECT).eq('driver_id', req.user.id)
+    // ?upcoming=1&date=<tomorrow>: every open trip from that day on, so a trip assigned for next
+    // week shows in the driver app right away (the day view alone hid it until that morning).
+    query = req.query.upcoming
+      ? query.gte('scheduled_at', start).not('status', 'in', '(completed,cancelled,refunded,no_show)').limit(100)
+      : query.gte('scheduled_at', start).lt('scheduled_at', end)
+    const { data, error } = await query.order('scheduled_at', { ascending: true })
 
     if (error) return res.status(400).json({ error: error.message })
     res.json((data || []).map(driverView))
@@ -480,14 +480,27 @@ router.post('/:id/assign', requireRole('admin'), async (req, res, next) => {
     if (updateError) return res.status(400).json({ error: updateError.message })
 
     await logStatus(transfer.id, 'assigned', req.user.id)
-    await notify({
-      user_id: data.driver_id,
-      transfer_id: data.id,
-      message: `New trip #${data.trip_number} assigned · ${formatWhen(data.scheduled_at)} · ${data.pickup_address} → ${data.dropoff_address}`,
-    })
+    const reassigned = transfer.status === 'assigned'
+    const driverChanged = reassigned && transfer.driver_id && transfer.driver_id !== data.driver_id
+    if (driverChanged) {
+      await notify({
+        user_id: transfer.driver_id,
+        transfer_id: data.id,
+        message: `Trip #${data.trip_number} (${formatWhen(data.scheduled_at)}) was reassigned to another driver — it’s no longer on your list.`,
+      })
+    }
+    if (!reassigned || driverChanged || transfer.vehicle_id !== data.vehicle_id) {
+      await notify({
+        user_id: data.driver_id,
+        transfer_id: data.id,
+        message: `${reassigned && !driverChanged ? 'Vehicle changed for' : 'New'} trip #${data.trip_number} assigned · ${formatWhen(data.scheduled_at)} · ${data.pickup_address} → ${data.dropoff_address} · ${vehicleLabel(vehicle)}`,
+      })
+    }
     await notifyGuest(
       data,
-      `Your airport transfer #${data.trip_number} is confirmed · ${formatWhen(data.scheduled_at)} · Driver ${driver.name} · ${vehicleLabel(vehicle)}`
+      reassigned
+        ? `Update for your airport transfer #${data.trip_number} (${formatWhen(data.scheduled_at)}): your driver is now ${driver.name} · ${vehicleLabel(vehicle)}`
+        : `Your airport transfer #${data.trip_number} is confirmed · ${formatWhen(data.scheduled_at)} · Driver ${driver.name} · ${vehicleLabel(vehicle)}`
     )
     // Confirmation SMS carries the secret chat link (and the masked call number once Twilio is on).
     await smsGuest(data, statusSms(data, 'assigned'), 'assigned')

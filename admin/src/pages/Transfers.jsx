@@ -98,9 +98,13 @@ function driverEarningsNote(trip) {
   return null
 }
 
+// Confirms a guest request, or — once assigned — swaps the driver/vehicle (e.g. the driver can't
+// make it that day). Pre-filled with the current choice.
 function AssignTrip({ trip, drivers, vehicles, working, onAssign }) {
-  const [driverId, setDriverId] = useState('')
-  const [vehicleId, setVehicleId] = useState('')
+  const reassign = trip.status === 'assigned'
+  const [driverId, setDriverId] = useState(reassign ? trip.driver_id || '' : '')
+  const [vehicleId, setVehicleId] = useState(reassign ? trip.vehicle_id || '' : '')
+  const unchanged = reassign && driverId === trip.driver_id && vehicleId === trip.vehicle_id
   const matching = vehicles.filter((vehicle) => vehicle.vehicle_type === trip.vehicle_type)
   const path = `/api/transfers/${trip.id}/assign`
   return (
@@ -108,10 +112,11 @@ function AssignTrip({ trip, drivers, vehicles, working, onAssign }) {
       className="assign-box"
       onSubmit={(event) => {
         event.preventDefault()
-        if (driverId && vehicleId) onAssign({ driver_id: driverId, vehicle_id: vehicleId })
+        if (driverId && vehicleId && !unchanged) onAssign({ driver_id: driverId, vehicle_id: vehicleId })
       }}
     >
-      <b>Guest request · confirm driver &amp; vehicle</b>
+      <b>{reassign ? 'Change driver or vehicle' : 'Guest request · confirm driver & vehicle'}</b>
+      {reassign ? <div className="sub">The old driver is told the trip is no longer theirs; the guest gets the new driver’s name.</div> : null}
       <div className="sub">
         {trip.passengers || 0} passenger{trip.passengers === 1 ? '' : 's'}
         {trip.bags ? ` · ${trip.bags} bags` : ''}
@@ -141,8 +146,8 @@ function AssignTrip({ trip, drivers, vehicles, working, onAssign }) {
         </div>
       </div>
       <div className="actions">
-        <Button type="submit" className="btn" pending={working === path}>
-          Confirm &amp; assign
+        <Button type="submit" className="btn" pending={working === path} disabled={unchanged}>
+          {reassign ? 'Save change' : 'Confirm & assign'}
         </Button>
       </div>
     </form>
@@ -176,6 +181,13 @@ export default function Transfers() {
   }, [status, driverId, dateFrom, dateTo, flaggedOnly])
 
   const listQuery = useQuery(listPath)
+  // A new-order alert (components/AdminAlerts.jsx) reloads this list so the order shows at once.
+  const refetchList = listQuery.refetch
+  useEffect(() => {
+    const onAlert = () => refetchList()
+    window.addEventListener('my30a-admin-refresh', onAlert)
+    return () => window.removeEventListener('my30a-admin-refresh', onAlert)
+  }, [refetchList])
   const usersQuery = useQuery('/api/users')
   const vehiclesQuery = useQuery('/api/vehicles')
   const communitiesQuery = useQuery('/api/communities')
@@ -700,14 +712,15 @@ export default function Transfers() {
                 ))}
               </div>
             ) : null}
-            {trip.status === 'requested' ? (
+            {['requested', 'assigned'].includes(trip.status) ? (
               <AssignTrip
+                key={`${trip.id}-${trip.status}-${trip.driver_id || ''}-${trip.vehicle_id || ''}`}
                 trip={trip}
                 drivers={drivers}
                 vehicles={vehicles}
                 working={working}
                 onAssign={(body) =>
-                  act(`/api/transfers/${trip.id}/assign`, body, `Trip #${trip.trip_number} assigned`)
+                  act(`/api/transfers/${trip.id}/assign`, body, trip.status === 'assigned' ? `Trip #${trip.trip_number} reassigned` : `Trip #${trip.trip_number} assigned`)
                 }
               />
             ) : null}

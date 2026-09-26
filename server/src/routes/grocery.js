@@ -196,13 +196,12 @@ router.get('/mine', requireRole('shopper'), async (req, res, next) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10)
     const { start, end } = dayRange(date)
-    const { data, error } = await supabase
-      .from('grocery_orders')
-      .select(ORDER_SELECT)
-      .eq('shopper_id', req.user.id)
-      .gte('delivery_time', start)
-      .lt('delivery_time', end)
-      .order('delivery_time', { ascending: true })
+    let query = supabase.from('grocery_orders').select(ORDER_SELECT).eq('shopper_id', req.user.id)
+    // ?upcoming=1&date=<day>: every open order from that day on (not just one day).
+    query = req.query.upcoming
+      ? query.gte('delivery_time', start).not('status', 'in', '(delivered,cancelled,refunded)').limit(100)
+      : query.gte('delivery_time', start).lt('delivery_time', end)
+    const { data, error } = await query.order('delivery_time', { ascending: true })
 
     if (error) return res.status(400).json({ error: error.message })
     res.json((data || []).map(shopperView))
@@ -364,6 +363,13 @@ router.post('/:id/assign', requireRole('admin'), async (req, res, next) => {
     if (updateError) return res.status(400).json({ error: updateError.message })
 
     await logStatus(order.id, 'assigned', req.user.id)
+    if (order.status === 'assigned' && order.shopper_id && order.shopper_id !== data.shopper_id) {
+      await notify({
+        user_id: order.shopper_id,
+        grocery_order_id: data.id,
+        message: `Grocery order #${data.order_number} (${formatWhen(data.delivery_time)}) was reassigned to another shopper — it’s no longer on your list.`,
+      })
+    }
     await notify({
       user_id: data.shopper_id,
       grocery_order_id: data.id,

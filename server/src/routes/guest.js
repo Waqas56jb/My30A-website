@@ -35,6 +35,7 @@ import {
   refundAmount,
 } from '../lib/stripe.js'
 import { groceryPolicy, isPrepaid, prepayQuote, refundPrepayment, runInstantPayout } from '../services/groceryPay.js'
+import { emailAdminAlert } from '../services/adminAlerts.js'
 import { maskedCallNumber } from '../lib/sms.js'
 import { geocodeQuery } from '../lib/nominatim.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
@@ -301,7 +302,9 @@ async function loadCatalog() {
   }
 }
 
-async function notifyAdmins({ message, transfer_id = null, grocery_order_id = null }) {
+// Every admin gets it in the panel (banner + chime); with `email` it also goes to the alert
+// addresses from Admin → Settings — used for new guest orders and guest cancellations.
+async function notifyAdmins({ message, transfer_id = null, grocery_order_id = null, email = null }) {
   const { data: admins } = await supabase
     .from('profiles')
     .select('id')
@@ -310,6 +313,7 @@ async function notifyAdmins({ message, transfer_id = null, grocery_order_id = nu
   for (const admin of admins || []) {
     await notify({ user_id: admin.id, message, transfer_id, grocery_order_id })
   }
+  if (email) await emailAdminAlert({ ...email, message, transfer_id, grocery_order_id })
 }
 
 async function logTrip(transferId, status, userId) {
@@ -1654,6 +1658,17 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
       await notifyAdmins({
         transfer_id: row.id,
         message: `New transfer request #${row.trip_number} from ${insert.guest_name} · ${formatWhen(row.scheduled_at)} · ${row.pickup_address} → ${row.dropoff_address} · $${money(row.customer_charge)}${returnLeg ? ' · round trip (5% off)' : ''}`,
+        email: {
+          subject: `New transfer #${row.trip_number} · ${formatWhen(row.scheduled_at)}`,
+          lines: [
+            `Guest: ${insert.guest_name}${insert.guest_phone ? ` · ${insert.guest_phone}` : ''}${insert.guest_email ? ` · ${insert.guest_email}` : ''}`,
+            `When: ${formatWhen(row.scheduled_at)}`,
+            `Route: ${row.pickup_address} → ${row.dropoff_address}`,
+            `Passengers: ${row.passengers || 1}${row.bags ? ` · ${row.bags} bags` : ''}${row.flight_number ? ` · Flight ${row.flight_number}` : ''}`,
+            `Price: $${money(row.customer_charge)}${row.card_label ? ` · ${row.card_label}${row.payment_status === 'authorized' ? ' (authorized)' : ''}` : ''}`,
+            'Next step: assign a driver and vehicle.',
+          ],
+        },
       })
     }
     await notify({
@@ -2034,6 +2049,17 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
     await notifyAdmins({
       grocery_order_id: data.id,
       message: `New grocery request #${data.order_number} from ${insert.guest_name} · ${quote.package.name} · ${formatWhen(data.delivery_time)} · ${delivery_address}${prepay ? ` · prepaid $${prepay.prepay_amount.toFixed(2)}${prepay.is_rush ? ' · SHORT NOTICE' : ''}` : ''}`,
+      email: {
+        subject: `New grocery order #${data.order_number} · ${formatWhen(data.delivery_time)}${prepay?.is_rush ? ' · SHORT NOTICE' : ''}`,
+        lines: [
+          `Guest: ${insert.guest_name}${insert.guest_phone ? ` · ${insert.guest_phone}` : ''}${insert.guest_email ? ` · ${insert.guest_email}` : ''}`,
+          `Delivery: ${formatWhen(data.delivery_time)} · ${delivery_address}`,
+          `Package: ${quote.package.name} · ${quote.stocking.name}${quote.addons.length ? ` · ${quote.addons.map((a) => a.name).join(', ')}` : ''}`,
+          `Service fee: $${quote.service_fee}`,
+          prepay ? `Prepaid now: $${prepay.prepay_amount.toFixed(2)} (Publix cart $${prepay.cart_estimate.toFixed(2)} + ${prepay.buffer_percent}%${prepay.rush_fee ? ` + short-notice fee $${prepay.rush_fee.toFixed(2)}` : ''})` : null,
+          'Next step: assign a shopper.',
+        ],
+      },
     })
     await notify({
       user_id: req.user.id,
@@ -2240,6 +2266,10 @@ router.post('/grocery/:id/cancel', guestOnly, async (req, res, next) => {
     await notifyAdmins({
       grocery_order_id: order.id,
       message: `Grocery request #${order.order_number} was cancelled by the guest`,
+      email: {
+        subject: `Grocery order #${order.order_number} cancelled by the guest`,
+        lines: [`Delivery was: ${formatWhen(order.delivery_time)} · ${order.delivery_address}`, cancelUpdates.grocery_payment_status === 'refunded' ? 'The prepayment was refunded in full.' : null],
+      },
     })
     res.json(orderView(data))
   } catch (error) {

@@ -110,6 +110,13 @@ function FilePick({ id, label, file, onChange }) {
   )
 }
 
+const LATER_DAY = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric' })
+function laterDayLabel(when, today, tomorrow) {
+  const day = chicagoToday(new Date(when))
+  if (day === today) return ''
+  return day === tomorrow ? 'Tomorrow' : `${LATER_DAY.format(new Date(when))} ·`
+}
+
 function OrderCard({
   order,
   tomorrow,
@@ -128,7 +135,8 @@ function OrderCard({
   const call = telHref(order.guest_phone)
   const photos = photoUrls(order)
   const tipValue = order.status === 'delivered' ? usd(order.tip_amount) : order.tip_amount ? usd(order.tip_amount) : '—'
-  const timeLabel = tomorrow ? `Tomorrow ${formatTime(order.delivery_time)}` : formatTime(order.delivery_time)
+  // `tomorrow` is the day label for orders on a later day ('Tomorrow', 'Wed, Oct 1'), '' for today.
+  const timeLabel = tomorrow ? `${tomorrow} ${formatTime(order.delivery_time)}` : formatTime(order.delivery_time)
 
   return (
     <article className={`order${order.status === 'delivered' ? ' done' : ''}`}>
@@ -255,7 +263,8 @@ export default function Orders() {
   const today = chicagoToday()
   const tomorrow = addChicagoDays(today, 1)
   const todayPath = withQuery('/api/grocery/mine', { date: today })
-  const tomorrowPath = withQuery('/api/grocery/mine', { date: tomorrow })
+  // Every order assigned from tomorrow on — not just tomorrow — so new assignments show right away.
+  const tomorrowPath = withQuery('/api/grocery/mine', { date: tomorrow, upcoming: 1 })
   const earningsPath = withQuery('/api/earnings/mine', { range: 'today', role: 'shopper', activeRole: 'shopper' })
   const todayQuery = useQuery(todayPath)
   const tomorrowQuery = useQuery(tomorrowPath)
@@ -489,7 +498,7 @@ export default function Orders() {
                   <OrderCard
                     key={order.id}
                     order={order}
-                    tomorrow={chicagoToday(new Date(order.delivery_time)) === tomorrow}
+                    tomorrow={laterDayLabel(order.delivery_time, today, tomorrow)}
                     checks={checks}
                     pending={workingId === order.id}
                     onToggleItem={toggleItem}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 const FOCUSABLE = [
   'a[href]',
@@ -10,6 +10,11 @@ const FOCUSABLE = [
 ].join(',')
 
 export function useFocusTrap(ref, active, onClose) {
+  // onClose is usually a new inline function every render; keeping it in a ref sets the trap up
+  // once per opening instead of pulling focus back to the first field on every keystroke.
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
   useEffect(() => {
     if (!active) return undefined
     const node = ref.current
@@ -25,7 +30,7 @@ export function useFocusTrap(ref, active, onClose) {
     function onKey(event) {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose?.()
+        closeRef.current?.()
         return
       }
       if (event.key !== 'Tab') return
@@ -47,5 +52,5 @@ export function useFocusTrap(ref, active, onClose) {
       document.removeEventListener('keydown', onKey)
       if (trigger && typeof trigger.focus === 'function') trigger.focus()
     }
-  }, [active, onClose, ref])
+  }, [active, ref])
 }

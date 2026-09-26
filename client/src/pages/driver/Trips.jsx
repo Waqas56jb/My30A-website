@@ -53,6 +53,10 @@ export default function Trips() {
   const tripsPath = withQuery('/api/transfers/mine', { date: today })
   const earningsPath = withQuery('/api/earnings/mine', { range: 'today' })
   const tripsQuery = useQuery(tripsPath)
+  // Trips assigned for later days, so a new assignment shows up the moment the admin makes it.
+  const tomorrow = chicagoToday(new Date(Date.now() + 86400000))
+  const upcomingQuery = useQuery(withQuery('/api/transfers/mine', { date: tomorrow, upcoming: 1 }))
+  const upcoming = upcomingQuery.data || []
   const earningsQuery = useQuery(earningsPath)
 
   const [workingId, setWorkingId] = useState('')
@@ -98,11 +102,13 @@ export default function Trips() {
   const earningsRefetch = useRef(earningsQuery.refetch)
   tripsRefetch.current = tripsQuery.refetch
   earningsRefetch.current = earningsQuery.refetch
+  const upcomingRefetch = useRef(upcomingQuery.refetch)
+  upcomingRefetch.current = upcomingQuery.refetch
 
   useEffect(() => {
     function refresh() {
       if (document.visibilityState !== 'visible') return
-      Promise.all([tripsRefetch.current(), earningsRefetch.current()])
+      Promise.all([tripsRefetch.current(), earningsRefetch.current(), upcomingRefetch.current()])
         .then(() => setUpdatedAt(Date.now()))
         .catch(() => {})
     }
@@ -277,6 +283,16 @@ export default function Trips() {
                     onMessage={setChatTrip}
                     style={{ '--stagger': `${index * 40}ms` }}
                   />
+                ))}
+              </div>
+            )}
+            <h2>Upcoming trips</h2>
+            {upcoming.length === 0 ? (
+              <p className="section-empty">No trips assigned for the coming days.</p>
+            ) : (
+              <div className={`trip-grid${revealed ? ' is-ready' : ''}`}>
+                {upcoming.map((trip, index) => (
+                  <TripCard key={trip.id} trip={trip} upcoming onMessage={setChatTrip} style={{ '--stagger': `${index * 40}ms` }} />
                 ))}
               </div>
             )}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 const FOCUSABLE = [
   'a[href]',
@@ -10,6 +10,12 @@ const FOCUSABLE = [
 ].join(',')
 
 export function useFocusTrap(ref, active, onClose) {
+  // onClose is usually an inline arrow, i.e. a new function on every render (every keystroke in the
+  // form). Keeping it in a ref means the trap is set up once per opening — before this, each
+  // re-render re-ran the effect and yanked focus back to the first field while the admin typed.
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
   useEffect(() => {
     if (!active) return undefined
     const node = ref.current
@@ -25,7 +31,7 @@ export function useFocusTrap(ref, active, onClose) {
     function onKey(event) {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose?.()
+        closeRef.current?.()
         return
       }
       if (event.key !== 'Tab') return
@@ -47,5 +53,5 @@ export function useFocusTrap(ref, active, onClose) {
       document.removeEventListener('keydown', onKey)
       if (trigger && typeof trigger.focus === 'function') trigger.focus()
     }
-  }, [active, onClose, ref])
+  }, [active, ref])
 }

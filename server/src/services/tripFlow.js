@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase.js'
 import { capturePaymentIntent, chargeCard, holdSavedCard, releasePaymentHold, retrievePaymentIntent } from '../lib/stripe.js'
 import { maskedCallNumber, sendSms } from '../lib/sms.js'
 import { notify } from './notifications.js'
+import { emailAdminAlert } from './adminAlerts.js'
 import { pickPublicUrl } from '../lib/urls.js'
 
 export const ACTIVE_TRIP_STATUSES = ['requested', 'assigned', 'started', 'arrived', 'picked_up']
@@ -77,7 +78,7 @@ export async function notifyGuestAccount(transfer, message) {
   await notify({ user_id: transfer.guest_id, transfer_id: transfer.id, message })
 }
 
-export async function notifyAdmins({ message, transfer_id = null }) {
+export async function notifyAdmins({ message, transfer_id = null, email = null }) {
   const { data: admins } = await supabase
     .from('profiles')
     .select('id')
@@ -86,6 +87,7 @@ export async function notifyAdmins({ message, transfer_id = null }) {
   for (const admin of admins || []) {
     await notify({ user_id: admin.id, message, transfer_id })
   }
+  if (email) await emailAdminAlert({ ...email, message, transfer_id })
 }
 
 // Status-change SMS copy (Part 1 of the comms spec). Links always point at the secret guest page.
@@ -173,6 +175,14 @@ export async function cancelForGuest({ transfer, actorId, select }) {
   await notifyAdmins({
     transfer_id: transfer.id,
     message: `Transfer #${transfer.trip_number} cancelled by the guest (${window}) · fee $${fee}`,
+    email: {
+      subject: `Transfer #${transfer.trip_number} cancelled by the guest`,
+      lines: [
+        `Was: ${transfer.scheduled_at ? new Date(transfer.scheduled_at).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' }) : ''} · ${transfer.pickup_address || ''} → ${transfer.dropoff_address || ''}`,
+        `Cancellation fee kept: $${fee}`,
+        transfer.driver_id ? 'The assigned driver has been notified.' : null,
+      ],
+    },
   })
   if (transfer.driver_id) {
     await notify({ user_id: transfer.driver_id, transfer_id: transfer.id, message: `Trip #${transfer.trip_number} was cancelled by the guest.` })
