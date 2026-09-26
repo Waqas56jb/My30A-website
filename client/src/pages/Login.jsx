@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { setPersistSession } from '../lib/supabase.js'
 
 export default function Login() {
-  const { session, activeRole, loading, signIn } = useAuth()
+  const { session, profile, activeRole, loading, signIn } = useAuth()
   const emailRef = useRef(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,9 +25,13 @@ export default function Login() {
     emailRef.current?.focus()
   }, [])
 
-  if (session) {
-    return <Navigate to={activeRole ? `/${activeRole}` : '/'} replace />
+  // Only a driver / shopper / partner session skips this page. A guest (customer app) session in the
+  // same browser used to bounce here straight to the website — now the form shows, and signing in
+  // replaces it with the staff account.
+  if (session && activeRole) {
+    return <Navigate to={`/${activeRole}`} replace />
   }
+  const signedInElsewhere = Boolean(session && !loading && !activeRole)
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -65,6 +69,12 @@ export default function Login() {
         <form className="card" onSubmit={handleSubmit}>
           <h2>Sign in</h2>
           <div className="sub">Driver, partner and shopper access</div>
+          {signedInElsewhere ? (
+            <div className="help" style={{ marginTop: 0, marginBottom: 12 }}>
+              You’re signed in to the guest app{profile?.email ? ` as ${profile.email}` : ''}. Sign in below with your
+              driver, shopper or partner account.
+            </div>
+          ) : null}
           <div className={`error${error ? ' show' : ''}`} role="alert">
             {error || 'Email or password is incorrect.'}
           </div>
