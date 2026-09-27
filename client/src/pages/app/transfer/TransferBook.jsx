@@ -52,6 +52,28 @@ export const todayLocal = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+// Earliest same-day slot: 1 hour from now, rounded up to the next 15 minutes (the server's minimum).
+// null when that is already past midnight — too late to book for today.
+export function earliestSlot(now = new Date()) {
+  const t = new Date(now.getTime() + 60 * 60 * 1000)
+  if (t.getDate() !== now.getDate()) return null
+  const mins = Math.ceil((t.getHours() * 60 + t.getMinutes() + (t.getSeconds() ? 1 : 0)) / 15) * 15
+  return mins >= 24 * 60 ? null : `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`
+}
+
+// Picking today moves the time to the earliest bookable slot (a default like 4:00 PM may already
+// have passed), and never lets it go earlier. Returns that slot for a hint, or null.
+export function useSameDayTime(date, setDate, time, setTime) {
+  const today = todayLocal()
+  useEffect(() => {
+    if (date !== today) return
+    const first = earliestSlot()
+    if (!first) setDate(tomorrow())
+    else if (time < first) setTime(first)
+  }, [date, time]) // eslint-disable-line react-hooks/exhaustive-deps
+  return date === today ? earliestSlot() : null
+}
+
 export const tomorrow = () => {
   const d = new Date(Date.now() + 86400 * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -183,6 +205,7 @@ export default function TransferBook() {
   const [addrChecking, setAddrChecking] = useState(false)
   const [date, setDate] = useState(tomorrow())
   const [time, setTime] = useState('17:50')
+  const sameDayFirst = useSameDayTime(date, setDate, time, setTime)
   const [passengers, setPassengers] = useState(2)
   const [bags, setBags] = useState(2)
   const [flight, setFlight] = useState('')
@@ -510,6 +533,9 @@ export default function TransferBook() {
               onChange={setTime}
             />
           </div>
+          {sameDayFirst ? (
+            <p className="app-sameday-note">Same-day: the earliest time today is {fmtTime(sameDayFirst)}.</p>
+          ) : null}
         </section>
 
         <section className="app-xfer-section">

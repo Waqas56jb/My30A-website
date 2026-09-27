@@ -5,7 +5,7 @@ import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import CheckoutPayment from '../../../components/CheckoutPayment.jsx'
 import ContactFields, { useContact } from '../../../components/ContactFields.jsx'
 import { TransferShell } from '../transfer/TransferShell.jsx'
-import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
+import { Picker, fmtDate, fmtTime, toIso, tomorrow, useSameDayTime } from '../transfer/TransferBook.jsx'
 
 const todayLocal = () => {
   const d = new Date()
@@ -35,6 +35,7 @@ export default function GroceryList() {
   const [suggLoading, setSuggLoading] = useState(false)
   const [date, setDate] = useState(tomorrow())
   const [time, setTime] = useState('16:00')
+  const sameDayFirst = useSameDayTime(date, setDate, time, setTime)
   const [agree, setAgree] = useState(true)
   const [file, setFile] = useState(null)
   const [notes, setNotes] = useState('')
@@ -338,6 +339,9 @@ export default function GroceryList() {
               onChange={setTime}
             />
           </div>
+          {sameDayFirst ? (
+            <p className="app-sameday-note">Same-day: the earliest time today is {fmtTime(sameDayFirst)}.</p>
+          ) : null}
           {blocks > 1 ? (
             <p className="app-groc-rush is-info" role="note">
               <Info size={16} strokeWidth={2} aria-hidden="true" />
