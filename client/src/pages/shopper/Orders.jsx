@@ -318,11 +318,14 @@ export default function Orders() {
         .then(() => setUpdatedAt(Date.now()))
         .catch(() => {})
     }
-    const timer = window.setInterval(refresh, 60000)
+    // Backup poll; a new assignment normally arrives via StaffAlerts ('my30a-staff-refresh') in ~10s.
+    const timer = window.setInterval(refresh, 20000)
     document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('my30a-staff-refresh', refresh)
     return () => {
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('my30a-staff-refresh', refresh)
     }
   }, [])
 

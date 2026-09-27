@@ -37,7 +37,7 @@ export function setSoundEnabled(on) {
 }
 
 // Browsers (iOS especially) only allow audio after a user gesture — unlock on the first touch.
-function unlockAudio() {
+export function unlockAudio() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return

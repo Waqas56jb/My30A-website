@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { formatUpdatedAgo, initials, roleLabel } from '../lib/format.js'
 import AppNav from './AppNav.jsx'
 import ChangePassword from './ChangePassword.jsx'
+import StaffAlerts from './StaffAlerts.jsx'
 import { useToast } from './Toast.jsx'
 
 const PANEL_ROLES = ['driver', 'partner', 'shopper']
@@ -116,6 +117,7 @@ export default function Layout({ children }) {
             </div>
           </header>
           <main>{children}</main>
+          <StaffAlerts />
         </div>
         <ChangePassword
           open={passwordOpen}

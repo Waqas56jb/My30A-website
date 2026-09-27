@@ -57,7 +57,8 @@ function dayRange(date) {
 function formatWhen(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
-  return date.toISOString().replace('T', ' ').slice(0, 16)
+  // Florida (Central) time, readable — these lines go to guests, drivers and shoppers.
+  return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
 }
 
 function extensionFor(mimetype) {

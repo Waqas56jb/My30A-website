@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Truck } from 'lucide-react'
 import EmptyState from '../../components/EmptyState.jsx'
 import { usePageHeader } from '../../components/Layout.jsx'
@@ -153,6 +153,17 @@ export default function Vehicles() {
   const summaryQuery = useQuery(withQuery('/api/earnings/vehicle-owner', { month }))
   const tripsQuery = useQuery(withQuery('/api/transfers/vehicle-owner', { month }))
   const payoutsQuery = useQuery('/api/payouts/mine')
+  // New trip on one of my vehicles → StaffAlerts fires this; reload right away.
+  const refetchTrips = tripsQuery.refetch
+  const refetchSummary = summaryQuery.refetch
+  useEffect(() => {
+    const onAlert = () => {
+      refetchTrips()
+      refetchSummary()
+    }
+    window.addEventListener('my30a-staff-refresh', onAlert)
+    return () => window.removeEventListener('my30a-staff-refresh', onAlert)
+  }, [refetchTrips, refetchSummary])
 
   const trips = tripsQuery.data?.trips || []
   const groups = useMemo(() => groupVehicles(trips), [trips])

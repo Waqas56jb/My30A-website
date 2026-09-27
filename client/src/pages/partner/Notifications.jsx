@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Bell } from 'lucide-react'
 import EmptyState from '../../components/EmptyState.jsx'
 import { usePageHeader } from '../../components/Layout.jsx'
@@ -24,6 +25,11 @@ export default function Notifications() {
   useTitle('Notifications · My30A Host')
   usePageHeader('Notifications')
   const { notifications, loading, error, unread, refetch } = useNotifications()
+  useEffect(() => {
+    const onAlert = () => refetch()
+    window.addEventListener('my30a-staff-refresh', onAlert)
+    return () => window.removeEventListener('my30a-staff-refresh', onAlert)
+  }, [refetch])
 
   async function markAll() {
     if (!unread) return

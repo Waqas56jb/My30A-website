@@ -464,3 +464,46 @@ select {
     padding-top: 32px;
   }
 }
+
+/* Staff apps: live alert when a trip / order is assigned (components/StaffAlerts.jsx) */
+.staff-alert {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 90;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(440px, calc(100vw - 24px));
+  padding: 14px;
+  border-left: 4px solid #e3a64b;
+  border-radius: 12px;
+  background: #16302b;
+  color: #fff;
+  box-shadow: 0 20px 50px -18px rgba(0, 0, 0, 0.55);
+  transform: translateX(-50%);
+  animation: staff-alert-in 0.35s ease-out;
+}
+.staff-alert p {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.staff-alert svg {
+  flex: none;
+  color: #e3a64b;
+}
+.staff-alert button {
+  border: 0;
+  background: none;
+  color: #fff;
+  opacity: 0.7;
+  cursor: pointer;
+}
+@keyframes staff-alert-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px);
+  }
+}
