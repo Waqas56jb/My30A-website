@@ -2,15 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Info } from 'lucide-react'
 import { Cta, TransferShell } from '../transfer/TransferShell.jsx'
-import { ADDONS, PACKAGES, addonIcon, grandTotal, useCatalog } from './GroceryShared.jsx'
+import { PACKAGES, grandTotal, useCatalog } from './GroceryShared.jsx'
 
 export default function GroceryPackage() {
   const navigate = useNavigate()
   const catalog = useCatalog()
   const [pkg, setPkg] = useState('full')
-  const [addons, setAddons] = useState({})
+  const addons = {}
   const packages = catalog?.packages || PACKAGES
-  const addonRows = catalog?.addons || ADDONS
   const total = grandTotal({ pkg, addons, stocking: 'bags', catalog })
 
   return (
@@ -80,41 +79,7 @@ export default function GroceryPackage() {
           </div>
         </section>
 
-        {addonRows.length ? (
-          <section className="app-xfer-section is-gap-8">
-            <h2 className="app-xfer-h">Add-Ons</h2>
-            {addonRows.map((addon) => {
-              const Icon = addonIcon(addon)
-              const { key, name, sub, price, tone } = addon
-              return (
-                <div key={key} className="app-groc-addon">
-                  <span className="app-groc-addon-l">
-                    <span className={`app-groc-addon-ico is-${tone}`} aria-hidden="true">
-                      <Icon size={14} strokeWidth={1.5} />
-                    </span>
-                    <span className="app-groc-addon-text">
-                      <strong>{name}</strong>
-                      <small>{sub}</small>
-                    </span>
-                  </span>
-                  <span className="app-groc-addon-r">
-                    <b>+${price}</b>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={Boolean(addons[key])}
-                      aria-label={`${name} add-on`}
-                      className={`app-groc-toggle${addons[key] ? ' is-on' : ''}`}
-                      onClick={() => setAddons((a) => ({ ...a, [key]: !a[key] }))}
-                    >
-                      <i />
-                    </button>
-                  </span>
-                </div>
-              )
-            })}
-          </section>
-        ) : null}
+        {/* Rush / Holiday fees are added by My30A Host on an order when they apply — guests don't pick them. */}
       </div>
     </TransferShell>
   )

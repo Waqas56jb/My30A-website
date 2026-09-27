@@ -397,7 +397,8 @@ export default function Grocery() {
             <div className="kv" style={{ marginTop: 14 }}>
               <span>Guest</span>
               <span>
-                {order.guest_name} · {order.guest_phone || '—'}
+                {order.guest_name || 'Guest'} ·{' '}
+                {order.guest_phone ? <a href={`tel:${String(order.guest_phone).replace(/[^\d+]/g, '')}`}>{order.guest_phone}</a> : 'no phone given'}
               </span>
               {order.is_guest_request ? (
                 <>
@@ -548,6 +549,27 @@ export default function Grocery() {
               />
             ) : null}
             <div className="actions" style={{ marginTop: 18 }}>
+              {/* Rush / Holiday fees are admin-only: added here, charged with the service fee after delivery. */}
+              {['requested', 'assigned', 'shopping', 'on_the_way'].includes(order.status)
+                ? [
+                    ['rush', 'Rush', 50],
+                    ['holiday', 'Holiday', 75],
+                  ].map(([key, label, price]) => {
+                    const on = (order.addons || []).some((a) => a.key === key)
+                    return (
+                      <Button
+                        key={key}
+                        className="btn quiet"
+                        pending={working === `/api/grocery/${order.id}/fees`}
+                        onClick={() =>
+                          act(`/api/grocery/${order.id}/fees`, { [key]: !on }, on ? `${label} fee removed` : `${label} fee added (+$${price})`)
+                        }
+                      >
+                        {on ? `Remove ${label} fee` : `Add ${label} fee (+$${price})`}
+                      </Button>
+                    )
+                  })
+                : null}
               {order.is_flagged ? (
                 <Button
                   className="btn quiet"

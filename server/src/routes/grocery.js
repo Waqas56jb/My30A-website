@@ -750,6 +750,49 @@ router.post('/:id/refund', requireRole('admin'), async (req, res, next) => {
   }
 })
 
+// Admin-only Rush / Holiday fees (guests can't pick them — client decision). Body:
+// { rush: true|false, holiday: true|false }. The fee joins the service fee, which is charged after
+// delivery with the receipt settlement; the guest is told when a fee is added.
+router.post('/:id/fees', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { order, error } = await loadOrder(req.params.id)
+    if (error || !order) return res.status(404).json({ error: 'Order not found' })
+    if (!['requested', 'assigned', 'shopping', 'on_the_way'].includes(order.status)) {
+      return res.status(400).json({ error: 'Fees can only be changed before the order is delivered' })
+    }
+    const { data: catalog } = await supabase
+      .from('service_catalog')
+      .select('key, name, price')
+      .eq('kind', 'grocery_addon')
+      .in('key', ['rush', 'holiday'])
+    const current = Array.isArray(order.addons) ? order.addons : []
+    const want = { ...Object.fromEntries(current.map((a) => [a.key, true])) }
+    for (const key of ['rush', 'holiday']) if (req.body?.[key] !== undefined) want[key] = Boolean(req.body[key])
+    const others = current.filter((a) => !['rush', 'holiday'].includes(a.key))
+    const chosen = (catalog || []).filter((row) => want[row.key]).map((row) => ({ key: row.key, name: row.name, price: money(row.price) }))
+    const addons = [...others, ...chosen]
+    const sum = (list) => list.reduce((total, a) => total + (money(a.price) || 0), 0)
+    const service_fee = Number((money(order.service_fee) - sum(current) + sum(addons)).toFixed(2))
+    const { data, error: updateError } = await supabase
+      .from('grocery_orders')
+      .update({ addons, service_fee, customer_charge: Number((service_fee + (money(order.rush_fee) || 0)).toFixed(2)) })
+      .eq('id', order.id)
+      .select(ORDER_SELECT)
+      .single()
+    if (updateError) return res.status(400).json({ error: updateError.message })
+    const added = chosen.filter((a) => !current.some((c) => c.key === a.key))
+    if (added.length) {
+      await notifyGuest(
+        data,
+        `${added.map((a) => `${a.name} fee $${a.price}`).join(' and ')} added to grocery order #${data.order_number}. It's charged with your service fee after delivery (service fee now $${service_fee.toFixed(2)}).`
+      )
+    }
+    res.json(adminView(await withSignedUrls(data), { status_log: await loadStatusLog(data.id) }))
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.post('/:id/flag', requireRole('admin'), async (req, res, next) => {
   try {
     const reason = req.body?.reason

@@ -46,6 +46,12 @@ export const fmtTime = (hm) => {
   return `${h % 12 || 12}:${pad(m)} ${suffix}`
 }
 
+// Same-day pickups are allowed (at least 1 hour ahead — the server checks).
+export const todayLocal = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export const tomorrow = () => {
   const d = new Date(Date.now() + 86400 * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -276,8 +282,9 @@ export default function TransferBook() {
       ? { main: savedAddress, sub: `${community || 'Your stay'} · saved address`, full: savedAddress, lat: null, lon: null }
       : null,
     ...liveSuggestions.map((s) => ({
-      main: s.address?.house_number && s.address?.road ? `${s.address.house_number} ${s.address.road}` : s.label,
-      sub: [s.address?.city || s.address?.town || s.address?.village || s.address?.hamlet, s.address?.state]
+      // Hotels / places show their name first, then the street address.
+      main: s.name || (s.address?.house_number && s.address?.road ? `${s.address.house_number} ${s.address.road}` : s.label),
+      sub: [s.name ? [s.address?.house_number, s.address?.road].filter(Boolean).join(' ') : null, s.address?.city || s.address?.town || s.address?.village || s.address?.hamlet, s.address?.state]
         .filter(Boolean)
         .join(', ') || '30A, FL',
       full: s.label,
@@ -376,7 +383,7 @@ export default function TransferBook() {
             <input
               type="text"
               value={address}
-              placeholder="Enter your address"
+              placeholder="Hotel name or address"
               onChange={(e) => {
                 addressTouched.current = true
                 setAddress(e.target.value)
@@ -491,7 +498,7 @@ export default function TransferBook() {
               icon={Calendar}
               type="date"
               value={date}
-              min={tomorrow()}
+              min={todayLocal()}
               display={fmtDate(date)}
               onChange={setDate}
             />

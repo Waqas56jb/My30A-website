@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import CheckoutPayment from '../../../components/CheckoutPayment.jsx'
+import ContactFields, { useContact } from '../../../components/ContactFields.jsx'
 import {
   DetailRow,
   PriceCard,
@@ -73,6 +74,7 @@ export default function TransferReview() {
   // One key per checkout attempt keeps retries (bank approval, double taps) idempotent.
   const checkoutKey = useRef(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
   const { data: me } = useGuestQuery(guest.me, [])
+  const contact = useContact(me?.profile)
 
   const book = async (paymentMethodId, { handleAction }) => {
     setError('')
@@ -92,6 +94,8 @@ export default function TransferReview() {
       payment_method: 'card_on_file',
       payment_method_id: paymentMethodId,
       checkout_key: checkoutKey.current,
+      guest_name: contact.name.trim(),
+      guest_phone: contact.phone.trim(),
     }
     let confirmed = {}
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -232,6 +236,8 @@ export default function TransferReview() {
           I understand and agree to the cancellation policy.
         </button>
 
+        <ContactFields contact={contact} />
+
         {error ? <p className="app-inline-error">{error}</p> : null}
         <CheckoutPayment
           title="Payment"
@@ -242,7 +248,7 @@ export default function TransferReview() {
               : 'Your card is authorized now and charged only after your ride. Free cancellation up to 48 hours before pickup.'
           }
           submitLabel={total !== null ? `Pay & Book · $${Number(total).toFixed(2)}` : 'Pay & Book'}
-          disabled={!quote || Boolean(quoteError) || !agree}
+          disabled={!quote || Boolean(quoteError) || !agree || !contact.valid}
           onPay={book}
           profile={me}
         />

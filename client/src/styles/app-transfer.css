@@ -1718,3 +1718,25 @@
   border-color: #0c3255;
   box-shadow: 0 0 0 3px rgba(12, 50, 85, 0.12);
 }
+
+/* Contact details on checkout (components/ContactFields.jsx) */
+.app-co-field > .app-contact-in {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+.app-contact-in svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: #8a94a6;
+  pointer-events: none;
+}
+.app-contact-in input {
+  width: 100%;
+  padding-left: 36px !important;
+}
+.app-contact-err {
+  color: #b42318 !important;
+}

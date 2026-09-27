@@ -551,7 +551,8 @@ export default function Transfers() {
             <div className="kv" style={{ marginTop: 14 }}>
               <span>Guest</span>
               <span>
-                {trip.guest_name} · {trip.guest_phone || '—'}
+                {trip.guest_name || 'Guest'} ·{' '}
+                {trip.guest_phone ? <a href={`tel:${String(trip.guest_phone).replace(/[^\d+]/g, '')}`}>{trip.guest_phone}</a> : 'no phone given'}
               </span>
               {trip.is_guest_request ? (
                 <>

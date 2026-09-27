@@ -8,7 +8,6 @@ import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase.js'
 import { memo } from '../lib/memo.js'
-import { ymdInTimeZone } from '../lib/timezone.js'
 import { openStatus } from '../lib/hours.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
@@ -37,7 +36,7 @@ import {
 import { groceryPolicy, isPrepaid, prepayQuote, refundPrepayment, runInstantPayout } from '../services/groceryPay.js'
 import { emailAdminAlert } from '../services/adminAlerts.js'
 import { maskedCallNumber } from '../lib/sms.js'
-import { geocodeQuery } from '../lib/nominatim.js'
+import { searchPlaces } from '../lib/placeSearch.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
 import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt } from '../services/vitoria.js'
 import { vitoriaOffline } from '../services/vitoriaOffline.js'
@@ -597,12 +596,8 @@ async function quoteGrocery(body) {
     : Object.entries(body.addons || {})
         .filter(([, on]) => Boolean(on))
         .map(([key]) => key)
-  // Rush = same-day delivery (Chicago time): always applied for a same-day order, never charged
-  // for a later day.
-  if (body.delivery_time && catalog.grocery.addons.some((a) => a.key === 'rush')) {
-    const sameDay = ymdInTimeZone(new Date(body.delivery_time)) === ymdInTimeZone(new Date())
-    requested = sameDay ? [...new Set([...requested, 'rush'])] : requested.filter((key) => key !== 'rush')
-  }
+  // Rush and Holiday fees are added by the admin on an order (POST /api/grocery/:id/fees) — guests
+  // can't pick them, and a same-day delivery doesn't add Rush on its own (client decision).
   const addons = catalog.grocery.addons
     .filter((addon) => requested.includes(addon.key))
     .map((addon) => ({ key: addon.key, name: addon.name, price: addon.price }))
@@ -620,6 +615,20 @@ async function quoteGrocery(body) {
     service_fee,
     total_label: `$${service_fee} + Publix`,
   }
+}
+
+// Guest name + mobile on every booking (client request): used by admin, drivers and shoppers to
+// reach the guest. A number typed at checkout is also saved to the guest's profile.
+async function guestContact(body, profile, user) {
+  const guest_name = String(body.guest_name || profile?.name || '').trim()
+  const guest_phone = String(body.guest_phone || profile?.phone || '').trim()
+  if (guest_name.length < 2) throw httpError(400, 'Please add your full name so we know who to look for.')
+  if (guest_phone.replace(/\D/g, '').length < 10) throw httpError(400, 'Please add a mobile number so your driver or shopper can reach you.')
+  const updates = {}
+  if (!profile?.phone || (body.guest_phone && body.guest_phone !== profile.phone)) updates.phone = guest_phone
+  if (!profile?.name && guest_name) updates.name = guest_name
+  if (Object.keys(updates).length) await supabase.from('profiles').update(updates).eq('id', user.id)
+  return { guest_name, guest_phone }
 }
 
 function httpError(status, message) {
@@ -944,15 +953,8 @@ router.get('/address-autocomplete', async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim()
     if (q.length < 3) return res.json([])
-    const results = await geocodeQuery(q, { limit: 6 })
-    res.json(
-      results.map((r) => ({
-        label: r.label,
-        lat: r.lat,
-        lon: r.lon,
-        address: r.address,
-      }))
-    )
+    // Street address or hotel / place name (lib/placeSearch.js).
+    res.json(await searchPlaces(q, { limit: 6 }))
   } catch (error) {
     sendError(res, next, error)
   }
@@ -1501,6 +1503,10 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
     if (!body.scheduled_at || Number.isNaN(new Date(body.scheduled_at).getTime())) {
       return res.status(400).json({ error: 'scheduled_at (ISO datetime) is required' })
     }
+    // Same-day rides are fine — just not a pickup that has already passed or is minutes away.
+    if (new Date(body.scheduled_at).getTime() < Date.now() + 60 * 60 * 1000) {
+      return res.status(400).json({ error: 'Please pick a pickup time at least 1 hour from now.' })
+    }
     const passengers = Number(body.passengers ?? 1)
     const bags = Number(body.bags ?? 0)
     if (!Number.isInteger(passengers) || passengers < 1) {
@@ -1516,11 +1522,12 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
     const quote = await quoteTransfer(body, booking)
     await enforceAddressInCommunity({ address, lat: body.lat, lon: body.lon, community: quote.community })
     const profile = await loadProfile(req.user.id)
+    const contact = await guestContact(body, profile, req.user)
     const isArrival = quote.direction === 'from_airport'
     const insert = {
       guest_id: req.user.id,
-      guest_name: String(body.guest_name || profile?.name || req.user.email).trim(),
-      guest_phone: String(body.guest_phone || profile?.phone || '').trim() || null,
+      guest_name: contact.guest_name,
+      guest_phone: contact.guest_phone,
       guest_email: req.user.email,
       pickup_address: isArrival ? AIRPORTS[quote.airport] : address,
       dropoff_address: isArrival ? address : AIRPORTS[quote.airport],
@@ -1904,7 +1911,7 @@ router.post('/transfers/:id/tip', guestOnly, async (req, res, next) => {
 
 router.post('/grocery/quote', guestOnly, async (req, res, next) => {
   try {
-    const body = req.body || {}
+    const body = { ...(req.body || {}), addons: [] }
     const quote = await quoteGrocery(body)
     const policy = await groceryPolicy()
     const cart = Number(body.cart_estimate)
@@ -1938,8 +1945,9 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
       return res.status(400).json({ error: 'invalid payment_method' })
     }
 
-    const quote = await quoteGrocery(body)
+    const quote = await quoteGrocery({ ...body, addons: [] })
     const profile = await loadProfile(req.user.id)
+    const contact = await guestContact(body, profile, req.user)
     const community = body.community_id || body.community
       ? await resolveCommunity(body)
       : booking?.community_id
@@ -1948,8 +1956,8 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
 
     const insert = {
       guest_id: req.user.id,
-      guest_name: String(body.guest_name || profile?.name || req.user.email).trim(),
-      guest_phone: String(body.guest_phone || profile?.phone || '').trim() || null,
+      guest_name: contact.guest_name,
+      guest_phone: contact.guest_phone,
       guest_email: req.user.email,
       delivery_address,
       community_id: community?.id || null,

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar, Check, Clock, DollarSign, Info, Mail, MapPin, Upload, X, Zap } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import CheckoutPayment from '../../../components/CheckoutPayment.jsx'
+import ContactFields, { useContact } from '../../../components/ContactFields.jsx'
 import { TransferShell } from '../transfer/TransferShell.jsx'
 import { Picker, fmtDate, fmtTime, toIso, tomorrow } from '../transfer/TransferBook.jsx'
 
@@ -32,7 +33,7 @@ export default function GroceryList() {
   const [showSugg, setShowSugg] = useState(false)
   const [liveSuggestions, setLiveSuggestions] = useState([])
   const [suggLoading, setSuggLoading] = useState(false)
-  const [date, setDate] = useState(() => (incoming.addons?.rush ? todayLocal() : tomorrow()))
+  const [date, setDate] = useState(tomorrow())
   const [time, setTime] = useState('16:00')
   const [agree, setAgree] = useState(true)
   const [file, setFile] = useState(null)
@@ -90,6 +91,7 @@ export default function GroceryList() {
   const grocery = { ...incoming, date: fmtDate(date), time: fmtTime(time), deliveryAt: toIso(date, time) }
 
   const { data: me } = useGuestQuery(guest.me, [])
+  const contact = useContact(me?.profile)
   const fee = serviceFee(grocery) + addonTotal(grocery)
 
   const cart = Number(String(cartTotal).replace(/[^0-9.]/g, ''))
@@ -123,7 +125,6 @@ export default function GroceryList() {
   }, [grocery.deliveryAt, cart, grocery.pkg, grocery.stocking, addonKeys.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const serviceTotal = quote?.service_fee ?? fee
-  const sameDay = Boolean(quote?.addons?.some((a) => a.key === 'rush'))
   const blocks = quote?.package_blocks || 1
   const prepay = prepayFor(cart, grocery.deliveryAt, policy)
   const rushSoon = (new Date(grocery.deliveryAt).getTime() - Date.now()) / 3600000 < policy.min_notice_hours
@@ -148,6 +149,8 @@ export default function GroceryList() {
       payment_method_id: paymentMethodId,
       cart_estimate: prepay.cart_estimate,
       checkout_key: checkoutKey.current,
+      guest_name: contact.name.trim(),
+      guest_phone: contact.phone.trim(),
     }
     let order = null
     try {
@@ -195,7 +198,7 @@ export default function GroceryList() {
                 <input
                   type="text"
                   value={address}
-                  placeholder={addressLoaded ? 'Enter your delivery address' : 'Loading your address…'}
+                  placeholder={addressLoaded ? 'Hotel name or delivery address' : 'Loading your address…'}
                   onChange={(e) => {
                     addressTouched.current = true
                     setAddress(e.target.value)
@@ -234,12 +237,13 @@ export default function GroceryList() {
                     }}
                   >
                     <strong>
-                      {s.address?.house_number && s.address?.road
-                        ? `${s.address.house_number} ${s.address.road}`
-                        : s.label}
+                      {s.name ||
+                        (s.address?.house_number && s.address?.road
+                          ? `${s.address.house_number} ${s.address.road}`
+                          : s.label)}
                     </strong>
                     <small>
-                      {[s.address?.city || s.address?.town || s.address?.village || s.address?.hamlet, s.address?.state]
+                      {[s.name ? [s.address?.house_number, s.address?.road].filter(Boolean).join(' ') : null, s.address?.city || s.address?.town || s.address?.village || s.address?.hamlet, s.address?.state]
                         .filter(Boolean)
                         .join(', ') || '30A, FL'}
                     </small>
@@ -334,15 +338,6 @@ export default function GroceryList() {
               onChange={setTime}
             />
           </div>
-          {sameDay ? (
-            <p className="app-groc-rush" role="note">
-              <Zap size={16} strokeWidth={2} aria-hidden="true" />
-              <span>
-                <b>Same-day delivery</b> — the Rush add-on (+${quote.addons.find((a) => a.key === 'rush')?.price ?? 50}) is
-                included.
-              </span>
-            </p>
-          ) : null}
           {blocks > 1 ? (
             <p className="app-groc-rush is-info" role="note">
               <Info size={16} strokeWidth={2} aria-hidden="true" />
@@ -384,6 +379,8 @@ export default function GroceryList() {
           </button>
         </section>
 
+        <ContactFields contact={contact} />
+
         <PrepayBreakdown p={prepay} serviceFee={serviceTotal} />
 
         {error ? <p className="app-inline-error">{error}</p> : null}
@@ -396,7 +393,7 @@ export default function GroceryList() {
               : 'Enter your Publix cart total above to see what’s charged today.'
           }
           submitLabel={prepay ? `Pay ${usd(prepay.prepay_amount)} & Place Order` : 'Place Order'}
-          disabled={!address.trim() || !agree || !prepay}
+          disabled={!address.trim() || !agree || !prepay || !contact.valid}
           onPay={placeOrder}
           profile={me}
         />
