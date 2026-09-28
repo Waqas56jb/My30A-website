@@ -1159,3 +1159,23 @@
 .chat-input .btn { padding: 0 14px; }
 .paylink { display: flex; flex-direction: column; gap: 8px; }
 .paylink a { display: inline-flex; align-items: center; gap: 6px; word-break: break-all; }
+
+/* My30A logo next to the page title (driver / shopper / partner apps) */
+.top {
+  gap: 12px;
+}
+.top .top-logo {
+  flex: none;
+  width: auto;
+  height: 40px;
+  align-self: center;
+}
+.top .top-title {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 520px) {
+  .top .top-logo {
+    height: 32px;
+  }
+}

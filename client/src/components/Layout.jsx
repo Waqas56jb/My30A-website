@@ -56,7 +56,8 @@ export default function Layout({ children }) {
         {hasNav ? <AppNav /> : null}
         <div className="app-body">
           <header className="top">
-            <div>
+            <img className="top-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
+            <div className="top-title">
               <h1>{header.title || 'My30A Host'}</h1>
               {header.sub ? <div className="sub">{header.sub}</div> : null}
               {updatedLabel ? <div className="poll">{updatedLabel}</div> : null}

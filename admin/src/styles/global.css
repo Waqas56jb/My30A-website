@@ -1884,3 +1884,30 @@ th.num {
     right: 10px;
   }
 }
+
+/* My30A logo: sidebar, phone top bar, sign-in page */
+.brand img {
+  display: block;
+  width: auto;
+  height: 44px;
+  margin-bottom: 4px;
+}
+.topbar .brand img {
+  height: 34px;
+  margin: 0;
+}
+.topbar .brand small {
+  display: none;
+}
+.login .scene .brand img {
+  display: block;
+  width: auto;
+  height: 58px;
+  margin-bottom: 6px;
+}
+.login .card .card-logo {
+  display: block;
+  width: auto;
+  height: 52px;
+  margin: 0 0 18px;
+}

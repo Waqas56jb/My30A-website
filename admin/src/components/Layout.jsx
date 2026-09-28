@@ -60,7 +60,8 @@ export default function Layout() {
           <Menu size={18} />
         </button>
         <div className="brand">
-          My30A Host<small>Admin</small>
+          <img src="/brand/my30a-logo-light.png" alt="My30A Host" width="720" height="319" />
+          <small>Admin</small>
         </div>
       </header>
       {menuOpen ? (
@@ -68,7 +69,8 @@ export default function Layout() {
       ) : null}
       <aside className="side">
         <div className="brand">
-          My30A Host<small>Admin</small>
+          <img src="/brand/my30a-logo-light.png" alt="My30A Host" width="720" height="319" />
+          <small>Admin</small>
         </div>
         <button type="button" className="icon-btn side-close" aria-label="Close menu" onClick={() => setMenuOpen(false)}>
           <X size={18} />

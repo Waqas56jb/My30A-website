@@ -49,7 +49,8 @@ export default function Login() {
     <div className="login">
       <section className="scene">
         <div className="brand">
-          My30A Host<small>Operations</small>
+          <img src="/brand/my30a-logo-light.png" alt="My30A Host" width="720" height="319" />
+          <small>Operations</small>
         </div>
         <div>
           <h1>Every trip, every order, every dollar in its place.</h1>
@@ -67,6 +68,7 @@ export default function Login() {
 
       <section className="panel">
         <form className="card" onSubmit={handleSubmit}>
+          <img className="card-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
           <h2>Sign in</h2>
           <div className="sub">Driver, partner and shopper access</div>
           {signedInElsewhere ? (
