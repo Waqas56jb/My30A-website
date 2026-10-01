@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase.js'
 import { chargeSavedCard, createCheckoutSession, retrieveCheckoutSession } from '../lib/stripe.js'
 import { isSmsConfigured, last10, maskedCallNumber } from '../lib/sms.js'
 import { notify } from '../services/notifications.js'
+import { brandView, loadHomeBySlug } from '../services/hostHomes.js'
 import {
   ACTIVE_TRIP_STATUSES,
   ENDED_TRIP_STATUSES,
@@ -96,6 +97,19 @@ async function loadMessages(transferId) {
 }
 
 // ---------- trip page (status + chat) ----------
+
+// Host version welcome screen (QR code in the house): the host's branding only — WiFi, door code
+// and the rest of "My Home" need a signed-in guest (GET /api/guest/my-home).
+router.get('/home/:slug', async (req, res, next) => {
+  try {
+    const home = await loadHomeBySlug(req.params.slug)
+    if (!home) return res.status(404).json({ error: 'This QR code is no longer active. Please ask your host for a new one.' })
+    const { count } = await supabase.from('explore_vendors').select('id', { count: 'exact', head: true }).eq('is_active', true)
+    res.json({ ...brandView(home), partners: count || null })
+  } catch (error) {
+    next(error)
+  }
+})
 
 router.get('/trip/:token', async (req, res, next) => {
   try {

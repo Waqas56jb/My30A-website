@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CircleUserRound, Compass, Home, LayoutGrid, Sparkles } from 'lucide-react'
+import { CircleUserRound, Compass, Home, House, LayoutGrid, Sparkles } from 'lucide-react'
+import { useHostBrand } from '../../lib/hostHome.js'
 
 // Grid columns: 0 Home · 1 Services · 2 (Vitoria FAB) · 3 Profile · 4 Explore
 const ITEMS = [
@@ -10,12 +11,23 @@ const ITEMS = [
   { key: 'explore', to: '/app/explore', label: 'Explore', Icon: Compass, col: 4, tone: 'lagoon' },
 ]
 
+// Host version (guest came in through a host's QR code): Profile makes way for "My Home"; Profile
+// stays reachable from the Home screen and the My Home header.
+const HOST_ITEMS = [
+  ITEMS[0],
+  ITEMS[1],
+  { ...ITEMS[3], col: 3 },
+  { key: 'myhome', to: '/app/my-home', label: 'My Home', Icon: House, col: 4, tone: 'orchid' },
+]
+
 // Each screen mounts its own nav, so remember the last active column at module level and
 // slide the indicator from there to the new tab — it reads like one persistent tab bar.
 let lastCol = null
 
 export default function BottomNav({ active }) {
-  const target = ITEMS.find((item) => item.key === active)?.col ?? null
+  const hostBrand = useHostBrand()
+  const items = hostBrand ? HOST_ITEMS : ITEMS
+  const target = items.find((item) => item.key === active)?.col ?? null
   const [col, setCol] = useState(lastCol ?? target)
 
   useEffect(() => {
@@ -28,13 +40,13 @@ export default function BottomNav({ active }) {
   }, [target])
 
   return (
-    <nav className={`app-home-nav is-${ITEMS.find((item) => item.col === col)?.tone || 'none'}`} aria-label="Primary">
+    <nav className={`app-home-nav is-${items.find((item) => item.col === col)?.tone || 'none'}`} aria-label="Primary">
       {target !== null && col !== null ? (
         <span className="app-home-nav-indicator" style={{ '--col': col }} aria-hidden="true">
           <i />
         </span>
       ) : null}
-      {ITEMS.map(({ key, to, label, Icon, col: c, tone }) => {
+      {items.map(({ key, to, label, Icon, col: c, tone }) => {
         const isActive = active === key
         return (
           <Link

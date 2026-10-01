@@ -15,3 +15,5 @@ export const missingEnv = [
   !SUPABASE_URL && 'VITE_SUPABASE_URL',
   !SUPABASE_ANON_KEY && 'VITE_SUPABASE_ANON_KEY',
 ].filter(Boolean)
+
+export const GUEST_APP_URL = String(import.meta.env.VITE_GUEST_APP_URL || 'https://www.my30ahost.com').trim().replace(/\/$/, '')

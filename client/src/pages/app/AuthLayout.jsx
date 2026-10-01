@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Plane, ShoppingBag, Sparkles } from 'lucide-react'
+import { useHostBrand } from '../../lib/hostHome.js'
 
 // Log in / Sign up frame: a cinematic 30A photo panel (slow cross-fading slideshow) beside the
 // form on desktop, above it on phones. The form itself is passed in as children.
@@ -16,14 +17,33 @@ const PERKS = [
   { Icon: Sparkles, text: 'Vitoria, your AI local, by text or voice' },
 ]
 
+// The logo above the form: the host's (Host version, guest came in through their QR code) with a
+// small "concierge by My30A Host" line, otherwise My30A Host's own.
+export function AuthLogo() {
+  const hostBrand = useHostBrand()
+  if (!hostBrand?.logo_url) {
+    return <img className="auth-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
+  }
+  return (
+    <div className="auth-hostlogo">
+      <img src={hostBrand.logo_url} alt={hostBrand.host_name} />
+      <small>
+        {hostBrand.home_name} · concierge by <b>My30A Host</b>
+      </small>
+    </div>
+  )
+}
+
 export default function AuthLayout({ children }) {
   const [slide, setSlide] = useState(0)
+  const hostBrand = useHostBrand()
+  const slides = hostBrand?.cover_url ? [{ src: hostBrand.cover_url, caption: hostBrand.home_name }, ...SLIDES] : SLIDES
 
   useEffect(() => {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
-    const t = setInterval(() => setSlide((s) => (s + 1) % SLIDES.length), 6500)
+    const t = setInterval(() => setSlide((s) => (s + 1) % slides.length), 6500)
     return () => clearInterval(t)
-  }, [])
+  }, [slides.length])
 
   useEffect(() => {
     document.documentElement.classList.add('auth-open')
@@ -34,8 +54,8 @@ export default function AuthLayout({ children }) {
     <div className="auth">
       <aside className="auth-media">
         <div className="auth-slides" aria-hidden="true">
-          {SLIDES.map((s, i) => (
-            <img key={s.src} src={s.src} alt="" className={i === slide ? 'is-on' : ''} decoding="async" loading={i ? 'lazy' : 'eager'} />
+          {slides.map((s, i) => (
+            <img key={s.src} src={s.src} alt="" className={i === slide % slides.length ? 'is-on' : ''} decoding="async" loading={i ? 'lazy' : 'eager'} />
           ))}
         </div>
         <div className="auth-shade" aria-hidden="true" />
@@ -47,6 +67,11 @@ export default function AuthLayout({ children }) {
           <Link to="/" className="auth-brand">
             <img src="/brand/my30a-logo-light.png" alt="My30A Host" width="720" height="319" />
           </Link>
+          {hostBrand?.logo_url ? (
+            <span className="auth-brand-host">
+              <img src={hostBrand.logo_url} alt={hostBrand.host_name} />
+            </span>
+          ) : null}
         </div>
 
         <div className="auth-media-copy">
@@ -65,10 +90,10 @@ export default function AuthLayout({ children }) {
             ))}
           </ul>
           <div className="auth-dots" aria-hidden="true">
-            {SLIDES.map((s, i) => (
-              <i key={s.src} className={i === slide ? 'is-on' : ''} />
+            {slides.map((s, i) => (
+              <i key={s.src} className={i === slide % slides.length ? 'is-on' : ''} />
             ))}
-            <small>{SLIDES[slide].caption}</small>
+            <small>{slides[slide % slides.length].caption}</small>
           </div>
         </div>
       </aside>

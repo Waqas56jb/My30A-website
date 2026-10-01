@@ -4,7 +4,7 @@ import { ArrowRight, Check } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { errorText, guest } from '../../lib/guestApi.js'
 import { IconUser, IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
-import AuthLayout from './AuthLayout.jsx'
+import AuthLayout, { AuthLogo } from './AuthLayout.jsx'
 
 const LEAD =
   'Create your My30A Host account to book airport transfers, order groceries, and get Vitoria’s local picks for your stay.'
@@ -61,13 +61,14 @@ export default function Signup() {
   }
 
   if (!loading && session) {
-    return <Navigate to="/app/home" replace />
+    const from = location.state?.from
+    return <Navigate to={from && from.startsWith('/app/') ? from : '/app/home'} replace />
   }
 
   return (
     <AuthLayout>
       <form className="auth-form" onSubmit={onSubmit} noValidate>
-        <img className="auth-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
+        <AuthLogo />
         <p className="auth-kicker">Create your guest account</p>
         <h1 className="auth-title">
           Start your <em>30A stay.</em>
@@ -176,7 +177,7 @@ export default function Signup() {
         </button>
 
         <p className="auth-switch">
-          Already have an account? <Link to="/app/login">Log in</Link>
+          Already have an account? <Link to="/app/login" state={location.state}>Log in</Link>
         </p>
       </form>
     </AuthLayout>

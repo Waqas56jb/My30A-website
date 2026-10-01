@@ -15,6 +15,7 @@ import BottomNav from './BottomNav.jsx'
 import { errorText, guest, rememberedName, useGuestQuery } from '../../lib/guestApi.js'
 import { iconFor } from './explore/ExploreShared.jsx'
 import NotificationBell from '../../components/NotificationBell.jsx'
+import { useHostBrand } from '../../lib/hostHome.js'
 
 function localGreeting() {
   const h = new Date().getHours()
@@ -206,6 +207,7 @@ export default function AppHome() {
   const orders = data?.orders || []
   const explore = (data?.explore || []).slice(0, 8)
   const picks = data?.picks || []
+  const hostBrand = useHostBrand()
 
   return (
     <div className="app-guest">
@@ -214,7 +216,13 @@ export default function AppHome() {
           <div className="app-home-scroll">
             <header className="app-home-hero">
               <div className="app-home-hero-top app-enter">
-                <img className="app-home-logo" src="/home logo.png" alt="M30A" width={78} height={40} />
+                {hostBrand?.logo_url ? (
+                  <Link to="/app/my-home" className="app-home-hostlogo app-press" aria-label={`${hostBrand.home_name} · My Home`}>
+                    <img src={hostBrand.logo_url} alt={hostBrand.host_name} />
+                  </Link>
+                ) : (
+                  <img className="app-home-logo" src="/home logo.png" alt="M30A" width={78} height={40} />
+                )}
                 <NotificationBell className="app-home-bell app-press" />
               </div>
 

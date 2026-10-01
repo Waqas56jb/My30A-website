@@ -223,6 +223,12 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
   } else {
     head.push('Their stay: no property on file yet — ask which community they’re staying in when it matters.')
   }
+  if (ctx.home) {
+    head.push(
+      'THEIR RENTAL HOME (from their host — answer questions about the house, WiFi, door code, check-in/out, parking, appliances and house rules from this, exactly as written; for anything not covered, suggest contacting the host):',
+      ctx.home
+    )
+  }
   if (ctx.trips.length) {
     head.push('Their active airport transfers: ' + ctx.trips.map((t) => `#${t.trip_number} ${t.status}, ${ctx.formatWhen(t.scheduled_at)}, ${t.airport}`).join('; '))
   }

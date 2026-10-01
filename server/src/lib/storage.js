@@ -37,23 +37,28 @@ export async function getSignedUrl(filePath, expiresIn = 3600) {
 
 export { BUCKET }
 
-// Public bucket for profile photos (safe to show anywhere, no signed URLs needed).
+// Public buckets: profile photos ('avatars') and host logos / property photos ('brand') — safe to
+// show anywhere, no signed URLs needed.
 const AVATAR_BUCKET = 'avatars'
-let avatarBucketReady = false
-export async function uploadAvatar(buffer, filePath, contentType) {
-  if (!avatarBucketReady) {
+const readyBuckets = new Set()
+export async function uploadPublicImage(bucket, buffer, filePath, contentType) {
+  if (!readyBuckets.has(bucket)) {
     const { data: buckets } = await supabase.storage.listBuckets()
-    if (!(buckets || []).some((b) => b.name === AVATAR_BUCKET)) {
-      const { error } = await supabase.storage.createBucket(AVATAR_BUCKET, {
+    if (!(buckets || []).some((b) => b.name === bucket)) {
+      const { error } = await supabase.storage.createBucket(bucket, {
         public: true,
         fileSizeLimit: '5MB',
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'],
       })
       if (error && !String(error.message).toLowerCase().includes('already')) throw error
     }
-    avatarBucketReady = true
+    readyBuckets.add(bucket)
   }
-  const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(filePath, buffer, { contentType, upsert: true })
+  const { error } = await supabase.storage.from(bucket).upload(filePath, buffer, { contentType, upsert: true })
   if (error) throw error
-  return supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath).data.publicUrl
+  return supabase.storage.from(bucket).getPublicUrl(filePath).data.publicUrl
+}
+
+export function uploadAvatar(buffer, filePath, contentType) {
+  return uploadPublicImage(AVATAR_BUCKET, buffer, filePath, contentType)
 }

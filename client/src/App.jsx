@@ -15,6 +15,8 @@ import AppServices from './pages/app/AppServices.jsx'
 import AppVitoria from './pages/app/AppVitoria.jsx'
 import AppProfile from './pages/app/AppProfile.jsx'
 import SavedPlaces from './pages/app/SavedPlaces.jsx'
+import MyHome from './pages/app/MyHome.jsx'
+import HostWelcome from './pages/app/HostWelcome.jsx'
 import TransferBook from './pages/app/transfer/TransferBook.jsx'
 import TransferReview from './pages/app/transfer/TransferReview.jsx'
 import TransferPending from './pages/app/transfer/TransferPending.jsx'
@@ -57,6 +59,7 @@ import './styles/app-grocery.css'
 import './styles/app-explore.css'
 import './styles/app-motion.css'
 import './styles/app-account.css'
+import './styles/app-myhome.css'
 
 const PANEL_ROLES = ['driver', 'partner', 'shopper']
 
@@ -156,6 +159,7 @@ const GUEST_ROUTES = [
   ['/app/services', AppServices],
   ['/app/vitoria', AppVitoria],
   ['/app/profile', AppProfile],
+  ['/app/my-home', MyHome],
   ['/app/profile/saved', SavedPlaces],
   ['/app/profile/info', ProfileInfo],
   ['/app/profile/payments', ProfilePayments],
@@ -193,6 +197,8 @@ function AppRoutes() {
       <Route path="/app" element={<Splash />} />
       <Route path="/app/signup" element={<Signup />} />
       <Route path="/app/login" element={<AppLogin />} />
+      {/* Host version: the QR code in a host's rental */}
+      <Route path="/h/:slug" element={<HostWelcome />} />
       {GUEST_ROUTES.map(([path, Page]) => (
         <Route
           key={path}

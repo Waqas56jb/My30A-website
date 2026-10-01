@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { syncHostHome } from '../lib/hostHome.js'
 import { NotificationHost } from './NotificationBell.jsx'
 
 function Frame({ children }) {
@@ -18,6 +20,13 @@ function Frame({ children }) {
 export default function GuestRoute({ children }) {
   const { session, profile, loading, signOut } = useAuth()
   const location = useLocation()
+  const isGuest = Boolean(session && (profile?.roles || []).includes('guest'))
+  const userId = session?.user?.id
+
+  // Host version: link the property from a scanned QR code / refresh the host's branding.
+  useEffect(() => {
+    if (isGuest && userId) syncHostHome(userId)
+  }, [isGuest, userId])
 
   if (loading) {
     return (

@@ -40,6 +40,7 @@ import { searchPlaces } from '../lib/placeSearch.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
 import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt } from '../services/vitoria.js'
 import { vitoriaOffline } from '../services/vitoriaOffline.js'
+import { brandView, guestHomeView, homeForVitoria, loadHomeBySlug, loadHomeForGuest } from '../services/hostHomes.js'
 import { realtimeSessionConfig, runVoiceTool } from '../services/vitoriaVoice.js'
 import { beachCard, distinctPhotos, loadBeaches, recommendBeaches } from '../services/beaches.js'
 import { eventDay, eventView, loadUpcomingEvents } from '../services/events.js'
@@ -987,6 +988,46 @@ router.post('/address-check', async (req, res, next) => {
 router.get('/catalog', async (_req, res, next) => {
   try {
     res.json({ ...(await loadCatalog()), airports: AIRPORTS, vehicle_types: VEHICLE_LABELS })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ---------- My Home (Host version) ----------
+// A guest who scanned the QR code in a host's rental is linked to that property; the app then
+// shows the host's logo and a "My Home" tab (WiFi, door code, check-in/out, house rules…).
+
+async function myHomeView(userId, home) {
+  if (!home) return { home: null, brand: null }
+  const booking = await loadBooking(userId)
+  return { home: guestHomeView(home), brand: brandView(home), check_out_date: booking?.check_out || null }
+}
+
+router.get('/my-home', guestOnly, async (req, res, next) => {
+  try {
+    res.json(await myHomeView(req.user.id, await loadHomeForGuest(req.user.id)))
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/my-home', guestOnly, async (req, res, next) => {
+  try {
+    const home = await loadHomeBySlug(String(req.body?.slug || '').trim().toLowerCase())
+    if (!home) return res.status(404).json({ error: 'This QR code is no longer active. Please ask your host for a new one.' })
+    const { error } = await supabase.from('profiles').update({ host_home_id: home.id }).eq('id', req.user.id)
+    if (error) return res.status(400).json({ error: error.message })
+    res.json(await myHomeView(req.user.id, home))
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.delete('/my-home', guestOnly, async (req, res, next) => {
+  try {
+    const { error } = await supabase.from('profiles').update({ host_home_id: null }).eq('id', req.user.id)
+    if (error) return res.status(400).json({ error: error.message })
+    res.json({ home: null, brand: null })
   } catch (error) {
     next(error)
   }
@@ -2320,7 +2361,7 @@ router.post('/grocery/:id/tip', guestOnly, async (req, res, next) => {
 
 // Per-guest tail of Vitoria's prompt (the big stable knowledge pack lives in services/vitoria.js).
 async function vitoriaContext(userId) {
-  const [profile, booking, trips, orders, beaches, pastTrips, pastOrders, saved] = await Promise.all([
+  const [profile, booking, trips, orders, beaches, pastTrips, pastOrders, saved, home] = await Promise.all([
     loadProfile(userId),
     loadBooking(userId),
     supabase
@@ -2360,10 +2401,13 @@ async function vitoriaContext(userId) {
       .select('vendor:explore_vendors (name, community, place, kind)')
       .eq('guest_id', userId)
       .limit(20),
+    loadHomeForGuest(userId),
   ])
   return {
     profile,
     firstName: firstName(profile?.name, profile?.email),
+    home: homeForVitoria(home),
+    homeData: home,
     booking: bookingView(booking),
     trips: trips.data || [],
     orders: orders.data || [],

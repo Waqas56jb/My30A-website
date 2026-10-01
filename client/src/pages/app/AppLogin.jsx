@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { errorText, guest, rememberedName } from '../../lib/guestApi.js'
 import { IconMail, IconLock, IconEyeOff, IconEye } from './AuthIcons.jsx'
-import AuthLayout from './AuthLayout.jsx'
+import AuthLayout, { AuthLogo } from './AuthLayout.jsx'
 
 const LEAD =
   'Log in to see your stay, track your airport transfer and grocery orders, and chat with Vitoria.'
@@ -46,7 +46,7 @@ export default function AppLogin() {
   return (
     <AuthLayout>
       <form className="auth-form" onSubmit={onSubmit} noValidate>
-        <img className="auth-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
+        <AuthLogo />
         <p className="auth-kicker">Guest sign in</p>
         <h1 className="auth-title">
           Welcome back, <em>{name}</em>
@@ -109,7 +109,7 @@ export default function AppLogin() {
         </button>
 
         <p className="auth-switch">
-          New to My30A Host? <Link to="/app/signup">Create an account</Link>
+          New to My30A Host? <Link to="/app/signup" state={location.state}>Create an account</Link>
         </p>
       </form>
     </AuthLayout>

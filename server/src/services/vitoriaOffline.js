@@ -83,6 +83,9 @@ async function answerDining(text, userTexts, ctx) {
   const basis = DINING_INTENT.test(low(text)) ? text : `${previousAsk || ''} ${text}`
   const want = understandDining(basis)
   const community = resolveCommunity(text, userTexts, ctx)
+
+  const house = answerHouse(q, ctx)
+  if (house) return house
   const { picks, matchedTags } = await recommendDining({ ...want, community })
   if (!picks.length) {
     return {
@@ -188,6 +191,34 @@ function answerSaved(ctx) {
   const saved = ctx.history?.saved || []
   if (!saved.length) return 'You haven’t saved any places yet — tap the heart on any restaurant or partner in Explore and it will appear in Profile → Saved Places.'
   return `Your saved places:\n\n${saved.slice(0, 8).map((s) => `${s.name}${s.community ? ` in ${s.community}` : ''}`).join('\n')}`
+}
+
+// Host version: house questions ("what's the wifi?", "door code", "when is checkout?") answered
+// from the property the host entered. Returns null when the question isn't about the house.
+function answerHouse(q, ctx) {
+  const h = ctx.homeData
+  if (!h) return null
+  const parts = []
+  if (/wi.?fi|internet|password|network/.test(q) && (h.wifi_network || h.wifi_password)) {
+    parts.push(`The WiFi is ${h.wifi_network || 'listed in My Home'}${h.wifi_password ? `, password ${h.wifi_password}` : ''}.`)
+  }
+  if (/door|code|lock|get in/.test(q) && h.door_code) parts.push(`The door code is ${h.door_code}.`)
+  if (/check.?out|leave|departure/.test(q) && h.check_out_time) parts.push(`Check-out is at ${h.check_out_time}.`)
+  if (/check.?in|arriv/.test(q) && h.check_in_time) parts.push(`Check-in is from ${h.check_in_time}.`)
+  if (/park/.test(q) && h.parking) parts.push(`Parking: ${h.parking}.`)
+  if (/pet|dog|cat/.test(q) && h.pets) parts.push(`Pets: ${h.pets}.`)
+  if (/rule|smok|part(y|ies)|quiet|noise/.test(q) && (h.rules || []).length) parts.push(`House rules: ${h.rules.join(', ')}.`)
+  if (/(host|owner)|emergency|broken|not working/.test(q) && h.contact_phone) {
+    parts.push(`You can reach ${h.contact_label || h.host_name} at ${h.contact_phone}.`)
+  }
+  for (const item of h.instructions || []) {
+    const words = low(`${item.label} ${item.icon}`).split(/[^a-z]+/).filter((w) => w.length > 2)
+    if (!DINING_INTENT.test(q) && words.some((w) => q.includes(w))) parts.push(`${item.label}: ${item.value}.`)
+  }
+  if (!parts.length) return null
+  return { reply: `${parts.join(' ')}
+
+Everything about ${h.home_name} is in the My Home tab too.`, places: [] }
 }
 
 export async function vitoriaOffline(text, ctx, recent = []) {

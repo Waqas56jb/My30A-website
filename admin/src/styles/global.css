@@ -1911,3 +1911,206 @@ th.num {
   height: 52px;
   margin: 0 0 18px;
 }
+
+/* —— Host homes (Host version) —— */
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.home-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.home-card-cover {
+  position: relative;
+  height: 118px;
+  background: linear-gradient(160deg, #cfeef0, #ecf9f9) center / cover no-repeat;
+}
+
+.home-card-cover img {
+  position: absolute;
+  left: 14px;
+  bottom: -22px;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 6px 16px -8px rgba(22, 48, 43, 0.5);
+}
+
+.home-card-body {
+  padding: 30px 14px 14px;
+}
+
+.home-card-body h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.home-card-body > p {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.home-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.home-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.home-form-h {
+  margin: 22px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.home-form > .field:first-child + .home-form-h,
+.home-form > .home-form-h:first-child {
+  margin-top: 4px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.home-image {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.home-image img,
+.home-image-empty {
+  width: 120px;
+  height: 72px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.home-image.is-round img,
+.home-image.is-round .home-image-empty {
+  width: 72px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.home-image-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.home-image label.btn {
+  cursor: pointer;
+}
+
+.home-instruction {
+  display: grid;
+  grid-template-columns: 130px 1fr 2fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.home-instruction input,
+.home-instruction select {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.home-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+.home-form-actions {
+  flex-wrap: wrap;
+  position: sticky;
+  bottom: -18px;
+  margin: 18px -18px -18px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.home-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.home-qr img {
+  width: 260px;
+  height: 260px;
+}
+
+.home-qr code {
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.home-qr p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.home-qr-actions {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.home-qr-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .home-instruction {
+    grid-template-columns: 1fr auto;
+  }
+
+  .home-instruction input {
+    grid-column: 1 / -1;
+  }
+
+  .home-instruction select {
+    grid-column: 1;
+  }
+
+  .home-instruction button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}

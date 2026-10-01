@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Car,
+  House,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -28,6 +29,7 @@ const NAV = [
   { to: '/people', label: 'People', icon: Users },
   { to: '/vehicles', label: 'Vehicles', icon: Truck },
   { to: '/messages', label: 'Messages', icon: MessageSquare },
+  { to: '/homes', label: 'Host homes', icon: House },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

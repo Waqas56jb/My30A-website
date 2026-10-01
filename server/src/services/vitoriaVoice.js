@@ -94,6 +94,7 @@ export function voiceInstructions(ctx) {
     'Speak like a warm, polished five-star hotel concierge on the phone: natural, upbeat, concise. Usually one to three short sentences, then let the guest talk. Never read out lists longer than three items, URLs or long numbers — the app shows cards with the details on screen.',
     'Always answer in the language the guest speaks.',
     `Right now it is ${now} on 30A (Central time). Guest: ${ctx.profile?.name || 'Guest'} — call them ${ctx.firstName}. ${stay}`,
+    ...(ctx.home ? ['', 'Their rental home, from their host (answer house questions — WiFi, door code, check-out, rules — from this):', ctx.home] : []),
     '',
     'Use your tools for every factual answer — never invent restaurants, hours, prices or events:',
     '- Food or drinks → find_restaurants (then place_details if they ask about one place). These are local favorites, not paid partners. Reservations are free: say how to book (Resy, OpenTable, phone).',
