@@ -19,10 +19,44 @@ function getTransport() {
   })
 }
 
+// Resend (https://resend.com) sends from the my30ahost.com domain once RESEND_API_KEY is set
+// (EMAIL_FROM e.g. "My30A Host <noreply@my30ahost.com>", replies go to EMAIL_REPLY_TO). Without
+// it, the SMTP settings above are used, as before.
+async function sendWithResend({ to, subject, text }) {
+  const from = process.env.EMAIL_FROM || 'My30A Host <noreply@my30ahost.com>'
+  const replyTo = process.env.EMAIL_REPLY_TO || 'my30ahost@gmail.com'
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from,
+      to: String(to).split(/[,;]\s*/).map((e) => e.trim()).filter(Boolean),
+      subject,
+      text,
+      reply_to: replyTo,
+    }),
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(`Resend ${res.status}: ${body.message || res.statusText}`)
+  }
+  return { sent: true, via: 'resend' }
+}
+
 export async function sendEmail({ to, subject, text }) {
+  if (process.env.RESEND_API_KEY) {
+    try {
+      return await sendWithResend({ to, subject, text })
+    } catch (error) {
+      console.log('Email skipped:', error.message)
+      return { skipped: true, reason: error.message }
+    }
+  }
+
   const transport = getTransport()
   if (!transport) {
-    console.log('Email skipped: SMTP not configured', { to, subject })
+    console.log('Email skipped: no RESEND_API_KEY or SMTP configured', { to, subject })
     return { skipped: true }
   }
 
