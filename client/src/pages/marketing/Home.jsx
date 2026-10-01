@@ -1103,6 +1103,9 @@ export default function Home() {
               <li>
                 <Link to="/app/login">Sign in</Link>
               </li>
+              <li>
+                <Link to="/partners/join">Become a partner</Link>
+              </li>
             </ul>
           </nav>
 

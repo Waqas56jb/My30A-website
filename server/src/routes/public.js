@@ -9,6 +9,9 @@ import { chargeSavedCard, createCheckoutSession, retrieveCheckoutSession } from 
 import { isSmsConfigured, last10, maskedCallNumber } from '../lib/sms.js'
 import { notify } from '../services/notifications.js'
 import { brandView, loadHomeBySlug } from '../services/hostHomes.js'
+import multer from 'multer'
+import { notifyAdmins } from '../services/tripFlow.js'
+import { LISTING_TYPES, activeCommunities, activeGuides, saveListingPhoto, slugify, validateListing } from '../services/partners.js'
 import {
   ACTIVE_TRIP_STATUSES,
   ENDED_TRIP_STATUSES,
@@ -104,8 +107,87 @@ router.get('/home/:slug', async (req, res, next) => {
   try {
     const home = await loadHomeBySlug(req.params.slug)
     if (!home) return res.status(404).json({ error: 'This QR code is no longer active. Please ask your host for a new one.' })
-    const { count } = await supabase.from('explore_vendors').select('id', { count: 'exact', head: true }).eq('is_active', true)
+    const { count } = await supabase.from('explore_vendors').select('id', { count: 'exact', head: true }).eq('kind', 'vendor').eq('is_active', true)
     res.json({ ...brandView(home), partners: count || null })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ---------- Partner registration (my30ahost.com/partners/join) ----------
+
+router.get('/partner-form', async (_req, res, next) => {
+  try {
+    const [guides, communities] = await Promise.all([activeGuides(), activeCommunities()])
+    res.json({ types: LISTING_TYPES, guides: guides.map(({ slug, title }) => ({ slug, title })), communities })
+  } catch (error) {
+    next(error)
+  }
+})
+
+const partnerUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      cb(Object.assign(new Error('Please upload a JPG, PNG or WebP photo'), { status: 400 }))
+      return
+    }
+    cb(null, true)
+  },
+})
+const partnerLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests — please try again later.' } })
+
+router.post('/partner-requests', partnerLimit, partnerUpload.single('photo'), async (req, res, next) => {
+  try {
+    const b = req.body || {}
+    // Honeypot: a hidden field people never see; bots fill it in.
+    if (b.company_site) return res.status(201).json({ ok: true })
+    const text = (k, max = 300) => String(b[k] || '').trim().slice(0, max)
+    const row = {
+      listing_type: text('listing_type', 20),
+      guide_slug: b.listing_type === 'vendor' ? text('guide_slug', 80) : null,
+      business_name: text('business_name', 120),
+      description: text('description', 700),
+      website_url: text('website_url', 300) || null,
+      phone: text('phone', 40),
+      email: text('email', 200).toLowerCase(),
+      contact_name: text('contact_name', 120) || null,
+      address: text('address', 200) || null,
+      community: text('community', 80) || null,
+      hours: text('hours', 300) || null,
+      cuisine: text('cuisine', 80) || null,
+      instagram: text('instagram', 120) || null,
+    }
+    const problem = validateListing(row, await activeGuides())
+    if (problem) return res.status(400).json({ error: problem })
+    if (row.description.length < 20) return res.status(400).json({ error: 'Please describe your business in a sentence or two' })
+    if (row.phone.replace(/\D/g, '').length < 10) return res.status(400).json({ error: 'Please add a phone number guests can call' })
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email)) return res.status(400).json({ error: 'Please add a valid email so we can reach you' })
+    if (!req.file) return res.status(400).json({ error: 'Please add a photo of your business' })
+    row.photo_url = await saveListingPhoto(req.file.buffer, `request-${slugify(row.business_name)}`)
+
+    const { data, error } = await supabase.from('partner_requests').insert(row).select('id').single()
+    if (error) return res.status(400).json({ error: error.message })
+
+    const kind = row.listing_type === 'vendor' ? (await activeGuides()).find((g) => g.slug === row.guide_slug)?.title : LISTING_TYPES[row.listing_type]
+    await notifyAdmins({
+      message: `New partner request: ${row.business_name} (${kind}) — review it in Admin → Partners.`,
+      email: {
+        subject: `New partner request · ${row.business_name}`,
+        lines: [
+          `Category: ${kind}`,
+          `Phone: ${row.phone}`,
+          `Email: ${row.email}`,
+          row.website_url && `Website: ${row.website_url}`,
+          row.community && `Area: ${row.community}`,
+          '',
+          row.description,
+        ],
+        path: '/partners',
+      },
+    })
+    res.status(201).json({ ok: true, id: data.id })
   } catch (error) {
     next(error)
   }

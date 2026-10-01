@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Settings,
   ShoppingBasket,
+  Store,
   Truck,
   Users,
   Wallet,
@@ -29,6 +30,7 @@ const NAV = [
   { to: '/people', label: 'People', icon: Users },
   { to: '/vehicles', label: 'Vehicles', icon: Truck },
   { to: '/messages', label: 'Messages', icon: MessageSquare },
+  { to: '/partners', label: 'Partners', icon: Store },
   { to: '/homes', label: 'Host homes', icon: House },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

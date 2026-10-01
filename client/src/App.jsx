@@ -45,6 +45,7 @@ import ProfilePayments from './pages/app/profile/ProfilePayments.jsx'
 import ProfileSettings from './pages/app/profile/ProfileSettings.jsx'
 import TripPage from './pages/public/TripPage.jsx'
 import TipPage from './pages/public/TipPage.jsx'
+import PartnerJoin from './pages/public/PartnerJoin.jsx'
 import Trips from './pages/driver/Trips.jsx'
 import Earnings from './pages/driver/Earnings.jsx'
 import Vehicles from './pages/partner/Vehicles.jsx'
@@ -213,6 +214,9 @@ function AppRoutes() {
       {/* Secret-link pages from SMS — no login */}
       <Route path="/trip/:token" element={<TripPage />} />
       <Route path="/tip/:token" element={<TipPage />} />
+      {/* Partner registration — /partner-stats was the original link */}
+      <Route path="/partners/join" element={<PartnerJoin />} />
+      <Route path="/partner-stats" element={<Navigate to="/partners/join" replace />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"

@@ -13,6 +13,7 @@ import Transfers from './pages/Transfers.jsx'
 import Vehicles from './pages/Vehicles.jsx'
 import Messages from './pages/Messages.jsx'
 import Homes from './pages/Homes.jsx'
+import Partners from './pages/Partners.jsx'
 
 function AppRoutes() {
   const { loading } = useAuth()
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="/vehicles" element={<Vehicles />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/homes" element={<Homes />} />
+        <Route path="/partners" element={<Partners />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -23,6 +23,7 @@ import publicRouter from './routes/public.js'
 import jobsRouter from './routes/jobs.js'
 import messagesRouter from './routes/messages.js'
 import homesRouter from './routes/homes.js'
+import partnersRouter from './routes/partners.js'
 import { ensureBucket } from './lib/storage.js'
 import { stripeMode } from './lib/stripe.js'
 
@@ -134,6 +135,7 @@ app.use('/api/content', contentRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/jobs', jobsRouter)
 app.use('/api/homes', homesRouter)
+app.use('/api/partners', partnersRouter)
 // Secret-link guest pages + Twilio voice webhooks (Twilio posts form-encoded bodies).
 app.use('/api/public', express.urlencoded({ extended: false }), publicRouter)
 

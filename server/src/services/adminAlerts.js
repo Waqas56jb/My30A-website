@@ -13,15 +13,16 @@ export async function alertRecipients() {
     .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))
 }
 
-export function adminLink({ transfer_id, grocery_order_id }) {
+export function adminLink({ transfer_id, grocery_order_id, path }) {
   const base = (pickPublicUrl(process.env.ADMIN_APP_URL) || 'https://my30-a-website-admin.vercel.app').replace(/\/$/, '')
   if (transfer_id) return `${base}/transfers?open=${transfer_id}`
   if (grocery_order_id) return `${base}/grocery?open=${grocery_order_id}`
+  if (path) return `${base}${path}`
   return base
 }
 
 // Never throws — an email problem must not break a booking.
-export async function emailAdminAlert({ subject, message, lines = [], transfer_id = null, grocery_order_id = null }) {
+export async function emailAdminAlert({ subject, message, lines = [], transfer_id = null, grocery_order_id = null, path = null }) {
   try {
     const to = await alertRecipients()
     if (!to.length) return { skipped: true, reason: 'NO_ALERT_EMAILS' }
@@ -30,7 +31,7 @@ export async function emailAdminAlert({ subject, message, lines = [], transfer_i
       '',
       ...lines.filter(Boolean),
       ...(lines.length ? [''] : []),
-      `Open it in Admin: ${adminLink({ transfer_id, grocery_order_id })}`,
+      `Open it in Admin: ${adminLink({ transfer_id, grocery_order_id, path })}`,
       '',
       '— My30A Host',
     ].join('\n')

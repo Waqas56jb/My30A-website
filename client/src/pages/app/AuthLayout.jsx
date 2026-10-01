@@ -34,9 +34,11 @@ export function AuthLogo() {
   )
 }
 
-export default function AuthLayout({ children }) {
+// eyebrow / heading / perks let other pages (the partner sign-up form) reuse this frame.
+export default function AuthLayout({ children, eyebrow = 'Scenic Highway 30A · Florida', heading, perks = PERKS, brandable = true }) {
   const [slide, setSlide] = useState(0)
-  const hostBrand = useHostBrand()
+  const storedBrand = useHostBrand()
+  const hostBrand = brandable ? storedBrand : null
   const slides = hostBrand?.cover_url ? [{ src: hostBrand.cover_url, caption: hostBrand.home_name }, ...SLIDES] : SLIDES
 
   useEffect(() => {
@@ -75,12 +77,16 @@ export default function AuthLayout({ children }) {
         </div>
 
         <div className="auth-media-copy">
-          <p className="auth-eyebrow">Scenic Highway 30A · Florida</p>
+          <p className="auth-eyebrow">{eyebrow}</p>
           <h2>
-            Your 30A stay, <em>handled.</em>
+            {heading || (
+              <>
+                Your 30A stay, <em>handled.</em>
+              </>
+            )}
           </h2>
           <ul className="auth-perks">
-            {PERKS.map(({ Icon, text }, i) => (
+            {perks.map(({ Icon, text }, i) => (
               <li key={text} style={{ '--i': i }}>
                 <span>
                   <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
