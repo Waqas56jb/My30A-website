@@ -13,6 +13,7 @@
     { "name": "Local Catch Bar & Grill", "booking_platform": "walk_in", "booking_url": null, "booking_note": "No reservations." },
     { "name": "Lost Pizza Co.", "booking_platform": "walk_in", "booking_url": null, "booking_note": "No reservations." },
     { "name": "Mi Casita Mexican Grill", "booking_platform": "walk_in", "booking_url": null, "booking_note": "No reservations." },
+    { "name": "Lola Coastal Italian", "booking_platform": "walk_in", "booking_url": null, "booking_note": "Walk-in only — first come, first served.", "_why": "client's \"Lolla\" (confirmed 2026-10-02)" },
     { "name": "Edward's Fine Food & Wine", "booking_platform": "walk_in", "booking_url": null, "booking_note": "No reservations except a few holidays — first come, first served.", "website_url": "https://edwards30a.com/" },
 
     { "name": "Aja - Elevated Asian", "booking_platform": "website_widget", "booking_url": "https://aja30a.com/reservations", "booking_note": null },
