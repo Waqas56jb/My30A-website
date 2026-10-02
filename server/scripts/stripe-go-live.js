@@ -24,6 +24,8 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') })
 const API_URL = 'https://my30-a-website-server.vercel.app'
 const CLIENT_URL = 'https://www.my30ahost.com'
 const PROJECTS = { server: 'my30-a-website-server', client: 'my30-a-website-client' }
+// The Vercel team that owns the projects (the CLI login has more than one team).
+const VERCEL_SCOPE = process.env.VERCEL_SCOPE || 'us-4e8d'
 const WEBHOOK_EVENTS = [
   'payment_intent.amount_capturable_updated',
   'payment_intent.succeeded',
@@ -47,7 +49,7 @@ const linked = {}
 function vercel(project, args, input) {
   if (!linked[project]) {
     linked[project] = fs.mkdtempSync(path.join(os.tmpdir(), `vl-${project}-`))
-    execFileSync(npx, ['vercel', 'link', '--yes', '--project', project], { cwd: linked[project], stdio: 'pipe', shell: process.platform === 'win32' })
+    execFileSync(npx, ['vercel', 'link', '--yes', '--project', project, '--scope', VERCEL_SCOPE], { cwd: linked[project], stdio: 'pipe', shell: process.platform === 'win32' })
   }
   return execFileSync(npx, ['vercel', ...args], {
     cwd: linked[project],

@@ -138,6 +138,9 @@ export default function Settings() {
     grocery_min_notice_days: String(settingsQuery.data?.grocery_min_notice_hours != null ? settingsQuery.data.grocery_min_notice_hours / 24 : ''),
     grocery_instant_payouts: settingsQuery.data?.grocery_instant_payouts ?? true,
     alert_emails: settingsQuery.data?.alert_emails ?? '',
+    host_price_monthly: String(settingsQuery.data?.host_price_monthly ?? ''),
+    host_price_semiannual: String(settingsQuery.data?.host_price_semiannual ?? ''),
+    host_price_annual: String(settingsQuery.data?.host_price_annual ?? ''),
   }
   const communities = groupPricing(pricingQuery.data)
   const loading = settingsQuery.loading || pricingQuery.loading
@@ -158,6 +161,9 @@ export default function Settings() {
           grocery_min_notice_hours: Math.round(Number(settings.grocery_min_notice_days) * 24),
           grocery_instant_payouts: Boolean(settings.grocery_instant_payouts),
           alert_emails: settings.alert_emails,
+          host_price_monthly: Number(settings.host_price_monthly),
+          host_price_semiannual: Number(settings.host_price_semiannual),
+          host_price_annual: Number(settings.host_price_annual),
         },
       })
       setDraft({
@@ -168,6 +174,9 @@ export default function Settings() {
         grocery_min_notice_days: String(saved.grocery_min_notice_hours / 24),
         grocery_instant_payouts: saved.grocery_instant_payouts,
         alert_emails: saved.alert_emails || '',
+        host_price_monthly: String(saved.host_price_monthly),
+        host_price_semiannual: String(saved.host_price_semiannual),
+        host_price_annual: String(saved.host_price_annual),
       })
       invalidateQuery('/api/settings')
       await settingsQuery.refetch()
@@ -305,6 +314,20 @@ export default function Settings() {
                 </label>
                 <small className="muted">needs a debit card added in Stripe → Settings → Payouts</small>
               </div>
+              <h3 style={{ margin: '18px 0 12px' }}>Host Version plans</h3>
+              <div className="row2">
+                {[
+                  ['host_price_monthly', 'Monthly'],
+                  ['host_price_semiannual', 'Every 6 months'],
+                  ['host_price_annual', 'Annual'],
+                ].map(([key, label]) => (
+                  <div className="field" key={key}>
+                    <label>{label} — $ per property</label>
+                    <input value={settings[key]} onChange={(event) => setDraft({ ...settings, [key]: event.target.value })} style={{ maxWidth: 120 }} />
+                  </div>
+                ))}
+              </div>
+              <small className="muted">Shown on my30ahost.com/hosts. New signups pay these prices; existing hosts keep the price they signed up with.</small>
               {formError ? <p className="form-error">{formError}</p> : null}
               <Button type="submit" className="btn" pending={saving}>
                 Save changes

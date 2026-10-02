@@ -3,7 +3,8 @@ import { setAccessToken } from '../lib/api.js'
 import { supabase } from '../lib/supabase.js'
 
 const AuthContext = createContext(null)
-const PANEL_ROLES = ['driver', 'partner', 'shopper']
+// 'host' last: Host Version property managers go to their own dashboard (/host).
+const PANEL_ROLES = ['driver', 'partner', 'shopper', 'host']
 
 async function loadProfile(userId) {
   const { data, error } = await supabase

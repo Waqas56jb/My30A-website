@@ -48,7 +48,7 @@ export function useHostBrand() {
 export const hostApi = {
   brand: (slug) => api(`/api/public/home/${encodeURIComponent(slug)}`),
   mine: () => api('/api/guest/my-home'),
-  claim: (slug) => api('/api/guest/my-home', { method: 'POST', body: { slug } }),
+  claim: (slug, open = false) => api('/api/guest/my-home', { method: 'POST', body: { slug, open } }),
   leave: () => api('/api/guest/my-home', { method: 'DELETE' }),
 }
 
@@ -57,14 +57,33 @@ export function rememberPendingHome(slug) {
   write(PENDING_KEY, slug)
 }
 
+// Both the My Home tab and the sign-in sync may link the same scanned property at once — share one
+// request so the host's "joined" count stays exact.
+let claiming = null
+let claimingOpen = false
+function claimOnce(slug, open) {
+  if (!claiming) {
+    claimingOpen = open
+    claiming = hostApi.claim(slug, open).finally(() => {
+      window.setTimeout(() => {
+        claiming = null
+      }, 5000)
+    })
+  }
+  return claiming
+}
+
 // The My Home tab's loader: links a QR code scanned before sign-in first (the GuestRoute sync may
 // not have run yet on the first screen after logging in), then loads the property.
 export async function loadMyHome() {
   const pending = read(PENDING_KEY, false)
   if (pending) {
     try {
-      const result = await hostApi.claim(pending)
+      const counted = !claiming || claimingOpen
+      const linked = await claimOnce(pending, true)
       write(PENDING_KEY, null)
+      // If the sign-in sync made the link, load My Home normally so this view counts as an open.
+      const result = counted ? linked : await hostApi.mine()
       setHostBrand(result?.brand || null)
       return result
     } catch (error) {
@@ -85,7 +104,7 @@ export function syncHostHome(userId) {
   if (syncing && syncedFor === userId) return syncing
   syncedFor = userId
   const pending = read(PENDING_KEY, false)
-  syncing = (pending ? hostApi.claim(pending) : hostApi.mine())
+  syncing = (pending ? claimOnce(pending, false) : hostApi.mine())
     .then((result) => {
       if (pending) write(PENDING_KEY, null)
       setHostBrand(result?.brand || null)

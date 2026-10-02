@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase.js'
 import { uploadPublicImage } from '../lib/storage.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { homeRowFromBody, newHomeSlug } from '../services/hostHomes.js'
+import { homeStats } from '../services/hostActivity.js'
+import { PLANS, syncSubscription } from '../services/hostBilling.js'
 
 const router = Router()
 router.use(requireAuth, requireRole('admin'))
@@ -26,11 +28,40 @@ const EXT = { 'image/png': 'png', 'image/webp': 'webp', 'image/svg+xml': 'svg', 
 
 async function withGuestCounts(homes) {
   if (!homes.length) return homes
-  const { data } = await supabase.from('profiles').select('host_home_id').in('host_home_id', homes.map((h) => h.id))
+  const ids = homes.map((h) => h.id)
+  const [{ data }, stats, { data: subs }] = await Promise.all([
+    supabase.from('profiles').select('host_home_id').in('host_home_id', ids),
+    homeStats(ids),
+    supabase.from('host_subscriptions').select('host_id, company_name, status'),
+  ])
   const counts = {}
   for (const row of data || []) counts[row.host_home_id] = (counts[row.host_home_id] || 0) + 1
-  return homes.map((home) => ({ ...home, guest_count: counts[home.id] || 0 }))
+  const owners = Object.fromEntries((subs || []).map((s) => [s.host_id, s]))
+  return homes.map((home) => ({
+    ...home,
+    guest_count: counts[home.id] || 0,
+    stats: stats[home.id],
+    owner: home.owner_id ? { company_name: owners[home.owner_id]?.company_name || '—', status: owners[home.owner_id]?.status || 'none' } : null,
+  }))
 }
+
+// Host Version subscribers (self-serve signups) with their plan, status and property count.
+router.get('/hosts', async (_req, res, next) => {
+  try {
+    const { data: subs, error } = await supabase
+      .from('host_subscriptions')
+      .select('*, host:profiles!host_id (name, email, phone)')
+      .order('created_at', { ascending: false })
+    if (error) return res.status(400).json({ error: error.message })
+    const synced = await Promise.all((subs || []).map((s) => syncSubscription(s).then((x) => ({ ...s, ...x }))))
+    const { data: homes } = await supabase.from('host_homes').select('owner_id').not('owner_id', 'is', null)
+    const count = {}
+    for (const h of homes || []) count[h.owner_id] = (count[h.owner_id] || 0) + 1
+    res.json(synced.map((s) => ({ ...s, plan_label: PLANS[s.plan]?.label || s.plan, properties: count[s.host_id] || 0 })))
+  } catch (error) {
+    next(error)
+  }
+})
 
 router.get('/', async (_req, res, next) => {
   try {

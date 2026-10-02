@@ -49,6 +49,11 @@ import ProfileSettings from './pages/app/profile/ProfileSettings.jsx'
 import TripPage from './pages/public/TripPage.jsx'
 import TipPage from './pages/public/TipPage.jsx'
 import PartnerJoin from './pages/public/PartnerJoin.jsx'
+import Hosts from './pages/marketing/Hosts.jsx'
+import HostSignup from './pages/marketing/HostSignup.jsx'
+import HostShell from './pages/host/HostShell.jsx'
+import HostLogin from './pages/host/HostLogin.jsx'
+import './styles/host-portal.css'
 import Trips from './pages/driver/Trips.jsx'
 import Earnings from './pages/driver/Earnings.jsx'
 import Vehicles from './pages/partner/Vehicles.jsx'
@@ -237,6 +242,11 @@ function AppRoutes() {
       <Route path="/tip/:token" element={<TipPage />} />
       {/* Partner registration — /partner-stats was the original link */}
       <Route path="/partners/join" element={<PartnerJoin />} />
+      {/* Host Version: landing + signup (public) and the host dashboard */}
+      <Route path="/hosts" element={<Hosts />} />
+      <Route path="/hosts/signup" element={<HostSignup />} />
+      <Route path="/host/login" element={<HostLogin />} />
+      <Route path="/host/*" element={<HostShell />} />
       <Route path="/partner-stats" element={<Navigate to="/partners/join" replace />} />
       <Route path="/login" element={<Login />} />
       <Route

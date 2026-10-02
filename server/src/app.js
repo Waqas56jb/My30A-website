@@ -24,6 +24,7 @@ import jobsRouter from './routes/jobs.js'
 import messagesRouter from './routes/messages.js'
 import homesRouter from './routes/homes.js'
 import partnersRouter from './routes/partners.js'
+import hostRouter from './routes/host.js'
 import { ensureBucket } from './lib/storage.js'
 import { stripeMode } from './lib/stripe.js'
 
@@ -136,14 +137,17 @@ app.use('/api/messages', messagesRouter)
 app.use('/api/jobs', jobsRouter)
 app.use('/api/homes', homesRouter)
 app.use('/api/partners', partnersRouter)
+app.use('/api/host', hostRouter)
 // Secret-link guest pages + Twilio voice webhooks (Twilio posts form-encoded bodies).
 app.use('/api/public', express.urlencoded({ extended: false }), publicRouter)
 
 // JSON errors instead of Express's HTML page (upload limits, bad files, unexpected failures).
 app.use((error, _req, res, _next) => {
   const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : error.status || (error.name === 'MulterError' || /upload|image/i.test(error.message) ? 400 : 500)
-  if (status >= 500) console.error(error)
-  res.status(status).json({ error: status === 413 ? 'That file is too large' : status >= 500 ? 'Something went wrong' : error.message })
+  if (!error.status && status >= 500) console.error(error)
+  // Our own errors carry a status and a message meant for people; anything unexpected doesn't.
+  const message = status === 413 ? 'That file is too large' : error.status ? error.message : status >= 500 ? 'Something went wrong' : error.message
+  res.status(status).json({ error: message })
 })
 
 ensureBucket().catch((error) => {

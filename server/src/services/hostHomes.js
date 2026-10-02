@@ -2,6 +2,7 @@
 // (my30ahost.com/h/<slug>). See supabase/migrations/033_host_homes.sql.
 import crypto from 'crypto'
 import { supabase } from '../lib/supabase.js'
+import { LIVE_STATUSES } from './hostBilling.js'
 
 export const HOME_TEXT_FIELDS = [
   'host_name', 'host_tagline', 'logo_url', 'home_name', 'address', 'area', 'cover_url',
@@ -99,14 +100,31 @@ export function brandView(home) {
 // The full "My Home" tab for a signed-in guest of this property (no admin bookkeeping).
 export function guestHomeView(home) {
   if (!home) return null
-  const { plan, paid_until, notes, is_active, created_at, updated_at, ...rest } = home
+  const { plan, paid_until, notes, is_active, created_at, updated_at, owner_id, ...rest } = home
   return rest
+}
+
+// A host-owned property is live only while the host's subscription is paid, and only for as many
+// properties as the plan covers (oldest first). Properties My30A Host manages (no owner) always are.
+export async function homeIsLive(home) {
+  if (!home?.is_active) return false
+  if (!home.owner_id) return true
+  const { data: sub } = await supabase.from('host_subscriptions').select('status, quantity').eq('host_id', home.owner_id).maybeSingle()
+  if (!sub || !LIVE_STATUSES.includes(sub.status)) return false
+  const { data: owned } = await supabase
+    .from('host_homes')
+    .select('id')
+    .eq('owner_id', home.owner_id)
+    .eq('is_active', true)
+    .order('created_at')
+    .limit(sub.quantity)
+  return (owned || []).some((h) => h.id === home.id)
 }
 
 export async function loadHomeBySlug(slug) {
   if (!/^[a-z0-9-]{3,60}$/.test(String(slug || ''))) return null
   const { data } = await supabase.from('host_homes').select('*').eq('slug', slug).eq('is_active', true).maybeSingle()
-  return data || null
+  return data && (await homeIsLive(data)) ? data : null
 }
 
 export async function loadHomeForGuest(userId) {
@@ -116,7 +134,7 @@ export async function loadHomeForGuest(userId) {
     .eq('id', userId)
     .maybeSingle()
   const home = data?.host_home
-  return home && home.is_active ? home : null
+  return home && (await homeIsLive(home)) ? home : null
 }
 
 // One block of plain text for Vitoria, so she can answer "what's the WiFi?" or "when is checkout?".

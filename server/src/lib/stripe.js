@@ -2,7 +2,7 @@ import { supabase } from './supabase.js'
 
 const notConfigured = { skipped: true, reason: 'STRIPE_NOT_CONFIGURED' }
 
-async function getStripe() {
+export async function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) return null
   const { default: Stripe } = await import('stripe')
   return new Stripe(process.env.STRIPE_SECRET_KEY)

@@ -224,7 +224,9 @@ export default function Homes() {
   useTitle('Host homes · My30A Admin')
   const toast = useToast()
   const homesQuery = useQuery('/api/homes')
+  const hostsQuery = useQuery('/api/homes/hosts')
   const homes = homesQuery.data || []
+  const hosts = hostsQuery.data || []
 
   const [editing, setEditing] = useState(null) // 'new' | home
   const [form, setForm] = useState(emptyForm)
@@ -355,6 +357,62 @@ export default function Homes() {
 
       {homesQuery.error ? <p className="page-error">{errorMessage(homesQuery.error)}</p> : null}
 
+      <div className="card host-subs">
+        <div className="host-subs-head">
+          <h3>Hosts &amp; subscriptions</h3>
+          <a href={`${GUEST_APP_URL}/hosts`} target="_blank" rel="noreferrer" className="btn quiet sm">
+            Host signup page
+          </a>
+        </div>
+        {hostsQuery.loading ? (
+          <SkeletonTable rows={2} cols={5} />
+        ) : hosts.length === 0 ? (
+          <p className="muted">No self-serve hosts yet. Hosts sign up and pay at {GUEST_APP_URL.replace(/^https?:\/\//, '')}/hosts, then manage their own properties at /host.</p>
+        ) : (
+          <div className="host-subs-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Host</th>
+                  <th>Plan</th>
+                  <th className="num">Properties</th>
+                  <th>Status</th>
+                  <th>Renews</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hosts.map((h) => (
+                  <tr key={h.id}>
+                    <td data-label="Host">
+                      <strong>{h.company_name}</strong>
+                      <br />
+                      <small className="muted">
+                        {h.host?.name} · {h.host?.email}
+                        {h.host?.phone ? ` · ${h.host.phone}` : ''}
+                      </small>
+                    </td>
+                    <td data-label="Plan">
+                      {h.plan_label}
+                      {h.unit_amount ? <small className="muted"> · ${Number(h.unit_amount).toFixed(2)}/property</small> : null}
+                    </td>
+                    <td className="num" data-label="Properties">
+                      {h.properties} / {h.quantity}
+                    </td>
+                    <td data-label="Status">
+                      <Pill warn={!['active', 'trialing'].includes(h.status)} neutral={h.status === 'canceled'}>
+                        {h.status === 'pending' ? 'Waiting for payment' : h.status.replace(/_/g, ' ')}
+                        {h.cancel_at_period_end ? ' · cancels' : ''}
+                      </Pill>
+                    </td>
+                    <td data-label="Renews">{h.current_period_end ? formatShortDate(h.current_period_end) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {homesQuery.loading ? (
         <div className="card">
           <SkeletonTable rows={3} cols={4} />
@@ -376,8 +434,14 @@ export default function Homes() {
                   {home.host_name}
                   {home.area ? ` · ${home.area}` : ''}
                 </p>
+                {home.owner ? <p className="home-owner">Managed by host · {home.owner.company_name}</p> : null}
+                {home.stats ? (
+                  <p className="home-stats muted">
+                    30 days: {home.stats.guests} guests · {home.stats.opened} My Home opens · {home.stats.vitoria} Vitória questions
+                  </p>
+                ) : null}
                 <div className="home-card-meta">
-                  {subscriptionPill(home)}
+                  {home.owner ? <Pill neutral={!['active', 'trialing', 'past_due'].includes(home.owner.status)}>Host plan · {home.owner.status}</Pill> : subscriptionPill(home)}
                   <small className="muted">
                     {home.plan === 'annual' ? 'Annual' : 'Monthly'} · {home.guest_count} guest{home.guest_count === 1 ? '' : 's'}
                   </small>

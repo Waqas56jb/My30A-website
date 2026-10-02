@@ -31,7 +31,8 @@ router.patch('/', async (req, res, next) => {
     const body = req.body || {}
     const { platform_fee_percent, default_owner_fee_percent } = body
     const PAUSE = ['transfer', 'grocery'].flatMap((k) => [`${k}_paused`, `${k}_pause_message`, `${k}_resume_at`])
-    const GROCERY = ['grocery_buffer_percent', 'grocery_rush_fee_percent', 'grocery_min_notice_hours', 'grocery_instant_payouts', 'alert_emails', ...PAUSE]
+    const HOST_PRICES = ['host_price_monthly', 'host_price_semiannual', 'host_price_annual']
+    const GROCERY = ['grocery_buffer_percent', 'grocery_rush_fee_percent', 'grocery_min_notice_hours', 'grocery_instant_payouts', 'alert_emails', ...PAUSE, ...HOST_PRICES]
 
     if (platform_fee_percent === undefined && default_owner_fee_percent === undefined && !GROCERY.some((k) => body[k] !== undefined)) {
       return res.status(400).json({
@@ -60,6 +61,14 @@ router.patch('/', async (req, res, next) => {
       const bad = list.find((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))
       if (bad) return res.status(400).json({ error: `"${bad}" is not a valid email address` })
       updates.alert_emails = list.join(', ') || null
+    }
+
+    // Host Version plan prices per property (new signups; existing subscribers keep their price).
+    for (const key of HOST_PRICES) {
+      if (body[key] === undefined) continue
+      const price = Number(body[key])
+      if (!Number.isFinite(price) || price < 1 || price > 10000) return res.status(400).json({ error: 'Host plan prices must be between $1 and $10,000' })
+      updates[key] = Number(price.toFixed(2))
     }
 
     // Service availability: pause Transfer / Grocery with a message and optional return time.

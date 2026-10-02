@@ -41,6 +41,7 @@ import { checkAddressAgainstCommunity } from '../services/geocoding.js'
 import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt } from '../services/vitoria.js'
 import { vitoriaOffline } from '../services/vitoriaOffline.js'
 import { pausedMessage, serviceStatus } from '../services/serviceStatus.js'
+import { guestHomeId, logHomeEvent, topicFor } from '../services/hostActivity.js'
 import { brandView, guestHomeView, homeForVitoria, loadHomeBySlug, loadHomeForGuest } from '../services/hostHomes.js'
 import { realtimeSessionConfig, runVoiceTool } from '../services/vitoriaVoice.js'
 import { beachCard, distinctPhotos, loadBeaches, recommendBeaches } from '../services/beaches.js'
@@ -1018,7 +1019,9 @@ async function myHomeView(userId, home) {
 
 router.get('/my-home', guestOnly, async (req, res, next) => {
   try {
-    res.json(await myHomeView(req.user.id, await loadHomeForGuest(req.user.id)))
+    const home = await loadHomeForGuest(req.user.id)
+    if (home) await logHomeEvent(home.id, req.user.id, 'opened')
+    res.json(await myHomeView(req.user.id, home))
   } catch (error) {
     next(error)
   }
@@ -1028,8 +1031,12 @@ router.post('/my-home', guestOnly, async (req, res, next) => {
   try {
     const home = await loadHomeBySlug(String(req.body?.slug || '').trim().toLowerCase())
     if (!home) return res.status(404).json({ error: 'This QR code is no longer active. Please ask your host for a new one.' })
+    const before = await guestHomeId(req.user.id)
     const { error } = await supabase.from('profiles').update({ host_home_id: home.id }).eq('id', req.user.id)
     if (error) return res.status(400).json({ error: error.message })
+    if (before !== home.id) await logHomeEvent(home.id, req.user.id, 'joined')
+    // The My Home tab links a scanned property and shows it in one call — that's an open too.
+    if (req.body?.open) await logHomeEvent(home.id, req.user.id, 'opened')
     res.json(await myHomeView(req.user.id, home))
   } catch (error) {
     next(error)
@@ -1742,6 +1749,7 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
       message: `We received your airport transfer request #${data.trip_number}${returnLeg ? ` and return #${returnLeg.trip_number}` : ''}.${data.card_label ? ` ${data.card_label} is on file — ${data.payment_status === 'authorized' ? `$${money(data.customer_charge)} is authorized and` : 'you’re'} charged only after your ride.` : ''} We’ll confirm your driver shortly.`,
     })
 
+    await logHomeEvent(await guestHomeId(req.user.id), req.user.id, 'transfer')
     res.status(201).json(
       transferView(data, {
         credit_applied: credit.total,
@@ -2139,6 +2147,7 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
     // Rush order: get the money to the owner's bank in minutes for shopping day.
     if (prepay?.is_rush) await runInstantPayout(data, await groceryPolicy()).catch((err) => console.log('Instant payout skipped:', err.message))
 
+    await logHomeEvent(await guestHomeId(req.user.id), req.user.id, 'grocery')
     res.status(201).json(orderView(data, { quote, prepay }))
   } catch (error) {
     sendError(res, next, error)
@@ -2485,6 +2494,7 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
     ])
     const recent = (history.data || []).reverse().map((m) => ({ role: m.role, content: m.content }))
 
+    if (ctx.homeData) await logHomeEvent(ctx.homeData.id, req.user.id, 'vitoria', topicFor(content))
     const instructions = vitoriaSystemPrompt(knowledge, ctx)
     // Preferred: live web search (today's hours, phones) + structured place cards. If that path
     // fails, plain chat with the same knowledge; if OpenAI is down entirely, the offline reply.
@@ -2594,6 +2604,8 @@ router.post('/vitoria/voice/log', guestOnly, async (req, res, next) => {
         places: t.role === 'assistant' && Array.isArray(t.places) && t.places.length ? t.places.slice(0, 6) : null,
       }))
     if (!turns.length) return res.json({ saved: 0 })
+    const voiceHome = await guestHomeId(req.user.id)
+    for (const t of turns.filter((x) => x.role === 'user').slice(0, 10)) await logHomeEvent(voiceHome, req.user.id, 'vitoria', topicFor(t.content))
     const { error } = await supabase.from('vitoria_messages').insert(turns)
     if (error) return res.status(400).json({ error: error.message })
     res.json({ saved: turns.length })

@@ -10,6 +10,8 @@ import { isSmsConfigured, last10, maskedCallNumber } from '../lib/sms.js'
 import { notify } from '../services/notifications.js'
 import { brandView, loadHomeBySlug } from '../services/hostHomes.js'
 import multer from 'multer'
+import { createClient } from '@supabase/supabase-js'
+import { PLANS, planCatalog, returnBase, startCheckout } from '../services/hostBilling.js'
 import { notifyAdmins } from '../services/tripFlow.js'
 import { LISTING_TYPES, activeCommunities, activeGuides, saveListingPhoto, slugify, validateListing } from '../services/partners.js'
 import {
@@ -109,6 +111,67 @@ router.get('/home/:slug', async (req, res, next) => {
     if (!home) return res.status(404).json({ error: 'This QR code is no longer active. Please ask your host for a new one.' })
     const { count } = await supabase.from('explore_vendors').select('id', { count: 'exact', head: true }).eq('kind', 'vendor').eq('is_active', true)
     res.json({ ...brandView(home), partners: count || null })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// ---------- Host Version signup (my30ahost.com/hosts) ----------
+
+router.get('/host-plans', async (_req, res, next) => {
+  try {
+    res.json({ plans: await planCatalog() })
+  } catch (error) {
+    next(error)
+  }
+})
+
+const signupLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many attempts — please try again later.' } })
+
+// Creates the host's login (role host) + a pending subscription, then hands back a signed-in
+// session and the Stripe Checkout URL. The plan goes live when Stripe confirms the payment.
+router.post('/host-signup', signupLimit, async (req, res, next) => {
+  try {
+    const b = req.body || {}
+    const name = String(b.name || '').trim().slice(0, 120)
+    const company = String(b.company_name || '').trim().slice(0, 120)
+    const email = String(b.email || '').trim().toLowerCase()
+    const phone = String(b.phone || '').trim().slice(0, 40) || null
+    const password = String(b.password || '')
+    const plan = PLANS[b.plan] ? b.plan : 'monthly'
+    const quantity = Number(b.quantity)
+    if (name.length < 2) return res.status(400).json({ error: 'Please add your name' })
+    if (company.length < 2) return res.status(400).json({ error: 'Please add your company or brand name (guests see it)' })
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Please add a valid email' })
+    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) return res.status(400).json({ error: 'Number of properties must be 1–500' })
+
+    const { data: created, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name, phone, role: 'host' } })
+    if (error) {
+      const exists = /already|exists|registered/i.test(error.message)
+      return res.status(exists ? 409 : 400).json({ error: exists ? 'An account with this email already exists — log in at my30ahost.com/host to continue.' : error.message })
+    }
+    const userId = created.user.id
+    const { error: profileError } = await supabase.from('profiles').upsert({ id: userId, email, name, phone, roles: ['host'] }, { onConflict: 'id' })
+    if (profileError) return res.status(400).json({ error: profileError.message })
+    const { data: sub, error: subError } = await supabase
+      .from('host_subscriptions')
+      .insert({ host_id: userId, company_name: company, plan, quantity, status: 'pending' })
+      .select('*')
+      .single()
+    if (subError) return res.status(400).json({ error: subError.message })
+
+    const anon = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+    const { data: signed } = await anon.auth.signInWithPassword({ email, password })
+    const checkout_url = await startCheckout(sub, { id: userId, email, name }, returnBase(req.headers.origin))
+    await notifyAdmins({
+      message: `New Host Version signup: ${company} (${quantity} propert${quantity === 1 ? 'y' : 'ies'}, ${PLANS[plan].label.toLowerCase()}) — waiting for payment.`,
+      email: { subject: `New host signup · ${company}`, lines: [`Name: ${name}`, `Email: ${email}`, phone && `Phone: ${phone}`], path: '/homes' },
+    }).catch(() => {})
+    res.status(201).json({
+      checkout_url,
+      session: signed?.session ? { access_token: signed.session.access_token, refresh_token: signed.session.refresh_token } : null,
+    })
   } catch (error) {
     next(error)
   }
