@@ -57,17 +57,35 @@ export async function activeCommunities() {
 
 // Listing photo: 4:3, 960px WebP in the public 'listings' bucket (same look as the imported ones).
 export async function saveListingPhoto(buffer, slug) {
-  const img = sharp(buffer).rotate()
-  const { width, height } = await img.metadata()
+  const meta = await sharp(buffer).metadata()
+  const { width, height } = meta
   if (!width || !height) throw Object.assign(new Error('That photo could not be read'), { status: 400 })
+  const name = `vendors/${slug || 'listing'}-${Date.now()}.webp`
+  const ratio = width / height
+  // A logo (transparent PNG, or square) would lose its edges in a 4:3 crop and turn black where
+  // it's transparent — pad it on a matching background instead so the name stays readable.
+  const isLogo = meta.hasAlpha || ratio < 1.05
+  if (isLogo) {
+    const flat = await sharp(buffer).rotate().flatten({ background: '#ffffff' }).toBuffer()
+    const { data } = await sharp(flat).extract({ left: 0, top: 0, width: 1, height: 1 }).raw().toBuffer({ resolveWithObject: true })
+    const background = { r: data[0], g: data[1], b: data[2] }
+    const inner = await sharp(flat).resize({ width: 820, height: 600, fit: 'inside' }).toBuffer()
+    const padded = await sharp({ create: { width: 960, height: 720, channels: 3, background } })
+      .composite([{ input: inner, gravity: 'center' }])
+      .webp({ quality: 84 })
+      .toBuffer()
+    return uploadPublicImage('listings', padded, name, 'image/webp')
+  }
   const h = Math.min(height, Math.round((width * 3) / 4))
   const w = Math.min(width, Math.round((h * 4) / 3))
-  const out = await img
+  const out = await sharp(buffer)
+    .rotate()
+    .flatten({ background: '#ffffff' })
     .extract({ left: Math.round((width - w) / 2), top: Math.round((height - h) / 2.6), width: w, height: h })
     .resize(960)
     .webp({ quality: 82 })
     .toBuffer()
-  return uploadPublicImage('listings', out, `vendors/${slug || 'listing'}-${Date.now()}.webp`, 'image/webp')
+  return uploadPublicImage('listings', out, name, 'image/webp')
 }
 
 async function uniqueSlug(name) {
@@ -142,6 +160,21 @@ export function listingFields(src) {
   }
 }
 
+// Reservation details (Dining only): how guests book, plus optional notes.
+export const BOOKING_PLATFORMS = ['opentable', 'resy', 'sevenrooms', 'tock', 'website_widget', 'phone_only', 'walk_in']
+
+export function bookingFields(src) {
+  const out = {}
+  if (src.booking_platform !== undefined) {
+    out.booking_platform = BOOKING_PLATFORMS.includes(src.booking_platform) ? src.booking_platform : 'phone_only'
+    out.last_verified_date = new Date().toISOString().slice(0, 10)
+  }
+  if (src.booking_url !== undefined) out.booking_url = cleanUrl(src.booking_url)
+  if (src.menu_url !== undefined) out.menu_url = cleanUrl(src.menu_url)
+  for (const k of ['booking_note', 'access_note']) if (src[k] !== undefined) out[k] = String(src[k] || '').trim().slice(0, 300) || null
+  return out
+}
+
 export function validateListing(src, guides) {
   if (!LISTING_TYPES[src.listing_type]) return 'Please choose what kind of business this is'
   if (src.listing_type === 'vendor' && !guides.some((g) => g.slug === src.guide_slug)) return 'Please choose a category'
@@ -163,6 +196,7 @@ export async function createListing(src, { photoUrl = null } = {}) {
     .from('explore_vendors')
     .insert({
       ...fields,
+      ...(fields.kind === 'restaurant' ? bookingFields(src) : {}),
       slug,
       image_url: photoUrl || src.photo_url || null,
       sort_order: (last?.[0]?.sort_order || 0) + 1,
@@ -178,7 +212,7 @@ export async function createListing(src, { photoUrl = null } = {}) {
 }
 
 export const LISTING_SELECT =
-  'id, slug, kind, name, guide_slug, venue_type, venue_types, cuisine, community, place, address, phone, website_url, description, hours, image_url, is_active, created_at'
+  'id, slug, kind, name, guide_slug, venue_type, venue_types, cuisine, community, place, address, phone, website_url, description, hours, image_url, is_active, created_at, booking_platform, booking_url, booking_note, access_note, menu_url'
 
 export function listingView(row) {
   return {

@@ -4,6 +4,7 @@
 // turn. It's assembled stable-first so OpenAI's prompt cache reuses the big unchanging prefix and
 // only the short per-guest tail changes between calls.
 import { supabase } from '../lib/supabase.js'
+import { serviceStatusLines } from './serviceStatus.js'
 import { diningCard, findDining } from './dining.js'
 import { beachCard, distinctPhotos, findBeach } from './beaches.js'
 import { eventCard, eventsKnowledge, findEvent } from './events.js'
@@ -38,7 +39,7 @@ async function buildKnowledge() {
     supabase.from('service_catalog').select('kind, name, sub, price, unit').eq('is_active', true).order('sort_order'),
     supabase
       .from('explore_vendors')
-      .select('name, venue_type, venue_types, community, cuisine, tags, hours, price_range, phone, website_url, booking_platform')
+      .select('name, venue_type, venue_types, community, cuisine, tags, hours, price_range, phone, website_url, booking_platform, booking_note, access_note')
       .eq('is_active', true)
       .eq('kind', 'restaurant')
       .not('venue_type', 'is', null)
@@ -101,8 +102,9 @@ async function buildKnowledge() {
       rows.sort((a, b) => TYPE_ORDER.indexOf(a.venue_type) - TYPE_ORDER.indexOf(b.venue_type))
       for (const r of rows) {
         const vibe = (r.tags || []).filter((t) => t !== r.cuisine).slice(0, 4).join('/')
-        const book = { resy: 'reserve on Resy', opentable: 'reserve on OpenTable', sevenrooms: 'reserve on SevenRooms', tock: 'reserve on Tock', website_widget: 'reserve on its website', phone_only: r.venue_type === 'restaurant' ? 'reservations by phone' : null }[r.booking_platform]
-        const extras = [r.cuisine, vibe, r.price_range, r.hours, book, r.phone, bare(r.website_url)].filter(Boolean)
+        const book = { resy: 'reserve on Resy', opentable: 'reserve on OpenTable', sevenrooms: 'reserve on SevenRooms', tock: 'reserve on Tock', website_widget: 'reserve on its website', phone_only: r.venue_type === 'restaurant' ? 'reservations by phone' : null, walk_in: 'NO reservations, walk-in / first come first served' }[r.booking_platform]
+        const access = r.access_note ? `PRIVATE: ${r.access_note} — not open to the public; only suggest it to guests who say they have that access` : null
+        const extras = [access, r.cuisine, vibe, r.price_range, r.hours, book, r.booking_note, r.phone, bare(r.website_url)].filter(Boolean)
         const marks = (r.venue_types?.length ? r.venue_types : [r.venue_type]).map((t) => TYPE_MARK[t]).join('')
         lines.push(`- [${marks}] ${r.name}${extras.length ? ` — ${extras.join(' · ')}` : ''}`)
       }
@@ -223,6 +225,8 @@ export function vitoriaSystemPrompt(knowledge, ctx) {
   } else {
     head.push('Their stay: no property on file yet — ask which community they’re staying in when it matters.')
   }
+  const pausedLines = serviceStatusLines(ctx.services)
+  if (pausedLines.length) head.push('SERVICE STATUS (overrides rule 4):', ...pausedLines)
   if (ctx.home) {
     head.push(
       'THEIR RENTAL HOME (from their host — answer questions about the house, WiFi, door code, check-in/out, parking, appliances and house rules from this, exactly as written; for anything not covered, suggest contacting the host):',

@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { deletePerson, sendResult } from '../services/adminDelete.js'
 import { supabase } from '../lib/supabase.js'
 import { sendWelcomeLogin } from '../lib/email.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
@@ -177,6 +178,15 @@ router.post('/:id/reset-password', async (req, res, next) => {
     }
 
     res.json({ id: req.params.id, password })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Admin delete: only people with no trips, orders, payouts or vehicles (others: deactivate).
+router.delete('/:id', async (req, res, next) => {
+  try {
+    sendResult(res, await deletePerson(req.params.id, { selfId: req.user.id }))
   } catch (error) {
     next(error)
   }

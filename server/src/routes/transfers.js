@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { deleteTransfer, sendResult } from '../services/adminDelete.js'
 import { supabase } from '../lib/supabase.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { getBasePrice } from '../services/pricing.js'
@@ -1181,6 +1182,15 @@ router.get('/:id', requireRole('admin'), async (req, res, next) => {
         call_log: calls.data || [],
       })
     )
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Admin delete (releases an open card hold; refused while the trip is part of a payout).
+router.delete('/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    sendResult(res, await deleteTransfer(req.params.id))
   } catch (error) {
     next(error)
   }

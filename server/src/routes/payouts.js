@@ -226,10 +226,8 @@ router.delete('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const { payout, error } = await loadPayout(req.params.id)
     if (error || !payout) return res.status(404).json({ error: 'Payout not found' })
-    if (payout.status !== 'pending') {
-      return res.status(400).json({ error: 'Only pending payouts can be deleted' })
-    }
-
+    // A paid payout can be deleted too (e.g. entered by mistake) — it only removes the record;
+    // money already sent by Zelle / cash / Stripe isn't reversed. Its trips become "owed" again.
     const { error: deleteError } = await supabase.from('payouts').delete().eq('id', payout.id)
     if (deleteError) return res.status(400).json({ error: deleteError.message })
     res.json({ ok: true })

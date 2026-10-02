@@ -6,6 +6,8 @@ import {
   DollarSign,
   ExternalLink,
   Info,
+  Lock,
+  UtensilsCrossed,
   MapPin,
   Navigation,
   Package,
@@ -52,26 +54,38 @@ export default function RestaurantDetail() {
   ].filter(Boolean)
 
   // Reservations are free: we only deep-link to the restaurant's own booking page, chosen by the
-  // platform it really uses (verified from its website). Phone-only restaurants show the number.
+  // platform it really uses (verified from its website). Phone-only restaurants show the number,
+  // walk-in places say so, and private club / hotel-guest venues never get a Reserve button.
   const PLATFORM = { resy: 'Resy', opentable: 'OpenTable', sevenrooms: 'SevenRooms', tock: 'Tock' }
-  const online = place.booking_url && place.booking_platform && place.booking_platform !== 'phone_only'
+  const isPrivate = Boolean(place.access_note)
+  const walkIn = place.booking_platform === 'walk_in'
+  const online = !isPrivate && !walkIn && place.booking_url && place.booking_platform && place.booking_platform !== 'phone_only'
+  const site = place.website_url || place.menu_url
   const primary = online
     ? {
         label: PLATFORM[place.booking_platform] ? `Reserve on ${PLATFORM[place.booking_platform]}` : 'Reserve online',
         Icon: CalendarDays,
         href: place.booking_url,
       }
-    : tel
-      ? { label: place.venue_type === 'restaurant' ? 'Call to reserve' : 'Call', Icon: Phone, href: tel }
+    : isPrivate && place.website_url
+      ? { label: 'Club dining info', Icon: ExternalLink, href: place.website_url }
+      : tel
+        ? { label: walkIn ? 'Call' : place.venue_type === 'restaurant' ? 'Call to reserve' : 'Call', Icon: Phone, href: tel }
+        : { label: 'Directions', Icon: Navigation, href: place.directions_url }
+  const secondary =
+    site && !(isPrivate && primary.href === place.website_url)
+      ? { label: place.website_url ? 'Menu & website' : 'Menu', Icon: place.website_url ? ExternalLink : UtensilsCrossed, href: site }
       : { label: 'Directions', Icon: Navigation, href: place.directions_url }
-  const secondary = place.website_url
-    ? { label: 'Menu & website', Icon: ExternalLink, href: place.website_url }
-    : { label: 'Directions', Icon: Navigation, href: place.directions_url }
-  const reservationLine = online
-    ? `Book free on ${PLATFORM[place.booking_platform] || 'the restaurant’s own website'} — no fee from My30A Host.`
-    : place.phone
-      ? `${place.venue_type === 'restaurant' ? 'Reservations by phone' : 'Call ahead'}: ${place.phone}`
-      : null
+  const reservationLine = isPrivate
+    ? place.booking_note || 'Reservations through the club.'
+    : online
+      ? `Book free on ${PLATFORM[place.booking_platform] || 'the restaurant’s own website'} — no fee from My30A Host.`
+      : walkIn
+        ? place.booking_note || 'No reservations — first come, first served.'
+        : place.phone
+          ? `${place.venue_type === 'restaurant' ? 'Reservations by phone' : 'Call ahead'}: ${place.phone}`
+          : place.booking_note || null
+  const extraNote = !walkIn && !isPrivate && place.booking_note && reservationLine !== place.booking_note ? place.booking_note : null
   const verified = place.last_verified_date
     ? new Date(`${place.last_verified_date}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
     : null
@@ -92,6 +106,13 @@ export default function RestaurantDetail() {
           <Pill icon={MapPin} white>
             {place.community || place.place}
           </Pill>
+          {isPrivate ? (
+            <Pill icon={Lock} white>
+              Members &amp; hotel guests only
+            </Pill>
+          ) : walkIn ? (
+            <Pill white>Walk-in</Pill>
+          ) : null}
           {place.rating !== null && place.rating !== undefined ? (
             <RatingPill rating={place.rating} reviews={place.reviews} white />
           ) : (
@@ -129,6 +150,15 @@ export default function RestaurantDetail() {
           ))}
         </section>
 
+        {isPrivate ? (
+          <div className="app-xfer-note is-warn is-lg app-exp-private">
+            <Lock size={22} strokeWidth={1.5} aria-hidden="true" />
+            <span>
+              <b>{place.access_note}.</b> Not open to the public — you’ll need Watersound Club or hotel-guest access to dine here.
+            </span>
+          </div>
+        ) : null}
+
         <div className="app-xfer-note is-info is-lg">
           <Info size={22} strokeWidth={1.5} aria-hidden="true" />
           <span>
@@ -139,9 +169,16 @@ export default function RestaurantDetail() {
 
         {reservationLine ? (
           <p className="app-exp-reserve-line">
-            {online ? <CalendarDays size={14} strokeWidth={1.8} aria-hidden="true" /> : <Phone size={14} strokeWidth={1.8} aria-hidden="true" />}
+            {online ? (
+              <CalendarDays size={14} strokeWidth={1.8} aria-hidden="true" />
+            ) : isPrivate ? (
+              <Lock size={14} strokeWidth={1.8} aria-hidden="true" />
+            ) : (
+              <Phone size={14} strokeWidth={1.8} aria-hidden="true" />
+            )}
             <span>
               {reservationLine}
+              {extraNote ? <b className="app-exp-reserve-note"> {extraNote}</b> : null}
               {verified ? <small> · Checked {verified}</small> : null}
             </span>
           </p>

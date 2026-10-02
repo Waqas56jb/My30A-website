@@ -126,6 +126,22 @@ export default function Vehicles() {
     }
   }
 
+  // Only vehicles never used on a trip can be deleted (others: set Inactive).
+  async function removeVehicle() {
+    if (!window.confirm(`Delete ${modal.make} ${modal.model} (${modal.plate}) permanently?`)) return
+    setFormError('')
+    setSaving(true)
+    try {
+      await api(`/api/vehicles/${modal.id}`, { method: 'DELETE' })
+      setModal(null)
+      await refresh()
+    } catch (err) {
+      setFormError(errorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <section>
       <div className="head">
@@ -312,6 +328,14 @@ export default function Vehicles() {
           ) : null}
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="actions">
+            {modal !== 'add' ? (
+              <>
+                <button type="button" className="btn quiet danger" onClick={removeVehicle} disabled={saving}>
+                  Delete
+                </button>
+                <span style={{ flex: 1 }} />
+              </>
+            ) : null}
             <button type="button" className="btn quiet" onClick={() => setModal(null)}>
               Cancel
             </button>

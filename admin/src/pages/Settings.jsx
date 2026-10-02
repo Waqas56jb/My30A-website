@@ -4,7 +4,7 @@ import SkeletonTable from '../components/Skeleton.jsx'
 import Table from '../components/Table.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { api } from '../lib/api.js'
-import { errorMessage } from '../lib/format.js'
+import { chicagoDateTimeToIso, chicagoDatetimeLocal, errorMessage } from '../lib/format.js'
 import { useTitle } from '../lib/useTitle.js'
 import { invalidateQuery, useQuery } from '../lib/useQuery.js'
 
@@ -34,6 +34,91 @@ function priceCell(community, airport) {
   const van = community.prices[`${airport}:14pax`]
   if (car == null && suv == null && van == null) return '—'
   return `$${Number(car).toFixed(0)} / ${Number(suv).toFixed(0)} / ${Number(van).toFixed(0)}`
+}
+
+const SERVICES = [
+  { kind: 'transfer', title: 'Airport transfers', fallback: 'Airport transfers are paused for the moment. We’ll be back soon — thank you for your patience.' },
+  { kind: 'grocery', title: 'Grocery delivery', fallback: 'Grocery delivery is paused for the moment. We’ll be back soon — thank you for your patience.' },
+]
+
+// Service availability: pause Transfer and/or Grocery. Guests then see the message (and the
+// back-online time) instead of the form, can't submit, and Vitoria tells them the same. Takes
+// effect immediately; at the back-online time the service reopens by itself.
+function ServicePanel({ service, settings, onSaved }) {
+  const toast = useToast()
+  const { kind } = service
+  const live = {
+    paused: Boolean(settings?.[`${kind}_paused`]),
+    message: settings?.[`${kind}_pause_message`] || service.fallback,
+    resume: settings?.[`${kind}_resume_at`] ? chicagoDatetimeLocal(new Date(settings[`${kind}_resume_at`])) : '',
+  }
+  const [draft, setDraft] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const form = draft || live
+  const expired = live.paused && settings?.[`${kind}_resume_at`] && new Date(settings[`${kind}_resume_at`]) <= new Date()
+  const pausedNow = live.paused && !expired
+
+  async function save(next) {
+    setBusy(true)
+    try {
+      const body = {
+        [`${kind}_paused`]: next.paused,
+        [`${kind}_pause_message`]: next.message.trim() || service.fallback,
+        [`${kind}_resume_at`]: next.resume ? chicagoDateTimeToIso(next.resume) : null,
+      }
+      const saved = await api('/api/settings', { method: 'PATCH', body })
+      setDraft(null)
+      onSaved(saved)
+      toast.success(next.paused ? `${service.title} paused — guests see your message now` : `${service.title} back on`)
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className={`svc-panel${pausedNow ? ' is-paused' : ''}`}>
+      <div className="svc-head">
+        <div>
+          <strong>{service.title}</strong>
+          <small>{pausedNow ? 'Paused — guests can’t request' : 'Open — guests can request'}</small>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!pausedNow}
+          aria-label={`${service.title} accepting requests`}
+          className={`svc-switch${pausedNow ? '' : ' on'}`}
+          disabled={busy}
+          onClick={() => save({ ...form, paused: !pausedNow })}
+        >
+          <i />
+        </button>
+      </div>
+      <div className="field">
+        <label>Message guests see while paused</label>
+        <textarea rows={2} value={form.message} onChange={(e) => setDraft({ ...form, message: e.target.value })} />
+      </div>
+      <div className="field">
+        <label>Back online (optional, Florida time)</label>
+        <div className="svc-when">
+          <input type="datetime-local" value={form.resume} onChange={(e) => setDraft({ ...form, resume: e.target.value })} />
+          {form.resume ? (
+            <button type="button" className="btn quiet sm" onClick={() => setDraft({ ...form, resume: '' })}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <small className="muted">At this time the service turns back on by itself. Leave empty if there’s no return time yet.</small>
+      </div>
+      {draft ? (
+        <Button className="btn sm" pending={busy} onClick={() => save({ ...form, paused: pausedNow })}>
+          Save message
+        </Button>
+      ) : null}
+    </div>
+  )
 }
 
 export default function Settings() {
@@ -106,6 +191,26 @@ export default function Settings() {
       </div>
 
       {error ? <p className="page-error">{errorMessage(error)}</p> : null}
+
+      {settingsQuery.data ? (
+        <div className="card svc-card">
+          <h3>Service availability</h3>
+          <p className="muted">Pause a service for a holiday, no driver or shopper, or a system issue. Guests see your message right away instead of the request form.</p>
+          <div className="svc-grid">
+            {SERVICES.map((service) => (
+              <ServicePanel
+                key={service.kind}
+                service={service}
+                settings={settingsQuery.data}
+                onSaved={() => {
+                  invalidateQuery('/api/settings')
+                  settingsQuery.refetch()
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="grid g2">

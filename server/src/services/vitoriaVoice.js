@@ -3,6 +3,7 @@
 // tools (restaurants, events, beaches, the guest's bookings, transfer prices) — executed by
 // POST /api/guest/vitoria/voice/tool, which also returns the same photo cards the chat shows.
 import { supabase } from '../lib/supabase.js'
+import { serviceStatusLines } from './serviceStatus.js'
 import { diningCard, findDining, recommendDining, understandDining } from './dining.js'
 import { beachCard, distinctPhotos, recommendBeaches } from './beaches.js'
 import { eventCard, recommendEvents } from './events.js'
@@ -94,6 +95,7 @@ export function voiceInstructions(ctx) {
     'Speak like a warm, polished five-star hotel concierge on the phone: natural, upbeat, concise. Usually one to three short sentences, then let the guest talk. Never read out lists longer than three items, URLs or long numbers — the app shows cards with the details on screen.',
     'Always answer in the language the guest speaks.',
     `Right now it is ${now} on 30A (Central time). Guest: ${ctx.profile?.name || 'Guest'} — call them ${ctx.firstName}. ${stay}`,
+    ...serviceStatusLines(ctx.services).map((line) => `IMPORTANT: ${line}`),
     ...(ctx.home ? ['', 'Their rental home, from their host (answer house questions — WiFi, door code, check-out, rules — from this):', ctx.home] : []),
     '',
     'Use your tools for every factual answer — never invent restaurants, hours, prices or events:',
@@ -134,6 +136,8 @@ const short = (card) => ({
   when_or_hours: card.facts?.join(' ') || card.hours || '',
   booking: card.booking_platform || (card.booking ? 'online' : card.phone ? 'phone' : ''),
   phone: card.phone || undefined,
+  access: card.access || undefined,
+  booking_note: card.booking_note || undefined,
   note: (card.why || '').slice(0, 140),
 })
 

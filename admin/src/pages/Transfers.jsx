@@ -345,6 +345,24 @@ export default function Transfers() {
     }
   }
 
+  // Delete for good (an open card hold is released; refused while it's part of a payout).
+  async function remove(item) {
+    if (!window.confirm(`Delete trip #${item.trip_number} permanently? Its messages and history are removed too. This doesn't refund money already charged — refund first if needed.`)) return
+    setWorking('delete')
+    try {
+      await api(`/api/transfers/${item.id}`, { method: 'DELETE' })
+      toast.success(`Trip #${item.trip_number} deleted`)
+      setParam({ open: null })
+      invalidateQuery('/api/transfers')
+      invalidateQuery('/api/dashboard')
+      await listQuery.refetch()
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setWorking('')
+    }
+  }
+
   async function act(path, body, ok) {
     setWorking(path)
     try {
@@ -817,6 +835,9 @@ export default function Transfers() {
                   Refund
                 </Button>
               ) : null}
+              <Button className="btn quiet danger" pending={working === 'delete'} onClick={() => remove(trip)}>
+                Delete
+              </Button>
             </div>
           </>
         ) : (

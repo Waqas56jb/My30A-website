@@ -251,6 +251,24 @@ export default function People() {
     }
   }
 
+  // Only people with no trips, orders, payouts or vehicles can be deleted — the server explains
+  // what's linked otherwise (then Deactivate keeps their history).
+  async function removePerson() {
+    if (!window.confirm(`Delete ${editPerson.name || 'this person'} and their login permanently?`)) return
+    setEditError('')
+    setEditSaving(true)
+    try {
+      await api(`/api/users/${editPerson.id}`, { method: 'DELETE' })
+      toast.success(`${editPerson.name || 'Person'} deleted`)
+      setEditPerson(null)
+      await refresh()
+    } catch (err) {
+      setEditError(errorMessage(err))
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   async function resetUserPassword() {
     setEditError('')
     try {
@@ -630,6 +648,10 @@ export default function People() {
             )}
             {editError ? <p className="form-error">{editError}</p> : null}
             <div className="actions">
+              <button type="button" className="btn quiet danger" onClick={removePerson} disabled={editSaving}>
+                Delete
+              </button>
+              <span style={{ flex: 1 }} />
               <button type="button" className="btn quiet" onClick={() => setEditPerson(null)}>
                 Cancel
               </button>

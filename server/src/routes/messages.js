@@ -1,6 +1,7 @@
 // Admin audit view of every trip conversation, SMS and masked call — searchable by trip number,
-// guest name, driver and date (Part 4 of the comms spec). Nothing here is ever deleted.
+// guest name, driver and date (Part 4 of the comms spec). The admin can delete single entries.
 import { Router } from 'express'
+import { deleteMessage, sendResult } from '../services/adminDelete.js'
 import { supabase } from '../lib/supabase.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 
@@ -61,6 +62,15 @@ router.get('/', async (req, res, next) => {
       sms: (sms.data || []).filter((row) => byDriver(row) && matches(row, q)),
       calls: (calls.data || []).filter((row) => byDriver(row) && matches(row, q)),
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Admin delete of one chat message, SMS log entry or call log entry (kind: chat | sms | calls).
+router.delete('/:kind/:id', async (req, res, next) => {
+  try {
+    sendResult(res, await deleteMessage(req.params.kind, req.params.id))
   } catch (error) {
     next(error)
   }

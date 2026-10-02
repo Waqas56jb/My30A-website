@@ -521,3 +521,14 @@ select {
   height: 52px;
   margin: 0 0 18px;
 }
+
+/* Native-app feel in the guest / staff apps (lib/viewportLock.js toggles the class): no page bounce,
+   no sideways drift, no double-tap zoom. */
+html.is-app-locked,
+html.is-app-locked body {
+  overflow-x: clip;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}

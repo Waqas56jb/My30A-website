@@ -11,6 +11,7 @@ import {
   LISTING_SELECT,
   LISTING_TYPES,
   activeCommunities,
+  bookingFields,
   activeGuides,
   createListing,
   listingFields,
@@ -229,6 +230,7 @@ router.patch('/listings/:id', async (req, res, next) => {
     if (given('listing_type') || given('venue_types') || given('guide_slug')) {
       Object.assign(updates, { kind: full.kind, guide_slug: full.guide_slug, venue_type: full.venue_type, venue_types: full.venue_types })
     }
+    if (full.kind === 'restaurant' || current.kind === 'restaurant') Object.assign(updates, bookingFields(body))
     for (const k of Object.keys(updates)) if (updates[k] === undefined) delete updates[k]
     if (body.is_active !== undefined) updates.is_active = Boolean(body.is_active)
     const { data, error } = await supabase.from('explore_vendors').update(updates).eq('id', req.params.id).select(LISTING_SELECT).single()

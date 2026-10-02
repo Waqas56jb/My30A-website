@@ -226,7 +226,15 @@ export default function Payouts() {
   }
 
   async function removePayout(payout) {
-    if (!window.confirm(`Delete this pending payout for ${payout.user?.name || 'this person'}?`)) return
+    const paid = payout.status !== 'pending'
+    if (
+      !window.confirm(
+        paid
+          ? `Delete this PAID payout for ${payout.user?.name || 'this person'}? It only removes the record — money already sent is not reversed — and its trips/orders show as owed again.`
+          : `Delete this pending payout for ${payout.user?.name || 'this person'}?`
+      )
+    )
+      return
     setWorking(`del-${payout.id}`)
     try {
       await api(`/api/payouts/${payout.id}`, { method: 'DELETE' })
@@ -420,15 +428,13 @@ export default function Payouts() {
                           <Button className="btn quiet sm" onClick={() => setItemsId(payout.id)}>
                             Items
                           </Button>
-                          {pending ? (
-                            <Button
-                              className="btn quiet sm danger"
-                              pending={working === `del-${payout.id}`}
-                              onClick={() => removePayout(payout)}
-                            >
-                              Delete
-                            </Button>
-                          ) : null}
+                          <Button
+                            className="btn quiet sm danger"
+                            pending={working === `del-${payout.id}`}
+                            onClick={() => removePayout(payout)}
+                          >
+                            Delete
+                          </Button>
                         </div>
                       </td>
                     </tr>

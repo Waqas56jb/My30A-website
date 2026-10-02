@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Clock, CreditCard, Plane, ShieldCheck, ShoppingBag } from 'lucide-react'
 import BottomNav from './BottomNav.jsx'
 import NotificationBell from '../../components/NotificationBell.jsx'
+import { useServiceStatus } from '../../components/ServiceGate.jsx'
 
 const SERVICES = [
   {
@@ -39,7 +40,7 @@ const PERKS = [
   { Icon: CreditCard, label: 'Secure payments' },
 ]
 
-function ServiceCard({ s, index }) {
+function ServiceCard({ s, index, paused }) {
   const [loaded, setLoaded] = useState(false)
   return (
     <Link
@@ -61,7 +62,7 @@ function ServiceCard({ s, index }) {
         <span className="app-service-icon" aria-hidden="true">
           <s.Icon size={20} strokeWidth={1.8} />
         </span>
-        <span className="app-service-tag">{s.tag}</span>
+        <span className={`app-service-tag${paused ? ' is-paused' : ''}`}>{paused ? 'Paused for now' : s.tag}</span>
       </span>
       <span className="app-service-body">
         <span className="app-service-text">
@@ -76,7 +77,7 @@ function ServiceCard({ s, index }) {
             </span>
           </span>
           <span className="app-service-cta">
-            <span>{s.cta}</span>
+            <span>{paused ? 'See details' : s.cta}</span>
             <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
           </span>
         </span>
@@ -87,6 +88,7 @@ function ServiceCard({ s, index }) {
 
 export default function AppServices() {
   const navigate = useNavigate()
+  const status = useServiceStatus()
 
   return (
     <div className="app-guest">
@@ -114,7 +116,7 @@ export default function AppServices() {
               </div>
               <div className="app-services-cards">
                 {SERVICES.map((s, i) => (
-                  <ServiceCard key={s.key} s={s} index={i} />
+                  <ServiceCard key={s.key} s={s} index={i} paused={Boolean(status?.[s.key]?.paused)} />
                 ))}
               </div>
               <ul className="app-services-perks app-rise" style={{ '--i': 3 }}>

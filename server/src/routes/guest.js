@@ -40,6 +40,7 @@ import { searchPlaces } from '../lib/placeSearch.js'
 import { checkAddressAgainstCommunity } from '../services/geocoding.js'
 import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt } from '../services/vitoria.js'
 import { vitoriaOffline } from '../services/vitoriaOffline.js'
+import { pausedMessage, serviceStatus } from '../services/serviceStatus.js'
 import { brandView, guestHomeView, homeForVitoria, loadHomeBySlug, loadHomeForGuest } from '../services/hostHomes.js'
 import { realtimeSessionConfig, runVoiceTool } from '../services/vitoriaVoice.js'
 import { beachCard, distinctPhotos, loadBeaches, recommendBeaches } from '../services/beaches.js'
@@ -389,6 +390,9 @@ function vendorView(vendor, extra = {}) {
     website_url: vendor.website_url,
     booking_url: vendor.booking_url,
     booking_platform: vendor.booking_platform || null,
+    booking_note: vendor.booking_note || null,
+    access_note: vendor.access_note || null,
+    menu_url: vendor.menu_url || null,
     last_verified_date: vendor.last_verified_date || null,
     directions_url: vendor.directions_url,
     image: vendor.image_url,
@@ -993,6 +997,15 @@ router.get('/catalog', async (_req, res, next) => {
   }
 })
 
+// Service availability (Admin → Settings): the Transfer / Grocery screens check this on open.
+router.get('/service-status', async (_req, res, next) => {
+  try {
+    res.json(await serviceStatus())
+  } catch (error) {
+    next(error)
+  }
+})
+
 // ---------- My Home (Host version) ----------
 // A guest who scanned the QR code in a host's rental is linked to that property; the app then
 // shows the host's logo and a "My Home" tab (WiFi, door code, check-in/out, house rules…).
@@ -1275,7 +1288,7 @@ router.get('/explore/vendors/:slug', async (req, res, next) => {
 // the facets the Dining screen filters on (type → community → cuisine/features). 246 compact rows,
 // cached; "open now" is recomputed per request from each place's structured hours.
 const DINING_FIELDS =
-  'id, slug, name, venue_type, venue_types, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, rating, review_count, website_url, booking_url, booking_platform, phone'
+  'id, slug, name, venue_type, venue_types, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, rating, review_count, website_url, booking_url, booking_platform, access_note, phone'
 
 router.get('/explore/dining', async (_req, res, next) => {
   try {
@@ -1308,7 +1321,9 @@ router.get('/explore/dining', async (_req, res, next) => {
           reviews: row.review_count,
           open_now: status.open_now,
           today: status.today,
-          reservable: Boolean(row.booking_url) && row.booking_platform !== 'phone_only',
+          reservable: Boolean(row.booking_url) && !['phone_only', 'walk_in'].includes(row.booking_platform) && !row.access_note,
+          walk_in: row.booking_platform === 'walk_in',
+          access: row.access_note || null,
           platform: row.booking_platform || null,
           blurb: row.description ? String(row.description).split(/(?<=[.!?])\s/)[0] : null,
           to: `/app/explore/restaurant/${row.slug}`,
@@ -1537,6 +1552,8 @@ async function checkoutCard(user, paymentMethodId) {
 
 router.post('/transfers', guestOnly, async (req, res, next) => {
   try {
+    const paused = await pausedMessage('transfer')
+    if (paused) return res.status(503).json({ error: paused, code: 'SERVICE_PAUSED' })
     const body = req.body || {}
     const booking = await loadBooking(req.user.id)
     const address = String(body.address || booking?.property_address || '').trim()
@@ -1968,6 +1985,8 @@ router.post('/grocery/quote', guestOnly, async (req, res, next) => {
 
 router.post('/grocery', guestOnly, async (req, res, next) => {
   try {
+    const paused = await pausedMessage('grocery')
+    if (paused) return res.status(503).json({ error: paused, code: 'SERVICE_PAUSED' })
     const body = req.body || {}
     const booking = await loadBooking(req.user.id)
     const delivery_address = String(body.delivery_address || booking?.property_address || '').trim()
@@ -2403,11 +2422,13 @@ async function vitoriaContext(userId) {
       .limit(20),
     loadHomeForGuest(userId),
   ])
+  const services = await serviceStatus()
   return {
     profile,
     firstName: firstName(profile?.name, profile?.email),
     home: homeForVitoria(home),
     homeData: home,
+    services,
     booking: bookingView(booking),
     trips: trips.data || [],
     orders: orders.data || [],

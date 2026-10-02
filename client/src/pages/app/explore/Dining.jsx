@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CalendarCheck, Clock, Coffee, MapPin, Search, Star, UtensilsCrossed, Wine, X } from 'lucide-react'
+import { CalendarCheck, Clock, Coffee, Lock, MapPin, Search, Star, UtensilsCrossed, Wine, X } from 'lucide-react'
 import { errorText, guest, useGuestQuery } from '../../../lib/guestApi.js'
 import { BrandArt, ExploreHead, ExploreShell, FadeImg, LiveSearch } from './ExploreShared.jsx'
 
@@ -43,7 +43,12 @@ function DiningCard({ place, index }) {
           </span>
         ) : null}
         {place.price ? <span className="app-dine-price">{place.price}</span> : null}
-        {place.reservable ? (
+        {place.access ? (
+          <span className="app-dine-book is-private">
+            <Lock size={11} strokeWidth={2.2} aria-hidden="true" />
+            Members only
+          </span>
+        ) : place.reservable ? (
           <span className="app-dine-book">
             <CalendarCheck size={11} strokeWidth={2.2} aria-hidden="true" />
             {BOOK_LABEL[place.platform] || 'Book online'}

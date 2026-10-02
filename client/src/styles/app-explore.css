@@ -2417,3 +2417,26 @@ img.app-exp-hero-img:not(.is-loaded) {
 .app-svc-jump {
   margin-top: -10px;
 }
+
+/* Private club / hotel-guest venues and walk-in notes (client reservation update, Oct 2026) */
+.app-dine-book.is-private {
+  background: rgba(120, 72, 10, 0.82);
+}
+
+.app-xfer-note.is-warn {
+  gap: 10px;
+  border-color: #f2d8a8;
+  background: #fff7ea;
+  font-weight: 400;
+  color: #6b4a12;
+}
+
+.app-xfer-note.is-warn > svg {
+  color: #c27a12;
+}
+
+.app-exp-reserve-note {
+  display: block;
+  margin-top: 3px;
+  font-weight: 600;
+}

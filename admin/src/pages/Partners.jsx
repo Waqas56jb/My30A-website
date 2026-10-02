@@ -107,6 +107,58 @@ function DetailFields({ form, setForm, options, nameKey }) {
   )
 }
 
+const BOOKING = [
+  ['opentable', 'OpenTable'],
+  ['resy', 'Resy'],
+  ['sevenrooms', 'SevenRooms'],
+  ['tock', 'Tock'],
+  ['website_widget', 'Their own website'],
+  ['phone_only', 'By phone'],
+  ['walk_in', 'No reservations (walk-in)'],
+]
+const ONLINE = ['opentable', 'resy', 'sevenrooms', 'tock', 'website_widget']
+
+// Dining only: how guests book, plus notes and the private-venue flag.
+function ReservationFields({ form, setForm }) {
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  return (
+    <>
+      <h3 className="home-form-h">Reservations</h3>
+      <div className="row2">
+        <div className="field">
+          <label>How guests book</label>
+          <select value={form.booking_platform || 'phone_only'} onChange={set('booking_platform')}>
+            {BOOKING.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {ONLINE.includes(form.booking_platform) ? (
+          <div className="field">
+            <label>Booking link</label>
+            <input value={form.booking_url || ''} onChange={set('booking_url')} placeholder="https://resy.com/…" />
+          </div>
+        ) : (
+          <div className="field">
+            <label>Menu link (if no website)</label>
+            <input value={form.menu_url || ''} onChange={set('menu_url')} />
+          </div>
+        )}
+      </div>
+      <div className="field">
+        <label>Note for guests (optional)</label>
+        <input value={form.booking_note || ''} onChange={set('booking_note')} placeholder="Groups of more than 4: please call the restaurant." />
+      </div>
+      <div className="field">
+        <label>Private venue — who can dine here (leave empty if open to the public)</label>
+        <input value={form.access_note || ''} onChange={set('access_note')} placeholder="Watersound Club members only" />
+      </div>
+    </>
+  )
+}
+
 function PhotoPicker({ url, onFile, busy, label = 'Photo' }) {
   return (
     <div className="field">
@@ -335,7 +387,10 @@ function Requests({ options }) {
 // ---------- Listings ----------
 
 function emptyListing() {
-  return { listing_type: 'restaurant', guide_slug: '', name: '', description: '', phone: '', website_url: '', community: '', address: '', hours: '', cuisine: '', is_active: true }
+  return {
+    listing_type: 'restaurant', guide_slug: '', name: '', description: '', phone: '', website_url: '', community: '', address: '', hours: '', cuisine: '',
+    booking_platform: 'phone_only', booking_url: '', booking_note: '', access_note: '', menu_url: '', is_active: true,
+  }
 }
 
 function ListingModal({ listing, options, onClose, onSaved }) {
@@ -358,6 +413,9 @@ function ListingModal({ listing, options, onClose, onSaved }) {
     address: form.address,
     hours: form.hours,
     cuisine: form.cuisine,
+    ...(DINING.includes(form.listing_type)
+      ? { booking_platform: form.booking_platform || 'phone_only', booking_url: form.booking_url, booking_note: form.booking_note, access_note: form.access_note, menu_url: form.menu_url }
+      : {}),
   })
 
   async function save() {
@@ -411,6 +469,7 @@ function ListingModal({ listing, options, onClose, onSaved }) {
     <Modal open onClose={onClose} title={creating ? 'Add listing' : `Edit · ${listing.name}`} width="680px">
       <TypeFields form={form} setForm={setForm} options={options} />
       <DetailFields form={form} setForm={setForm} options={options} nameKey="name" />
+      {DINING.includes(form.listing_type) ? <ReservationFields form={form} setForm={setForm} /> : null}
       <PhotoPicker url={photoUrl} onFile={onFile} busy={busy === 'photo'} />
       {!creating ? (
         <label className="checks">
@@ -517,6 +576,7 @@ function Listings({ options }) {
                 </small>
               </span>
               <span className="partner-row-phone muted">{r.phone || ''}</span>
+              {r.access_note ? <Pill sand>Members only</Pill> : null}
               {r.is_active ? null : <Pill neutral>Hidden</Pill>}
             </button>
           ))}

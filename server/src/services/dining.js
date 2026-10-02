@@ -10,7 +10,7 @@ import { memo } from '../lib/memo.js'
 import { nowIn30A, openStatus, opensLaterToday } from '../lib/hours.js'
 
 const FIELDS =
-  'id, slug, name, venue_type, venue_types, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, phone, website_url, booking_url, booking_platform, directions_url, address, lat, lng, rating, review_count'
+  'id, slug, name, venue_type, venue_types, community, cuisine, tags, description, image_url, price_range, hours, opening_hours, phone, website_url, booking_url, booking_platform, booking_note, access_note, directions_url, address, lat, lng, rating, review_count'
 
 export function loadDining() {
   return memo('explore:dining-full', async () => {
@@ -129,8 +129,10 @@ export function diningCard(r, why = '') {
     price: r.price_range || '',
     phone: r.phone || '',
     website: r.website_url || '',
-    booking: r.booking_platform === 'phone_only' ? '' : r.booking_url || '',
+    booking: ['phone_only', 'walk_in'].includes(r.booking_platform) || r.access_note ? '' : r.booking_url || '',
     booking_platform: r.booking_platform || null,
+    booking_note: r.booking_note || '',
+    access: r.access_note || '',
     directions:
       r.directions_url ||
       `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name} ${r.address || r.community}`)}`,
@@ -249,7 +251,8 @@ export async function recommendDining({ type = null, tags = [], community = null
   const { minute } = nowIn30A()
   const eveningFrom = Math.max(minute, 18 * 60)
 
-  let pool = rows.filter((r) => (!type || (r.venue_types?.length ? r.venue_types : [r.venue_type]).includes(type)) && !exclude.includes(r.slug))
+  // Private club / hotel-guest venues are never suggested in a general recommendation.
+  let pool = rows.filter((r) => !r.access_note && (!type || (r.venue_types?.length ? r.venue_types : [r.venue_type]).includes(type)) && !exclude.includes(r.slug))
   const scored = pool.map((r) => {
     const status = openStatus(r.opening_hours)
     const dist = center ? (r.community === community ? 0 : miles(center, r)) : 0

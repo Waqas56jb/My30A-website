@@ -212,6 +212,24 @@ export default function Grocery() {
     }
   }
 
+  // Delete for good (an open card hold is released; refused while it's part of a payout).
+  async function remove(item) {
+    if (!window.confirm(`Delete order #${item.order_number} permanently? Its messages and history are removed too. This doesn't refund money already charged — refund first if needed.`)) return
+    setWorking('delete')
+    try {
+      await api(`/api/grocery/${item.id}`, { method: 'DELETE' })
+      toast.success(`Order #${item.order_number} deleted`)
+      setParam({ open: null })
+      invalidateQuery('/api/grocery')
+      invalidateQuery('/api/dashboard')
+      await listQuery.refetch()
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setWorking('')
+    }
+  }
+
   async function act(path, body, ok) {
     setWorking(path)
     try {
@@ -611,6 +629,9 @@ export default function Grocery() {
                   Refund
                 </Button>
               ) : null}
+              <Button className="btn quiet danger" pending={working === 'delete'} onClick={() => remove(order)}>
+                Delete
+              </Button>
             </div>
           </>
         ) : (

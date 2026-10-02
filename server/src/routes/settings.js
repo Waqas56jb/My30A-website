@@ -30,7 +30,8 @@ router.patch('/', async (req, res, next) => {
     const updates = { updated_at: new Date().toISOString() }
     const body = req.body || {}
     const { platform_fee_percent, default_owner_fee_percent } = body
-    const GROCERY = ['grocery_buffer_percent', 'grocery_rush_fee_percent', 'grocery_min_notice_hours', 'grocery_instant_payouts', 'alert_emails']
+    const PAUSE = ['transfer', 'grocery'].flatMap((k) => [`${k}_paused`, `${k}_pause_message`, `${k}_resume_at`])
+    const GROCERY = ['grocery_buffer_percent', 'grocery_rush_fee_percent', 'grocery_min_notice_hours', 'grocery_instant_payouts', 'alert_emails', ...PAUSE]
 
     if (platform_fee_percent === undefined && default_owner_fee_percent === undefined && !GROCERY.some((k) => body[k] !== undefined)) {
       return res.status(400).json({
@@ -59,6 +60,21 @@ router.patch('/', async (req, res, next) => {
       const bad = list.find((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))
       if (bad) return res.status(400).json({ error: `"${bad}" is not a valid email address` })
       updates.alert_emails = list.join(', ') || null
+    }
+
+    // Service availability: pause Transfer / Grocery with a message and optional return time.
+    for (const kind of ['transfer', 'grocery']) {
+      if (body[`${kind}_paused`] !== undefined) updates[`${kind}_paused`] = Boolean(body[`${kind}_paused`])
+      if (body[`${kind}_pause_message`] !== undefined) {
+        const text = String(body[`${kind}_pause_message`] || '').trim().slice(0, 400)
+        if (!text) return res.status(400).json({ error: 'Please write the message guests will see while the service is paused' })
+        updates[`${kind}_pause_message`] = text
+      }
+      if (body[`${kind}_resume_at`] !== undefined) {
+        const value = body[`${kind}_resume_at`]
+        if (value && Number.isNaN(new Date(value).getTime())) return res.status(400).json({ error: 'Back-online time is not a valid date' })
+        updates[`${kind}_resume_at`] = value ? new Date(value).toISOString() : null
+      }
     }
 
     if (platform_fee_percent !== undefined) {

@@ -172,8 +172,20 @@ async function answerBeach(text, ctx, community) {
   return { reply: `${head}\n\n${topLine}\n\n${tail}`, places: cards }
 }
 
+// Service paused from Admin → Settings: say so (with the return time) instead of offering to book.
+function pausedNote(ctx, kind) {
+  const st = ctx.services?.[kind]
+  if (!st?.paused) return ''
+  return `\n\nHeads up: ${st.message}${st.resume_label ? ` Back online ${st.resume_label}.` : ''}`
+}
+
 function answerTrips(ctx) {
   const trips = ctx.history?.trips || ctx.trips || []
+  if (ctx.services?.transfer?.paused) {
+    const own = trips.slice(0, 4).map((t) => `Trip #${t.trip_number}, ${t.airport} on ${ctx.formatWhen(t.scheduled_at)} — ${TRIP_STATUS[t.status] || t.status}`)
+    const lead = own.length ? `Your airport transfers, ${ctx.firstName}:\n\n${own.join('\n')}` : `Sorry, ${ctx.firstName} — I can’t arrange a new transfer right now.`
+    return `${lead}${pausedNote(ctx, 'transfer')}`
+  }
   if (!trips.length) return `You don’t have any airport transfers yet, ${ctx.firstName}.\n\nBook one in the Services tab — private door-to-door rides to and from ECP, VPS and PNS.`
   const lines = trips.slice(0, 4).map((t) => `Trip #${t.trip_number}, ${t.airport} ${t.direction === 'from_airport' ? 'arrival' : 'departure'} on ${ctx.formatWhen(t.scheduled_at)} — ${TRIP_STATUS[t.status] || t.status}`)
   return `Here are your airport transfers, ${ctx.firstName}:\n\n${lines.join('\n')}\n\nYou can follow a live trip from the Home screen.`
@@ -182,6 +194,11 @@ function answerTrips(ctx) {
 function answerGroceries(ctx) {
   const orders = ctx.history?.orders || ctx.orders || []
   const how = 'Pick a package, choose how you’d like the kitchen stocked and upload your Publix cart screenshot. You pay the flat fee plus the exact Publix receipt, charged only after delivery.'
+  if (ctx.services?.grocery?.paused) {
+    const own = orders.slice(0, 4).map((o) => `Order #${o.order_number}, delivery ${ctx.formatWhen(o.delivery_time)} — ${String(o.status).replace(/_/g, ' ')}`)
+    const lead = own.length ? `Your grocery orders, ${ctx.firstName}:\n\n${own.join('\n')}` : `Sorry, ${ctx.firstName} — I can’t arrange grocery delivery right now.`
+    return `${lead}${pausedNote(ctx, 'grocery')}`
+  }
   if (!orders.length) return `Groceries are ordered from the Services tab.\n\n${how}`
   const lines = orders.slice(0, 4).map((o) => `Order #${o.order_number}, ${o.package || 'grocery'} package, delivery ${ctx.formatWhen(o.delivery_time)} — ${String(o.status).replace(/_/g, ' ')}`)
   return `Your grocery orders, ${ctx.firstName}:\n\n${lines.join('\n')}\n\n${how}`

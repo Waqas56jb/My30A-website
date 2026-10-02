@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { deleteVehicle, sendResult } from '../services/adminDelete.js'
 import { supabase } from '../lib/supabase.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 
@@ -198,6 +199,15 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     res.json({ ...data, owner_name: data.owner?.name || null })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Admin delete: only vehicles never used on a trip (others: set Inactive).
+router.delete('/:id', async (req, res, next) => {
+  try {
+    sendResult(res, await deleteVehicle(req.params.id))
   } catch (error) {
     next(error)
   }

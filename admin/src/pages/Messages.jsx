@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Trash2 } from 'lucide-react'
+import { useToast } from '../components/Toast.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import Pill from '../components/Pill.jsx'
 import SkeletonTable from '../components/Skeleton.jsx'
 import Table from '../components/Table.jsx'
-import { withQuery } from '../lib/api.js'
+import { api, withQuery } from '../lib/api.js'
 import { chicagoToday, errorMessage, formatDateTime } from '../lib/format.js'
 import { useTitle } from '../lib/useTitle.js'
-import { useQuery } from '../lib/useQuery.js'
+import { invalidateQuery, useQuery } from '../lib/useQuery.js'
 
 const KINDS = [
   { id: 'all', label: 'Everything' },
@@ -48,6 +49,24 @@ export default function Messages() {
     [q, kind, driverId, dateFrom, dateTo]
   )
   const query = useQuery(path)
+  const toast = useToast()
+  const [deleting, setDeleting] = useState('')
+
+  async function remove(row) {
+    const what = row._kind === 'chat' ? 'chat message' : row._kind === 'sms' ? 'SMS record' : 'call record'
+    if (!window.confirm(`Delete this ${what} permanently?`)) return
+    setDeleting(`${row._kind}-${row.id}`)
+    try {
+      await api(`/api/messages/${row._kind === 'call' ? 'calls' : row._kind}/${row.id}`, { method: 'DELETE' })
+      toast.success('Deleted')
+      invalidateQuery('/api/messages')
+      await query.refetch()
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setDeleting('')
+    }
+  }
   const usersQuery = useQuery('/api/users')
   const drivers = (usersQuery.data || [])
     .filter((user) => (user.roles || []).some((role) => ['driver', 'partner'].includes(role)))
@@ -69,8 +88,7 @@ export default function Messages() {
         <div>
           <h1>Messages & calls</h1>
           <div className="sub">
-            Every guest ↔ driver chat, SMS and masked call, kept forever. Drivers only ever see
-            their active trips.
+            Every guest ↔ driver chat, SMS and masked call. Drivers only ever see their active trips.
           </div>
         </div>
       </div>
@@ -117,6 +135,7 @@ export default function Messages() {
                   <th>Type</th>
                   <th>From → To</th>
                   <th>Content</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -154,6 +173,17 @@ export default function Messages() {
                     <td data-label="Content">
                       {row._kind === 'call' ? (row.direction || '').replace(/_/g, ' ') : row.body}
                       {row._kind === 'sms' && row.error ? <small className="muted"> · {row.error}</small> : null}
+                    </td>
+                    <td data-label="">
+                      <button
+                        type="button"
+                        className="btn quiet sm danger"
+                        aria-label="Delete"
+                        disabled={deleting === `${row._kind}-${row.id}`}
+                        onClick={() => remove(row)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}

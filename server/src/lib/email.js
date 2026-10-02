@@ -61,8 +61,12 @@ export async function sendEmail({ to, subject, text }) {
   }
 
   try {
+    // Gmail SMTP always sends from the signed-in Gmail address, so show the brand name and send
+    // replies to the client's inbox; Resend (above) sends from my30ahost.com itself.
+    const address = String(process.env.OFFICIAL_EMAIL || process.env.SMTP_FROM || process.env.SMTP_USER).replace(/^.*<([^>]+)>.*$/, '$1')
     await transport.sendMail({
-      from: process.env.OFFICIAL_EMAIL || process.env.SMTP_FROM,
+      from: { name: 'My30A Host', address },
+      replyTo: process.env.EMAIL_REPLY_TO || 'my30ahost@gmail.com',
       to,
       subject,
       text,

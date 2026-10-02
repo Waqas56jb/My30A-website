@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { deleteGroceryOrder, sendResult } from '../services/adminDelete.js'
 import multer from 'multer'
 import { supabase } from '../lib/supabase.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
@@ -903,6 +904,15 @@ router.get('/:id', requireRole('admin'), async (req, res, next) => {
     res.json(
       adminView(await withSignedUrls(order), { status_log: await loadStatusLog(order.id) })
     )
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Admin delete (releases open card holds; refused while the order is part of a payout).
+router.delete('/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    sendResult(res, await deleteGroceryOrder(req.params.id))
   } catch (error) {
     next(error)
   }

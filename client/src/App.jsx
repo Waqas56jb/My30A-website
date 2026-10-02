@@ -1,10 +1,13 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import GuestRoute from './components/GuestRoute.jsx'
+import ServiceGate from './components/ServiceGate.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 import { useFreshBuild } from './lib/appUpdate.js'
+import { applyViewportLock } from './lib/viewportLock.js'
 import Login from './pages/Login.jsx'
 import Home from './pages/marketing/Home.jsx'
 import Splash from './pages/app/Splash.jsx'
@@ -190,8 +193,20 @@ const GUEST_ROUTES = [
   ['/app/grocery/tip', GroceryTip],
 ]
 
+// New-request screens that close while a service is paused (Admin → Settings). Tracking, payment
+// and tip screens for existing orders stay open.
+const GATED = {
+  '/app/transfer': 'transfer',
+  '/app/transfer/review': 'transfer',
+  '/app/grocery': 'grocery',
+  '/app/grocery/stocking': 'grocery',
+  '/app/grocery/list': 'grocery',
+}
+
 function AppRoutes() {
   useFreshBuild()
+  const { pathname } = useLocation()
+  useEffect(() => applyViewportLock(pathname), [pathname])
   return (
     <Routes>
       <Route path="/" element={<Home />} />
@@ -206,7 +221,13 @@ function AppRoutes() {
           path={path}
           element={
             <GuestRoute>
-              <Page />
+              {GATED[path] ? (
+                <ServiceGate kind={GATED[path]}>
+                  <Page />
+                </ServiceGate>
+              ) : (
+                <Page />
+              )}
             </GuestRoute>
           }
         />
