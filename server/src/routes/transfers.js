@@ -763,7 +763,7 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
       driver: { id: driver.id, roles: driver.roles || [] },
       vehicle_owner: tripOwner,
       owner_fee_percent: Number(vehicle.owner_fee_percent),
-      platform_fee_percent: Number(settings.platform_fee_percent),
+      platform_fee_percent: vehicle.platform_fee_percent === null || vehicle.platform_fee_percent === undefined ? Number(settings.platform_fee_percent) : Number(vehicle.platform_fee_percent),
       agreement,
       duration_minutes,
     })
@@ -880,16 +880,17 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
     // In-app tip prompt for app guests + SMS with the no-login tip link for everyone.
     await requestTip(data)
 
-    const ownerRoles = owner.roles || []
+    // Messages follow who owned the car for this trip (a co-owner who drove is the owner here).
+    const ownerRoles = tripOwner.roles || []
     const ownerIsPartner = ownerRoles.includes('partner')
-    const driverIsOwner = driver.id === owner.id
+    const driverIsOwner = driverOwnsCar
     const ownerIsAdmin = ownerRoles.includes('admin')
     const driverIsAdmin = (driver.roles || []).includes('admin')
     const tripNo = data.trip_number
 
     if (ownerIsPartner && !driverIsOwner) {
       await notify({
-        user_id: owner.id,
+        user_id: tripOwner.id,
         transfer_id: data.id,
         email: true,
         message: `Trip #${tripNo} completed · Your vehicle fee: $${split.owner_fee} (${vehicle.owner_fee_percent}%)`,
@@ -900,7 +901,7 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
       await notifyAdmins({
         transfer_id: data.id,
         email: true,
-        message: `Trip #${tripNo} completed · My30A Host fee: $${split.my30ahost_amount} (${settings.platform_fee_percent}%)`,
+        message: `Trip #${tripNo} completed · My30A Host fee: $${split.my30ahost_amount} (${split.snapshot.platform_fee_percent}%)`,
       })
     }
 

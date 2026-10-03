@@ -29,6 +29,7 @@ function emptyVehicle(defaultFee, ownerId) {
     owner_fee_percent: String(defaultFee ?? 20),
     show_name: true,
     co_owner_ids: [],
+    platform_fee_percent: '',
   }
 }
 
@@ -82,6 +83,7 @@ export default function Vehicles() {
       status: vehicle.status || 'active',
       show_name: vehicle.show_name !== false,
       co_owner_ids: vehicle.co_owner_ids || [],
+      platform_fee_percent: vehicle.platform_fee_percent === null || vehicle.platform_fee_percent === undefined ? '' : String(Number(vehicle.platform_fee_percent)),
     })
     setFormError('')
     setModal(vehicle)
@@ -105,6 +107,7 @@ export default function Vehicles() {
       owner_fee_percent: Number(form.owner_fee_percent),
       show_name: Boolean(form.show_name),
       co_owner_ids: (form.co_owner_ids || []).filter((id) => id !== form.owner_id),
+      platform_fee_percent: form.platform_fee_percent === '' ? null : Number(form.platform_fee_percent),
     }
     if (!payload.make || !payload.model || !payload.plate || !payload.owner_id) {
       setFormError('Make, model, plate, and owner are required.')
@@ -336,7 +339,19 @@ export default function Vehicles() {
             </small>
           </div>
           <div className="field">
-            <label>Owner fee %</label>
+            <label>When the owner drives — My30A Host share %</label>
+            <input
+              value={form.platform_fee_percent}
+              onChange={(event) => setForm({ ...form, platform_fee_percent: event.target.value })}
+              placeholder={`${settings?.platform_fee_percent ?? 20} (Settings default)`}
+              style={{ maxWidth: 200 }}
+            />
+            <small className="muted">
+              The driving owner (or co-owner) gets the rest: 20 → owner-driver 80%, 25 → 75%. Leave empty to use the default in Settings.
+            </small>
+          </div>
+          <div className="field">
+            <label>When someone else drives — owner fee %</label>
             <input
               value={form.owner_fee_percent}
               onChange={(event) => setForm({ ...form, owner_fee_percent: event.target.value })}

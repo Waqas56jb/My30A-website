@@ -125,11 +125,18 @@ router.post('/', async (req, res, next) => {
 
     const coOwners = await cleanCoOwners(req.body?.co_owner_ids || [], owner_id)
     if (coOwners.error) return res.status(400).json({ error: coOwners.error })
+    let share = null
+    if (req.body?.platform_fee_percent !== undefined && req.body.platform_fee_percent !== null && req.body.platform_fee_percent !== '') {
+      const parsed = parsePercent(req.body.platform_fee_percent, 'platform_fee_percent')
+      if (parsed.error) return res.status(400).json({ error: parsed.error })
+      share = parsed.value
+    }
 
     const { data, error } = await supabase
       .from('vehicles')
       .insert({
         co_owner_ids: coOwners.value,
+        platform_fee_percent: share,
         owner_id,
         make,
         model,
@@ -210,6 +217,15 @@ router.patch('/:id', async (req, res, next) => {
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' })
+    }
+
+    if (body.platform_fee_percent !== undefined) {
+      if (body.platform_fee_percent === null || body.platform_fee_percent === '') updates.platform_fee_percent = null
+      else {
+        const parsed = parsePercent(body.platform_fee_percent, 'platform_fee_percent')
+        if (parsed.error) return res.status(400).json({ error: parsed.error })
+        updates.platform_fee_percent = parsed.value
+      }
     }
 
     if (body.co_owner_ids !== undefined) {
