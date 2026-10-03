@@ -127,6 +127,14 @@ export async function loadHomeBySlug(slug) {
   return data && (await homeIsLive(data)) ? data : null
 }
 
+// The Host Version property a request belongs to: the app sends the slug of the QR link it was
+// opened from in the X-My30A-Home header. No header = the free app = no host info, whatever the
+// account did before. Each device / app session only ever sees its own host's property.
+export async function homeFromRequest(req) {
+  const slug = String(req.get('x-my30a-home') || '').trim().toLowerCase()
+  return slug ? loadHomeBySlug(slug) : null
+}
+
 export async function loadHomeForGuest(userId) {
   const { data } = await supabase
     .from('profiles')

@@ -33,6 +33,15 @@ export async function api(path, options = {}) {
     headers.Authorization = `Bearer ${token}`
   }
 
+  // Host Version: the property this device opened through its QR code (lib/hostHome.js). The
+  // server uses it for My Home and Vitoria; without it the request is the free app.
+  try {
+    const hostSlug = JSON.parse(localStorage.getItem('my30a-host-brand') || 'null')?.slug
+    if (hostSlug && !headers['X-My30A-Home']) headers['X-My30A-Home'] = hostSlug
+  } catch {
+    /* no storage — free app */
+  }
+
   if (options.body !== undefined && !(options.body instanceof FormData)) {
     headers['Content-Type'] = headers['Content-Type'] || 'application/json'
   }

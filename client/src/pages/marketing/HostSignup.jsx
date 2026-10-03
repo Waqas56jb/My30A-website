@@ -116,7 +116,7 @@ export default function HostSignup() {
           <label className="pj-field">
             <span className="auth-label">Company / brand</span>
             <span className="auth-input">
-              <input value={form.company_name} onChange={set('company_name')} autoComplete="organization" placeholder="StayOn30A" />
+              <input value={form.company_name} onChange={set('company_name')} autoComplete="organization" placeholder="Your Rentals Co." />
             </span>
           </label>
           <label className="pj-field">

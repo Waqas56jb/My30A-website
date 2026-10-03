@@ -63,10 +63,10 @@ export default function AuthLayout({ children, eyebrow = 'Scenic Highway 30A · 
         <div className="auth-shade" aria-hidden="true" />
 
         <div className="auth-media-top">
-          <Link to="/" className="auth-home" aria-label="Back to the home page">
+          <Link to={hostBrand ? `/h/${hostBrand.slug}` : '/'} className="auth-home" aria-label={hostBrand ? 'Back' : 'Back to the home page'}>
             <ArrowLeft size={18} strokeWidth={2} aria-hidden="true" />
           </Link>
-          <Link to="/" className="auth-brand">
+          <Link to={hostBrand ? `/h/${hostBrand.slug}` : '/'} className="auth-brand">
             <img src="/brand/my30a-logo-light.png" alt="My30A Host" width="720" height="319" />
           </Link>
           {hostBrand?.logo_url ? (

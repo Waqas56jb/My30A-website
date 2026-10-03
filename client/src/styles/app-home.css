@@ -1964,3 +1964,22 @@
   background: var(--home-ink);
   color: #fff;
 }
+
+/* Host version: six tabs (Home · Services · Vitoria · Explore · My Home · Profile) */
+.app-home-nav.is-six {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.app-home-nav.is-six .app-home-nav-indicator {
+  width: calc((100% - var(--nav-px) * 2) / 6);
+}
+
+.app-home-nav.is-six .app-home-nav-label {
+  font-size: 10.5px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.app-home-nav.is-six .app-home-nav-indicator i {
+  width: 46px;
+}

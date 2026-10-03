@@ -145,6 +145,7 @@ export default function Hosts() {
             <div className="hl-float is-b">
               <Sparkles size={16} /> Answered by Vitória in 2 sec
             </div>
+            <p className="hl-phones-note">Sample shown with My30A branding — your logo, brand and property info appear here.</p>
           </div>
         </div>
       </section>
@@ -187,7 +188,7 @@ export default function Hosts() {
             </ul>
           </div>
           <div className="hl-dash" aria-hidden="true">
-            <p className="hl-dash-title">The Blue Heron House · last 30 days</p>
+            <p className="hl-dash-title">Your Beach House · last 30 days</p>
             <div className="hl-dash-stats">
               <div>
                 <b>38</b>

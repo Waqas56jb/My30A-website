@@ -145,6 +145,12 @@ export const pub = {
 // the loader's source plus its deps, so `() => guest.vendor(slug)` caches per slug. Cleared on
 // login/logout so one account never sees another's data.
 const queryCache = new Map()
+
+// Switching between the free app and a Host Version property (or between properties) must not
+// show the other context's cached screens (Vitoria thread, My Home…).
+export function clearGuestCache() {
+  queryCache.clear()
+}
 const MAX_ENTRIES = 60
 
 function cacheKey(loader, deps) {

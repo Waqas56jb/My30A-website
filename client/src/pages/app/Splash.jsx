@@ -1,6 +1,12 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { leaveHostMode } from '../../lib/hostHome.js'
 
 export default function Splash() {
+  // /app is the free app's entry — never show a host's branding here.
+  useEffect(() => {
+    leaveHostMode()
+  }, [])
   return (
     <div className="app-guest">
       <div className="app-phone">

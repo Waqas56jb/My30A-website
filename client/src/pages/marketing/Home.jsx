@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { ExploreGallery, GuideGrid, ServicesShowcase, VitoriaOrb } from './Showcase.jsx'
+import { leaveHostMode } from '../../lib/hostHome.js'
 import VoiceOrb from '../app/vitoria/VoiceOrb.jsx'
 
 /* ------------------------------------------------------------------------ */
@@ -490,6 +491,10 @@ function useLazyVideo(
 /* ------------------------------------------------------------------------ */
 
 export default function Home() {
+  // The main website is the free app's front door: leave any Host Version mode from a QR code.
+  useEffect(() => {
+    leaveHostMode()
+  }, [])
   const rootRef = useRef(null)
   const heroRef = useRef(null)
   const heroVideoRef = useRef(null)
@@ -1102,6 +1107,9 @@ export default function Home() {
               </li>
               <li>
                 <Link to="/app/login">Sign in</Link>
+              </li>
+              <li>
+                <Link to="/hosts">For hosts &amp; property managers</Link>
               </li>
               <li>
                 <Link to="/partners/join">Become a partner</Link>

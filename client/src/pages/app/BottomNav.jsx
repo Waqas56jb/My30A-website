@@ -11,13 +11,14 @@ const ITEMS = [
   { key: 'explore', to: '/app/explore', label: 'Explore', Icon: Compass, col: 4, tone: 'lagoon' },
 ]
 
-// Host version (guest came in through a host's QR code): Profile makes way for "My Home"; Profile
-// stays reachable from the Home screen and the My Home header.
+// Host version (guest came in through a host's QR code): six tabs — Home · Services · Vitoria ·
+// Explore · My Home · Profile (client asked to keep Profile in the bar).
 const HOST_ITEMS = [
   ITEMS[0],
   ITEMS[1],
   { ...ITEMS[3], col: 3 },
   { key: 'myhome', to: '/app/my-home', label: 'My Home', Icon: House, col: 4, tone: 'orchid' },
+  { ...ITEMS[2], col: 5, tone: 'sunset' },
 ]
 
 // Each screen mounts its own nav, so remember the last active column at module level and
@@ -40,7 +41,7 @@ export default function BottomNav({ active }) {
   }, [target])
 
   return (
-    <nav className={`app-home-nav is-${items.find((item) => item.col === col)?.tone || 'none'}`} aria-label="Primary">
+    <nav className={`app-home-nav${hostBrand ? ' is-six' : ''} is-${items.find((item) => item.col === col)?.tone || 'none'}`} aria-label="Primary">
       {target !== null && col !== null ? (
         <span className="app-home-nav-indicator" style={{ '--col': col }} aria-hidden="true">
           <i />

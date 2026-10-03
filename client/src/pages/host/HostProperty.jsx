@@ -358,7 +358,7 @@ export default function HostProperty() {
           <section className="hp-card">
             <h2>Your brand</h2>
             <div className="hp-two">
-              {field('host_name', 'Brand name guests see', { placeholder: company || 'StayOn30A' })}
+              {field('host_name', 'Brand name guests see', { placeholder: company || 'Your Rentals Co.' })}
               {field('host_tagline', 'Tagline', { placeholder: '30A Florida Premium Vacation Rentals' })}
             </div>
             <ImageBox label="Logo (welcome and sign-in screens)" url={home?.logo_url} round disabled={creating} onFile={(f) => upload('logo', f)} />
@@ -367,7 +367,7 @@ export default function HostProperty() {
           <section className="hp-card">
             <h2>The property</h2>
             <div className="hp-two">
-              {field('home_name', 'Property name', { placeholder: 'The Blue Heron House' })}
+              {field('home_name', 'Property name', { placeholder: 'Your Beach House' })}
               {field('area', 'Community', { placeholder: 'Rosemary Beach' })}
             </div>
             {field('address', 'Address', { placeholder: '47 Rosemary Ave' })}
@@ -429,7 +429,7 @@ export default function HostProperty() {
           <section className="hp-card">
             <h2>Contact, social &amp; your other listings</h2>
             <div className="hp-two">
-              {field('contact_label', 'Contact name', { placeholder: 'StayOn30A · Nick & Ashley' })}
+              {field('contact_label', 'Contact name', { placeholder: 'Your Rentals Co. · Guest services' })}
               {field('contact_phone', 'Phone', { inputMode: 'tel' })}
               {field('instagram', 'Instagram', { placeholder: '@yourbrand' })}
               {field('facebook', 'Facebook')}

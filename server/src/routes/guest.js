@@ -42,7 +42,7 @@ import { VITORIA_SCHEMA, enrichPlaces, loadVitoriaKnowledge, vitoriaSystemPrompt
 import { vitoriaOffline } from '../services/vitoriaOffline.js'
 import { pausedMessage, serviceStatus } from '../services/serviceStatus.js'
 import { guestHomeId, logHomeEvent, topicFor } from '../services/hostActivity.js'
-import { brandView, guestHomeView, homeForVitoria, loadHomeBySlug, loadHomeForGuest } from '../services/hostHomes.js'
+import { brandView, guestHomeView, homeForVitoria, homeFromRequest, loadHomeBySlug } from '../services/hostHomes.js'
 import { realtimeSessionConfig, runVoiceTool } from '../services/vitoriaVoice.js'
 import { beachCard, distinctPhotos, loadBeaches, recommendBeaches } from '../services/beaches.js'
 import { eventDay, eventView, loadUpcomingEvents } from '../services/events.js'
@@ -1019,7 +1019,7 @@ async function myHomeView(userId, home) {
 
 router.get('/my-home', guestOnly, async (req, res, next) => {
   try {
-    const home = await loadHomeForGuest(req.user.id)
+    const home = await homeFromRequest(req)
     if (home) await logHomeEvent(home.id, req.user.id, 'opened')
     res.json(await myHomeView(req.user.id, home))
   } catch (error) {
@@ -1749,7 +1749,7 @@ router.post('/transfers', guestOnly, async (req, res, next) => {
       message: `We received your airport transfer request #${data.trip_number}${returnLeg ? ` and return #${returnLeg.trip_number}` : ''}.${data.card_label ? ` ${data.card_label} is on file — ${data.payment_status === 'authorized' ? `$${money(data.customer_charge)} is authorized and` : 'you’re'} charged only after your ride.` : ''} We’ll confirm your driver shortly.`,
     })
 
-    await logHomeEvent(await guestHomeId(req.user.id), req.user.id, 'transfer')
+    await logHomeEvent((await homeFromRequest(req))?.id, req.user.id, 'transfer')
     res.status(201).json(
       transferView(data, {
         credit_applied: credit.total,
@@ -2147,7 +2147,7 @@ router.post('/grocery', guestOnly, async (req, res, next) => {
     // Rush order: get the money to the owner's bank in minutes for shopping day.
     if (prepay?.is_rush) await runInstantPayout(data, await groceryPolicy()).catch((err) => console.log('Instant payout skipped:', err.message))
 
-    await logHomeEvent(await guestHomeId(req.user.id), req.user.id, 'grocery')
+    await logHomeEvent((await homeFromRequest(req))?.id, req.user.id, 'grocery')
     res.status(201).json(orderView(data, { quote, prepay }))
   } catch (error) {
     sendError(res, next, error)
@@ -2388,7 +2388,9 @@ router.post('/grocery/:id/tip', guestOnly, async (req, res, next) => {
 // ---------- Vitoria concierge ----------
 
 // Per-guest tail of Vitoria's prompt (the big stable knowledge pack lives in services/vitoria.js).
-async function vitoriaContext(userId) {
+// homeSlug: the Host Version property this app session was opened from (X-My30A-Home header),
+// so Vitoria only ever uses that one host's house info — never another host's, never in the free app.
+async function vitoriaContext(userId, homeSlug = null) {
   const [profile, booking, trips, orders, beaches, pastTrips, pastOrders, saved, home] = await Promise.all([
     loadProfile(userId),
     loadBooking(userId),
@@ -2429,7 +2431,7 @@ async function vitoriaContext(userId) {
       .select('vendor:explore_vendors (name, community, place, kind)')
       .eq('guest_id', userId)
       .limit(20),
-    loadHomeForGuest(userId),
+    homeSlug ? loadHomeBySlug(homeSlug) : null,
   ])
   const services = await serviceStatus()
   return {
@@ -2451,12 +2453,17 @@ async function vitoriaContext(userId) {
   }
 }
 
+// Each context has its own Vitoria thread: the free app (home_id NULL) and each Host Version
+// property (X-My30A-Home). A guest's chat at one host never shows up at another or in the free app.
+const threadOf = (query, homeId) => (homeId ? query.eq('home_id', homeId) : query.is('home_id', null))
+
 router.get('/vitoria/messages', guestOnly, async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('vitoria_messages')
-      .select('id, role, content, model, places, created_at')
-      .eq('guest_id', req.user.id)
+    const home = await homeFromRequest(req)
+    const { data, error } = await threadOf(
+      supabase.from('vitoria_messages').select('id, role, content, model, places, created_at').eq('guest_id', req.user.id),
+      home?.id
+    )
       .order('created_at', { ascending: true })
       .limit(200)
     if (error) return res.status(400).json({ error: error.message })
@@ -2475,20 +2482,18 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
     if (!content) return res.status(400).json({ error: 'content is required' })
     if (content.length > 2000) return res.status(400).json({ error: 'content is too long' })
 
+    const threadHome = (await homeFromRequest(req))?.id || null
     const { data: userMessage, error: insertError } = await supabase
       .from('vitoria_messages')
-      .insert({ guest_id: req.user.id, role: 'user', content })
+      .insert({ guest_id: req.user.id, role: 'user', content, home_id: threadHome })
       .select('id, role, content, model, places, created_at')
       .single()
     if (insertError) return res.status(400).json({ error: insertError.message })
 
     const [ctx, knowledge, history] = await Promise.all([
-      vitoriaContext(req.user.id),
+      vitoriaContext(req.user.id, req.get('x-my30a-home')),
       loadVitoriaKnowledge(),
-      supabase
-        .from('vitoria_messages')
-        .select('role, content')
-        .eq('guest_id', req.user.id)
+      threadOf(supabase.from('vitoria_messages').select('role, content').eq('guest_id', req.user.id), threadHome)
         .order('created_at', { ascending: false })
         .limit(16),
     ])
@@ -2540,7 +2545,7 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
 
     const { data: assistantMessage, error: replyError } = await supabase
       .from('vitoria_messages')
-      .insert({ guest_id: req.user.id, role: 'assistant', content: reply, model, places: places.length ? places : null })
+      .insert({ guest_id: req.user.id, role: 'assistant', content: reply, model, places: places.length ? places : null, home_id: threadHome })
       .select('id, role, content, model, places, created_at')
       .single()
     if (replyError) return res.status(400).json({ error: replyError.message })
@@ -2562,7 +2567,7 @@ router.post('/vitoria/messages', guestOnly, async (req, res, next) => {
 // 3) when the call ends the transcript (and cards) are saved into the normal chat history.
 router.post('/vitoria/voice/session', guestOnly, async (req, res, next) => {
   try {
-    const ctx = await vitoriaContext(req.user.id)
+    const ctx = await vitoriaContext(req.user.id, req.get('x-my30a-home'))
     const session = await createRealtimeSession(realtimeSessionConfig(ctx))
     if (session.skipped) {
       return res.status(503).json({ error: 'Voice chat is unavailable right now — you can still type to Vitoria.', reason: session.reason })
@@ -2584,7 +2589,7 @@ router.post('/vitoria/voice/tool', guestOnly, async (req, res, next) => {
         args = {}
       }
     }
-    const ctx = await vitoriaContext(req.user.id)
+    const ctx = await vitoriaContext(req.user.id, req.get('x-my30a-home'))
     res.json(await runVoiceTool(name, args, ctx))
   } catch (error) {
     next(error)
@@ -2604,7 +2609,8 @@ router.post('/vitoria/voice/log', guestOnly, async (req, res, next) => {
         places: t.role === 'assistant' && Array.isArray(t.places) && t.places.length ? t.places.slice(0, 6) : null,
       }))
     if (!turns.length) return res.json({ saved: 0 })
-    const voiceHome = await guestHomeId(req.user.id)
+    const voiceHome = (await homeFromRequest(req))?.id || null
+    for (const t of turns) t.home_id = voiceHome
     for (const t of turns.filter((x) => x.role === 'user').slice(0, 10)) await logHomeEvent(voiceHome, req.user.id, 'vitoria', topicFor(t.content))
     const { error } = await supabase.from('vitoria_messages').insert(turns)
     if (error) return res.status(400).json({ error: error.message })
@@ -2616,7 +2622,7 @@ router.post('/vitoria/voice/log', guestOnly, async (req, res, next) => {
 
 router.delete('/vitoria/messages', guestOnly, async (req, res, next) => {
   try {
-    const { error } = await supabase.from('vitoria_messages').delete().eq('guest_id', req.user.id)
+    const { error } = await threadOf(supabase.from('vitoria_messages').delete().eq('guest_id', req.user.id), (await homeFromRequest(req))?.id)
     if (error) return res.status(400).json({ error: error.message })
     res.json({ ok: true })
   } catch (error) {

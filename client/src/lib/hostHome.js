@@ -1,9 +1,11 @@
 // Host version: when a guest enters through the QR code in a host's rental (/h/<slug>), the app
-// shows that host's logo (welcome, sign-in, home screen) and a "My Home" tab. The branding is kept
-// on the device so it appears instantly, and the property is linked to the guest's account on
-// sign-in so it follows them to other devices.
+// shows that host's logo (welcome, sign-in, home screen) and a "My Home" tab. Host mode belongs to
+// this device + QR link only: it is never restored from the guest's account, every API request in
+// host mode names the property (X-My30A-Home), and opening the main website switches back to the
+// free app — so host info can't leak into the free app or across hosts.
 import { useSyncExternalStore } from 'react'
 import { api } from './api.js'
+import { clearGuestCache } from './guestApi.js'
 
 const BRAND_KEY = 'my30a-host-brand'
 const PENDING_KEY = 'my30a-host-pending'
@@ -29,7 +31,14 @@ function write(key, value) {
   }
 }
 
+// Back to the free app (main website, "Get started" from my30ahost.com).
+export function leaveHostMode() {
+  write(PENDING_KEY, null)
+  if (brand) setHostBrand(null)
+}
+
 export function setHostBrand(next) {
+  if ((brand?.slug || null) !== (next?.slug || null)) clearGuestCache()
   brand = next || null
   write(BRAND_KEY, brand)
   listeners.forEach((fn) => fn())
@@ -104,7 +113,9 @@ export function syncHostHome(userId) {
   if (syncing && syncedFor === userId) return syncing
   syncedFor = userId
   const pending = read(PENDING_KEY, false)
-  syncing = (pending ? claimOnce(pending, false) : hostApi.mine())
+  // No QR link on this device = free app: nothing to restore. In host mode, re-check the property
+  // (switched off / plan lapsed → back to the free app).
+  syncing = (pending ? claimOnce(pending, false) : brand ? hostApi.mine() : Promise.resolve({ brand: null }))
     .then((result) => {
       if (pending) write(PENDING_KEY, null)
       setHostBrand(result?.brand || null)
