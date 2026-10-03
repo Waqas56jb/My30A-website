@@ -28,6 +28,7 @@ function emptyVehicle(defaultFee, ownerId) {
     owner_id: ownerId || '',
     owner_fee_percent: String(defaultFee ?? 20),
     show_name: true,
+    co_owner_ids: [],
   }
 }
 
@@ -80,6 +81,7 @@ export default function Vehicles() {
       owner_fee_percent: String(vehicle.owner_fee_percent ?? ''),
       status: vehicle.status || 'active',
       show_name: vehicle.show_name !== false,
+      co_owner_ids: vehicle.co_owner_ids || [],
     })
     setFormError('')
     setModal(vehicle)
@@ -102,6 +104,7 @@ export default function Vehicles() {
       owner_id: form.owner_id,
       owner_fee_percent: Number(form.owner_fee_percent),
       show_name: Boolean(form.show_name),
+      co_owner_ids: (form.co_owner_ids || []).filter((id) => id !== form.owner_id),
     }
     if (!payload.make || !payload.model || !payload.plate || !payload.owner_id) {
       setFormError('Make, model, plate, and owner are required.')
@@ -195,6 +198,12 @@ export default function Vehicles() {
                     <td data-label="Owner">
                       {vehicle.owner_name || '—'}
                       {isYou ? ' (you)' : ''}
+                      {(vehicle.co_owners || []).length ? (
+                        <>
+                          <br />
+                          <small className="muted">+ co-owner{vehicle.co_owners.length > 1 ? 's' : ''}: {vehicle.co_owners.map((c) => c.name).join(', ')}</small>
+                        </>
+                      ) : null}
                     </td>
                     <td className="num" data-label="Owner fee">
                       {isYou ? '—' : `${vehicle.owner_fee_percent}%`}
@@ -297,6 +306,34 @@ export default function Vehicles() {
                 ))}
               </select>
             </div>
+          </div>
+          <div className="field">
+            <label>Co-owners (shared car — optional)</label>
+            <div className="co-owners">
+              {owners
+                .filter((o) => o.id !== form.owner_id && (o.roles || []).includes('partner'))
+                .map((o) => (
+                  <label key={o.id} className="co-owner">
+                    <input
+                      type="checkbox"
+                      checked={(form.co_owner_ids || []).includes(o.id)}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          co_owner_ids: event.target.checked
+                            ? [...(form.co_owner_ids || []), o.id]
+                            : (form.co_owner_ids || []).filter((id) => id !== o.id),
+                        })
+                      }
+                    />
+                    {o.name}
+                  </label>
+                ))}
+            </div>
+            <small className="muted">
+              When the owner or any co-owner drives, that driver gets the full partner share (e.g. 80%). When someone else drives, the owner fee goes to the main
+              owner above — co-owners settle it between themselves.
+            </small>
           </div>
           <div className="field">
             <label>Owner fee %</label>

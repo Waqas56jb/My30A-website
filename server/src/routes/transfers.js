@@ -752,10 +752,16 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
     const driver = transfer.driver
     let agreement = await getLatestAgreement(driver.id, completedDate)
 
+    // Shared car: whichever owner (main or co-owner) drives is the owner for this trip, so the
+    // whole "partner drives own car" share (100% − platform fee, e.g. 80%) goes to that driver.
+    // When anyone else drives, the owner fee goes to the main owner.
+    const driverOwnsCar = driver.id === owner.id || (vehicle.co_owner_ids || []).includes(driver.id)
+    const tripOwner = driverOwnsCar ? { id: driver.id, roles: driver.roles || [] } : { id: owner.id, roles: owner.roles || [] }
+
     const split = calculateTransferSplit({
       customer_charge: money(transfer.customer_charge),
       driver: { id: driver.id, roles: driver.roles || [] },
-      vehicle_owner: { id: owner.id, roles: owner.roles || [] },
+      vehicle_owner: tripOwner,
       owner_fee_percent: Number(vehicle.owner_fee_percent),
       platform_fee_percent: Number(settings.platform_fee_percent),
       agreement,
@@ -769,6 +775,7 @@ router.post('/:id/complete', requireRole('driver', 'partner', 'admin'), async (r
       payment_method,
       driver_payout: split.driver_payout,
       owner_fee: split.owner_fee,
+      vehicle_owner_id: tripOwner.id,
       my30ahost_amount: split.my30ahost_amount,
       comp_snapshot: split.snapshot,
       owner_fee_percent_snapshot: Number(vehicle.owner_fee_percent),

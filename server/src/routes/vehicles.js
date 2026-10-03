@@ -28,6 +28,25 @@ async function getOwner(ownerId) {
   return data
 }
 
+// Co-owners (shared car): partners other than the main owner, validated and de-duplicated.
+async function cleanCoOwners(ids, ownerId) {
+  if (!Array.isArray(ids)) return { error: 'co_owner_ids must be a list' }
+  const list = [...new Set(ids.filter((id) => id && id !== ownerId))]
+  if (!list.length) return { value: [] }
+  const { data } = await supabase.from('profiles').select('id, roles').in('id', list)
+  const bad = list.find((id) => !(data || []).some((p) => p.id === id && canOwnVehicle(p.roles)))
+  if (bad) return { error: 'Every co-owner must be a partner' }
+  return { value: list }
+}
+
+async function withCoOwnerNames(rows) {
+  const ids = [...new Set(rows.flatMap((v) => v.co_owner_ids || []))]
+  if (!ids.length) return rows.map((v) => ({ ...v, co_owners: [] }))
+  const { data } = await supabase.from('profiles').select('id, name').in('id', ids)
+  const names = Object.fromEntries((data || []).map((p) => [p.id, p.name]))
+  return rows.map((v) => ({ ...v, co_owners: (v.co_owner_ids || []).map((id) => ({ id, name: names[id] || '—' })) }))
+}
+
 function canOwnVehicle(roles) {
   return (roles || []).includes('admin') || (roles || []).includes('partner')
 }
@@ -49,10 +68,12 @@ router.get('/', async (req, res, next) => {
     }
 
     res.json(
-      (data || []).map((vehicle) => ({
-        ...vehicle,
-        owner_name: vehicle.owner?.name || null,
-      }))
+      await withCoOwnerNames(
+        (data || []).map((vehicle) => ({
+          ...vehicle,
+          owner_name: vehicle.owner?.name || null,
+        }))
+      )
     )
   } catch (error) {
     next(error)
@@ -102,9 +123,13 @@ router.post('/', async (req, res, next) => {
       fee = parsed.value
     }
 
+    const coOwners = await cleanCoOwners(req.body?.co_owner_ids || [], owner_id)
+    if (coOwners.error) return res.status(400).json({ error: coOwners.error })
+
     const { data, error } = await supabase
       .from('vehicles')
       .insert({
+        co_owner_ids: coOwners.value,
         owner_id,
         make,
         model,
@@ -185,6 +210,17 @@ router.patch('/:id', async (req, res, next) => {
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' })
+    }
+
+    if (body.co_owner_ids !== undefined) {
+      let ownerId = body.owner_id
+      if (ownerId === undefined) {
+        const { data: current } = await supabase.from('vehicles').select('owner_id').eq('id', req.params.id).maybeSingle()
+        ownerId = current?.owner_id
+      }
+      const coOwners = await cleanCoOwners(body.co_owner_ids, ownerId)
+      if (coOwners.error) return res.status(400).json({ error: coOwners.error })
+      updates.co_owner_ids = coOwners.value
     }
 
     const { data, error } = await supabase
