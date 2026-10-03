@@ -28,6 +28,12 @@ export default function Layout({ children }) {
   const [now, setNow] = useState(() => Date.now())
   const [menuOpen, setMenuOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
+
+  useEffect(() => {
+    const open = () => setPasswordOpen(true)
+    window.addEventListener('my30a-change-password', open)
+    return () => window.removeEventListener('my30a-change-password', open)
+  }, [])
   const menuRef = useRef(null)
   const switchable = (profile?.roles || []).filter((role) => PANEL_ROLES.includes(role))
   const hasNav = Boolean(activeRole && PANEL_ROLES.includes(activeRole))

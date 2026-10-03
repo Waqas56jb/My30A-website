@@ -70,6 +70,10 @@ export default function AppNav() {
             ))}
           </div>
         ) : null}
+        {/* Desktop sidebar: same Change password as the phone menu (Layout opens the dialog). */}
+        <button type="button" className="btn ghost nav-signout" onClick={() => window.dispatchEvent(new CustomEvent('my30a-change-password'))}>
+          Change password
+        </button>
         <button type="button" className="btn ghost nav-signout" onClick={signOut}>
           Sign out
         </button>

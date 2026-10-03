@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { setPersistSession } from '../lib/supabase.js'
@@ -130,6 +130,9 @@ export default function Login() {
               />
               Keep me signed in
             </label>
+            <Link className="forgot-link" to={`/forgot-password?app=staff${email ? `&email=${encodeURIComponent(email)}` : ''}`}>
+              Forgot password?
+            </Link>
           </div>
           <button className="btn" type="submit" disabled={submitting || loading}>
             {submitting ? <span className="spinner" aria-hidden="true" /> : null}

@@ -49,6 +49,8 @@ import ProfileSettings from './pages/app/profile/ProfileSettings.jsx'
 import TripPage from './pages/public/TripPage.jsx'
 import TipPage from './pages/public/TipPage.jsx'
 import PartnerJoin from './pages/public/PartnerJoin.jsx'
+import ForgotPassword from './pages/public/ForgotPassword.jsx'
+import ResetPassword from './pages/public/ResetPassword.jsx'
 import Hosts from './pages/marketing/Hosts.jsx'
 import HostSignup from './pages/marketing/HostSignup.jsx'
 import HostShell from './pages/host/HostShell.jsx'
@@ -248,6 +250,8 @@ function AppRoutes() {
       <Route path="/host/login" element={<HostLogin />} />
       <Route path="/host/*" element={<HostShell />} />
       <Route path="/partner-stats" element={<Navigate to="/partners/join" replace />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"

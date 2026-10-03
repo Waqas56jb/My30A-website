@@ -532,3 +532,18 @@ html.is-app-locked body {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
+
+/* "Forgot password?" on the staff sign-in */
+.row:has(.forgot-link) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.forgot-link {
+  margin-left: auto;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}

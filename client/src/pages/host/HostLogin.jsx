@@ -78,7 +78,7 @@ export default function HostLogin() {
         <div className="auth-field">
           <span className="auth-label">
             <label htmlFor="host-password">Password</label>
-            <a href="mailto:my30ahost@gmail.com?subject=Host%20password%20reset">Forgot password?</a>
+            <Link to={`/forgot-password?app=host${email ? `&email=${encodeURIComponent(email)}` : ''}`}>Forgot password?</Link>
           </span>
           <span className="auth-input">
             <IconLock />

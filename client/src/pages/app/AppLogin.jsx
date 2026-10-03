@@ -72,7 +72,7 @@ export default function AppLogin() {
         <div className="auth-field">
           <span className="auth-label">
             <label htmlFor="auth-password">Password</label>
-            <a href="mailto:my30ahost@gmail.com?subject=Password%20reset">Forgot password?</a>
+            <Link to={`/forgot-password?app=guest${email ? `&email=${encodeURIComponent(email)}` : ''}`}>Forgot password?</Link>
           </span>
           <span className="auth-input">
             <IconLock />

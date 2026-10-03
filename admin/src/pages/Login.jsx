@@ -106,6 +106,14 @@ export default function Login() {
             </div>
           </div>
           <div className="row">
+            <a
+              className="forgot-link"
+              href={`https://www.my30ahost.com/forgot-password?app=admin${email ? `&email=${encodeURIComponent(email)}` : ''}`}
+            >
+              Forgot password?
+            </a>
+          </div>
+          <div className="row">
             <label htmlFor="remember">
               <input
                 id="remember"

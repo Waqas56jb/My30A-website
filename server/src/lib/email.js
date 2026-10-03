@@ -83,7 +83,8 @@ export function loginUrlForRoles(roles) {
   if (list.includes('admin')) {
     return pickPublicUrl(process.env.ADMIN_APP_URL) || 'http://localhost:5174'
   }
-  return pickPublicUrl(process.env.CLIENT_APP_URL, process.env.PUBLIC_APP_URL)
+  // Drivers, shoppers and partners sign in on the staff login page.
+  return `${pickPublicUrl(process.env.CLIENT_APP_URL, process.env.PUBLIC_APP_URL).replace(/\/$/, '')}/login`
 }
 
 export function welcomeLoginText({ name, email, password, loginUrl }) {
@@ -96,7 +97,7 @@ export function welcomeLoginText({ name, email, password, loginUrl }) {
     `Email: ${email}`,
     `Temporary password: ${password}`,
     '',
-    'Please change your password after signing in.',
+    'Please change your password after signing in (menu → Change password), or use “Forgot password?” on the sign-in page to choose your own.',
   ].join('\n')
 }
 
