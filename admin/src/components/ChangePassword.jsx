@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { supabase } from '../lib/supabase.js'
 import Button from './Button.jsx'
 import Modal from './Modal.jsx'
 import { api } from '../lib/api.js'
@@ -31,6 +32,13 @@ export default function ChangePassword({ open, onClose, onSuccess }) {
         method: 'POST',
         body: { current_password: currentPassword, new_password: newPassword },
       })
+      // Changing the password ends the current session on the server — sign straight back in with
+      // the new one so the next screen doesn't say "Unauthorized".
+      if (supabase) {
+        const { data: current } = await supabase.auth.getUser().catch(() => ({ data: null }))
+        const email = current?.user?.email
+        if (email) await supabase.auth.signInWithPassword({ email, password: newPassword })
+      }
       setCurrentPassword('')
       setNewPassword('')
       onSuccess?.()

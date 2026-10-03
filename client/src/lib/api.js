@@ -46,7 +46,7 @@ export async function api(path, options = {}) {
     headers['Content-Type'] = headers['Content-Type'] || 'application/json'
   }
 
-  const { body, ...rest } = options
+  const { body, _retried, ...rest } = options
   const response = await fetch(`${API_URL}${path}`, {
     ...rest,
     headers,
@@ -55,6 +55,19 @@ export async function api(path, options = {}) {
         ? JSON.stringify(body)
         : body,
   })
+
+  // A refused session (e.g. the password was just changed, or it expired while the tab slept):
+  // refresh it once and retry; if that fails, sign out so the sign-in page shows instead of
+  // "Unauthorized" on every screen.
+  if (response.status === 401 && token && !options._retried && supabase) {
+    accessToken = null
+    const { data: refreshed } = await supabase.auth.refreshSession().catch(() => ({ data: null }))
+    if (refreshed?.session?.access_token) {
+      accessToken = refreshed.session.access_token
+      return api(path, { ...options, _retried: true })
+    }
+    await supabase.auth.signOut().catch(() => {})
+  }
 
   const text = await response.text()
   let data = null
