@@ -36,6 +36,22 @@ export default function ProfileSettings() {
     if (next) playChime()
   }
 
+  const [deleting, setDeleting] = useState(false)
+  const deleteAccount = async () => {
+    if (!window.confirm('Delete your My30A Host account? Your profile, saved places, saved cards and chat with Vitoria are removed. This can’t be undone.')) return
+    setError('')
+    setDeleting(true)
+    try {
+      await guest.deleteMe()
+      await guest.signOut().catch(() => {})
+      await signOut().catch(() => {})
+      navigate('/', { replace: true })
+    } catch (err) {
+      setError(errorText(err))
+      setDeleting(false)
+    }
+  }
+
   const clearVitoria = async () => {
     if (!window.confirm('Clear your conversation history with Vitoria?')) return
     try {
@@ -100,16 +116,16 @@ export default function ProfileSettings() {
               <small>Cards are held by Stripe; we never sell your information.</small>
             </span>
           </div>
-          <a className="app-set-row" href="mailto:my30ahost@gmail.com?subject=Delete%20my%20My30A%20Host%20account">
+          <button type="button" className="app-set-row" onClick={deleteAccount} disabled={deleting}>
             <span className="app-pf-row-ico is-slate" aria-hidden="true">
               <Trash2 size={18} strokeWidth={1.8} />
             </span>
             <span className="app-set-text">
-              <strong>Delete my account</strong>
-              <small>Email us and we’ll remove your data</small>
+              <strong>{deleting ? 'Deleting…' : 'Delete my account'}</strong>
+              <small>Removes your account right away — you can sign up again any time</small>
             </span>
             <ChevronRight size={18} strokeWidth={2} className="app-pf-row-chev" />
-          </a>
+          </button>
         </section>
 
         <section className="app-set-card">

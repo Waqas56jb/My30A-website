@@ -214,6 +214,7 @@ export default function HostProperty() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
 
   useEffect(() => {
     let ignore = false
@@ -226,6 +227,7 @@ export default function HostProperty() {
       .then((me) => {
         if (ignore) return
         const companyName = me.subscription?.company_name || ''
+        setIsDemo(Boolean(me.subscription?.is_demo))
         setCompany(companyName)
         const found = creating ? null : (me.homes || []).find((h) => h.id === id)
         if (!creating && !found) {
@@ -335,6 +337,8 @@ export default function HostProperty() {
           )}
         </div>
       </div>
+
+      {isDemo ? <div className="hp-demo">Demo account — you can look at everything, but saving is switched off.</div> : null}
 
       {!creating ? (
         <div className="hp-tabs" role="tablist">
@@ -451,13 +455,13 @@ export default function HostProperty() {
           {error ? <p className="hp-error">{error}</p> : null}
           <div className="hp-save">
             {!creating ? (
-              <button type="button" className="hp-btn is-danger" onClick={remove}>
+              <button type="button" className="hp-btn is-danger" onClick={remove} disabled={isDemo}>
                 <Trash2 size={15} /> Delete
               </button>
             ) : null}
             <span className="hp-flex" />
             {saved ? <span className="hp-ok-text">Saved — guests see it now</span> : null}
-            <button type="submit" className="hp-btn is-primary" disabled={saving}>
+            <button type="submit" className="hp-btn is-primary" disabled={saving || isDemo} title={isDemo ? 'Switched off in the demo' : undefined}>
               {saving ? 'Saving…' : creating ? 'Create property' : 'Save changes'}
             </button>
           </div>

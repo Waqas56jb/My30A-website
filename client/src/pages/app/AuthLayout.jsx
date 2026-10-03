@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Plane, ShoppingBag, Sparkles } from 'lucide-react'
-import { useHostBrand } from '../../lib/hostHome.js'
+import { useAuthHostBrand } from '../../lib/hostHome.js'
 
 // Log in / Sign up frame: a cinematic 30A photo panel (slow cross-fading slideshow) beside the
 // form on desktop, above it on phones. The form itself is passed in as children.
@@ -20,7 +20,7 @@ const PERKS = [
 // The logo above the form: the host's (Host version, guest came in through their QR code) with a
 // small "concierge by My30A Host" line, otherwise My30A Host's own.
 export function AuthLogo() {
-  const hostBrand = useHostBrand()
+  const hostBrand = useAuthHostBrand()
   if (!hostBrand?.logo_url) {
     return <img className="auth-logo" src="/brand/my30a-logo.webp" alt="My30A Host" width="720" height="319" />
   }
@@ -37,7 +37,7 @@ export function AuthLogo() {
 // eyebrow / heading / perks let other pages (the partner sign-up form) reuse this frame.
 export default function AuthLayout({ children, eyebrow = 'Scenic Highway 30A · Florida', heading, perks = PERKS, brandable = true }) {
   const [slide, setSlide] = useState(0)
-  const storedBrand = useHostBrand()
+  const storedBrand = useAuthHostBrand()
   const hostBrand = brandable ? storedBrand : null
   const slides = hostBrand?.cover_url ? [{ src: hostBrand.cover_url, caption: hostBrand.home_name }, ...SLIDES] : SLIDES
 

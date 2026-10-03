@@ -32,6 +32,7 @@ import {
   retrievePaymentIntent,
   chargeNow,
   refundAmount,
+  getStripe,
 } from '../lib/stripe.js'
 import { groceryPolicy, isPrepaid, prepayQuote, refundPrepayment, runInstantPayout } from '../services/groceryPay.js'
 import { emailAdminAlert } from '../services/adminAlerts.js'
@@ -1002,6 +1003,56 @@ router.get('/catalog', async (_req, res, next) => {
 router.get('/service-status', async (_req, res, next) => {
   try {
     res.json(await serviceStatus())
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Delete my account (Profile → Settings). Refused while a trip or order is still open. With no
+// history the login and profile are removed; with past trips/orders (kept for the business's
+// records) the profile is anonymized and the email freed, so the guest can sign up again.
+router.delete('/me', guestOnly, async (req, res, next) => {
+  try {
+    const id = req.user.id
+    const [openTrips, openOrders, pastTrips, pastOrders] = await Promise.all([
+      supabase.from('transfers').select('id', { count: 'exact', head: true }).eq('guest_id', id).in('status', ACTIVE_TRIP),
+      supabase.from('grocery_orders').select('id', { count: 'exact', head: true }).eq('guest_id', id).in('status', ACTIVE_ORDER),
+      supabase.from('transfers').select('id', { count: 'exact', head: true }).eq('guest_id', id),
+      supabase.from('grocery_orders').select('id', { count: 'exact', head: true }).eq('guest_id', id),
+    ])
+    if ((openTrips.count || 0) + (openOrders.count || 0) > 0) {
+      return res.status(409).json({ error: 'You have a transfer or grocery order in progress. Please cancel it (or wait until it’s finished) before deleting your account.' })
+    }
+    const { data: profile } = await supabase.from('profiles').select('stripe_customer_id').eq('id', id).maybeSingle()
+    if (profile?.stripe_customer_id) {
+      const stripe = await getStripe()
+      if (stripe) await stripe.customers.del(profile.stripe_customer_id).catch(() => {})
+    }
+    await Promise.all([
+      supabase.from('notifications').delete().eq('user_id', id),
+      supabase.from('saved_places').delete().eq('guest_id', id),
+      supabase.from('guest_bookings').delete().eq('guest_id', id),
+      supabase.from('vitoria_messages').delete().eq('guest_id', id),
+    ])
+    if ((pastTrips.count || 0) + (pastOrders.count || 0) === 0) {
+      const { error } = await supabase.auth.admin.deleteUser(id)
+      if (error && !/not found/i.test(error.message)) return res.status(400).json({ error: error.message })
+      await supabase.from('profiles').delete().eq('id', id)
+      return res.json({ ok: true, deleted: true })
+    }
+    const freed = `deleted+${id}@deleted.my30ahost.com`
+    await supabase
+      .from('profiles')
+      .update({ name: 'Deleted guest', email: freed, phone: null, avatar_url: null, host_home_id: null, stripe_customer_id: null, is_active: false })
+      .eq('id', id)
+    const { error } = await supabase.auth.admin.updateUserById(id, {
+      email: freed,
+      password: crypto.randomBytes(24).toString('base64url'),
+      user_metadata: {},
+      ban_duration: '876000h',
+    })
+    if (error) return res.status(400).json({ error: error.message })
+    res.json({ ok: true, deleted: true, anonymized: true })
   } catch (error) {
     next(error)
   }

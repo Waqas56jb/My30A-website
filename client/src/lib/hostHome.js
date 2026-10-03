@@ -31,9 +31,35 @@ function write(key, value) {
   }
 }
 
+// Sign-in / sign-up show a host's logo only when this browser visit came through that host's QR
+// link — never on the main website's "Get started" path, even with an old host mode on the device.
+const ENTRY_KEY = 'my30a-host-entry'
+export function markHostEntry(slug) {
+  try {
+    sessionStorage.setItem(ENTRY_KEY, slug)
+  } catch {
+    /* no session storage — auth screens stay My30A-branded */
+  }
+}
+export function useAuthHostBrand() {
+  const current = useHostBrand()
+  let entry = null
+  try {
+    entry = sessionStorage.getItem(ENTRY_KEY)
+  } catch {
+    entry = null
+  }
+  return current && entry && entry === current.slug ? current : null
+}
+
 // Back to the free app (main website, "Get started" from my30ahost.com).
 export function leaveHostMode() {
   write(PENDING_KEY, null)
+  try {
+    sessionStorage.removeItem(ENTRY_KEY)
+  } catch {
+    /* ignore */
+  }
   if (brand) setHostBrand(null)
 }
 

@@ -39,6 +39,22 @@ function PlanCard({ sub, plans, homesCount, onChanged }) {
   const [label, tone] = STATUS[sub.status] || [sub.status, 'is-warn']
   const period = { monthly: 'month', semiannual: '6 months', annual: 'year' }[sub.plan]
   const needsPayment = !sub.live
+  if (sub.is_demo) {
+    return (
+      <section className="hp-card hp-plan">
+        <div className="hp-plan-head">
+          <div>
+            <p className="hp-eyebrow">Host Version plan · {sub.company_name}</p>
+            <h2>
+              {sub.plan_label} · {sub.quantity} properties
+            </h2>
+            <p className="hp-muted">Demo plan — on a real account your billing, card and invoices are managed here.</p>
+          </div>
+          <span className="hp-pill is-ok">Demo</span>
+        </div>
+      </section>
+    )
+  }
 
   async function go(kind) {
     setError('')
@@ -157,6 +173,12 @@ export default function HostOverview() {
       </div>
 
       {params.get('checkout') === 'canceled' ? <p className="hp-notice">Payment was canceled — you can finish it any time below.</p> : null}
+      {data.subscription?.is_demo ? (
+        <div className="hp-demo">
+          <strong>You’re exploring the demo dashboard.</strong> Look around freely — editing is switched off here. Open a property’s QR code to see the guest app, then{' '}
+          <Link to="/hosts/signup">start your own plan</Link>.
+        </div>
+      ) : null}
 
       <PlanCard sub={data.subscription} plans={data.plans || []} homesCount={homes.filter((h) => h.is_active).length} onChanged={load} />
 

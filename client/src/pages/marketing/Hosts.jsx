@@ -134,10 +134,10 @@ export default function Hosts() {
           </div>
           <div className="hl-phones" aria-hidden="true">
             <figure className="hl-phone is-back">
-              <img src="/marketing/host-welcome.webp" alt="" />
+              <img src="/marketing/host-sample-welcome.webp" alt="" />
             </figure>
             <figure className="hl-phone is-front">
-              <img src="/marketing/host-myhome.webp" alt="" />
+              <img src="/marketing/host-sample-myhome.webp" alt="" />
             </figure>
             <div className="hl-float is-a">
               <MessageCircle size={16} /> “What’s the WiFi password?”
@@ -234,6 +234,34 @@ export default function Hosts() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      <section className="hl-section hl-live">
+        <div className="hl-wrap hl-live-inner">
+          <div>
+            <p className="hl-kicker">See it live</p>
+            <h2 className="hl-h2">Try both sides before you buy.</h2>
+            <p className="hl-muted">Open the demo property the way your guests would, then look around the host dashboard with sample activity. No sign-up needed for the dashboard demo.</p>
+          </div>
+          <div className="hl-live-cards">
+            <a href="/h/demo-beach-house" className="hl-live-card">
+              <QrCode size={22} />
+              <strong>Demo guest app</strong>
+              <span>What guests see after scanning the QR code</span>
+              <em>
+                Open demo <ArrowRight size={15} />
+              </em>
+            </a>
+            <Link to="/host/login?demo=1" className="hl-live-card">
+              <BarChart3 size={22} />
+              <strong>Demo host dashboard</strong>
+              <span>Properties, QR posters and guest activity</span>
+              <em>
+                Open demo <ArrowRight size={15} />
+              </em>
+            </Link>
+          </div>
         </div>
       </section>
 

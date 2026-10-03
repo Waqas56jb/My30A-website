@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { ArrowRight, BarChart3, QrCode, Sparkles } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import AuthLayout from '../app/AuthLayout.jsx'
 import { IconEye, IconEyeOff, IconLock, IconMail } from '../app/AuthIcons.jsx'
+
+// Public, read-only demo account (server/scripts/seed-host-demo.js).
+const DEMO = { email: 'demo.host@my30ahost.com', password: 'Demo-My30A-2026' }
 
 const PERKS = [
   { Icon: QrCode, text: 'Your brand on every guest’s phone' },
@@ -19,9 +22,23 @@ export default function HostLogin() {
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [params] = useSearchParams()
 
   useEffect(() => {
     document.title = 'Host sign in · My30A Host'
+  }, [])
+
+  async function tryDemo() {
+    setError('')
+    setBusy(true)
+    const { error: err } = await signIn(DEMO.email, DEMO.password)
+    setBusy(false)
+    if (err) setError('The demo is unavailable right now — please try again in a minute.')
+  }
+
+  useEffect(() => {
+    if (params.get('demo') === '1' && !session) tryDemo()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!loading && session && (profile?.roles || []).includes('host')) {
@@ -80,6 +97,9 @@ export default function HostLogin() {
           {busy ? <span className="auth-spin" aria-hidden="true" /> : null}
           {busy ? 'Signing in…' : 'Sign in'}
           {busy ? null : <ArrowRight size={18} strokeWidth={2} aria-hidden="true" />}
+        </button>
+        <button type="button" className="hp-demo-btn" onClick={tryDemo} disabled={busy}>
+          Just looking? <b>Try the demo dashboard</b>
         </button>
         <p className="auth-switch">
           New host? <Link to="/hosts">See plans &amp; sign up</Link>

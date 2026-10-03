@@ -50,6 +50,7 @@ export const guest = {
   // profile & stay
   me: () => api('/api/guest/me'),
   updateMe: (body) => api('/api/guest/me', { method: 'PATCH', body }),
+  deleteMe: () => api('/api/guest/me', { method: 'DELETE' }),
   home: () => api('/api/guest/home'),
   booking: () => api('/api/guest/booking'),
   saveBooking: (body) => api('/api/guest/booking', { method: 'PUT', body }),

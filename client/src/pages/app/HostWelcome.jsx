@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, MapPin } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { hostApi, rememberPendingHome, setHostBrand } from '../../lib/hostHome.js'
+import { hostApi, markHostEntry, rememberPendingHome, setHostBrand } from '../../lib/hostHome.js'
 import { errorText } from '../../lib/guestApi.js'
 
 // Host version welcome — what a guest sees after scanning the QR code in the rental
@@ -24,6 +24,7 @@ export default function HostWelcome() {
         setBrand(data)
         const { partners, ...keep } = data
         setHostBrand(keep)
+        markHostEntry(slug)
         rememberPendingHome(slug)
       })
       .catch((err) => {

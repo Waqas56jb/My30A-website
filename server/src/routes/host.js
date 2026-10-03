@@ -13,6 +13,18 @@ import { LIVE_STATUSES, PLANS, billingPortalUrl, changeQuantity, confirmCheckout
 const router = Router()
 router.use(requireAuth, requireRole('host'))
 
+// The public demo account (see scripts/seed-host-demo.js) can look at everything but change nothing.
+router.use(async (req, res, next) => {
+  if (req.method === 'GET') return next()
+  try {
+    const { data } = await supabase.from('host_subscriptions').select('is_demo').eq('host_id', req.user.id).maybeSingle()
+    if (data?.is_demo) return res.status(403).json({ error: 'This is the demo account — changes are switched off. Sign up to manage your own properties.', code: 'DEMO' })
+    next()
+  } catch (error) {
+    next(error)
+  }
+})
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -58,6 +70,7 @@ function subView(sub) {
     current_period_end: sub.current_period_end,
     cancel_at_period_end: sub.cancel_at_period_end,
     has_billing: Boolean(sub.stripe_customer_id && sub.stripe_subscription_id),
+    is_demo: Boolean(sub.is_demo),
   }
 }
 

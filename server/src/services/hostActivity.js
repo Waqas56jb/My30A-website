@@ -88,6 +88,7 @@ export async function homeStats(homeIds, { days = 30, recent = 0 } = {}) {
     if (e.kind === 'vitoria') s.topics[e.topic || 'other'] = (s.topics[e.topic || 'other'] || 0) + 1
     if (recent && s.recent.length < recent) s.recent.push({ kind: e.kind, topic: e.topic, at: e.created_at })
   }
-  for (const id of homeIds) out[id].guests = guests[id].size
+  // Events without a guest (the demo property's sample activity) count one guest per "joined".
+  for (const id of homeIds) out[id].guests = guests[id].size + (data || []).filter((e) => e.home_id === id && !e.guest_id && e.kind === 'joined').length
   return out
 }
