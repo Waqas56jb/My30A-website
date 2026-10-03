@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Plus, Users } from 'lucide-react'
+import { Copy, Plus, Trash2, Users } from 'lucide-react'
 import Button from '../components/Button.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import Modal from '../components/Modal.jsx'
@@ -253,17 +253,19 @@ export default function People() {
 
   // Only people with no trips, orders, payouts or vehicles can be deleted — the server explains
   // what's linked otherwise (then Deactivate keeps their history).
-  async function removePerson() {
-    if (!window.confirm(`Delete ${editPerson.name || 'this person'} and their login permanently?`)) return
+  async function removePerson(person = editPerson) {
+    if (!window.confirm(`Delete ${person.name || 'this person'} and their login permanently?`)) return
     setEditError('')
     setEditSaving(true)
     try {
-      await api(`/api/users/${editPerson.id}`, { method: 'DELETE' })
-      toast.success(`${editPerson.name || 'Person'} deleted`)
+      await api(`/api/users/${person.id}`, { method: 'DELETE' })
+      toast.success(`${person.name || 'Person'} deleted`)
       setEditPerson(null)
       await refresh()
     } catch (err) {
-      setEditError(errorMessage(err))
+      // From the list there's no edit window to show it in — use a toast.
+      if (editPerson) setEditError(errorMessage(err))
+      else toast.error(errorMessage(err))
     } finally {
       setEditSaving(false)
     }
@@ -366,6 +368,9 @@ export default function People() {
                     ) : null}
                     <button type="button" className="btn quiet sm" onClick={() => openEdit(person)}>
                       Edit
+                    </button>{' '}
+                    <button type="button" className="btn quiet sm danger" aria-label="Delete" title="Delete" onClick={() => removePerson(person)}>
+                      <Trash2 size={15} />
                     </button>
                   </td>
                 </tr>
@@ -648,7 +653,7 @@ export default function People() {
             )}
             {editError ? <p className="form-error">{editError}</p> : null}
             <div className="actions">
-              <button type="button" className="btn quiet danger" onClick={removePerson} disabled={editSaving}>
+              <button type="button" className="btn quiet danger" onClick={() => removePerson()} disabled={editSaving}>
                 Delete
               </button>
               <span style={{ flex: 1 }} />

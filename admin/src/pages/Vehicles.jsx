@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Truck } from 'lucide-react'
+import { Plus, Trash2, Truck } from 'lucide-react'
 import Button from '../components/Button.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import Modal from '../components/Modal.jsx'
@@ -127,16 +127,17 @@ export default function Vehicles() {
   }
 
   // Only vehicles never used on a trip can be deleted (others: set Inactive).
-  async function removeVehicle() {
-    if (!window.confirm(`Delete ${modal.make} ${modal.model} (${modal.plate}) permanently?`)) return
+  async function removeVehicle(vehicle = modal) {
+    if (!window.confirm(`Delete ${vehicle.make} ${vehicle.model} (${vehicle.plate}) permanently?`)) return
     setFormError('')
     setSaving(true)
     try {
-      await api(`/api/vehicles/${modal.id}`, { method: 'DELETE' })
+      await api(`/api/vehicles/${vehicle.id}`, { method: 'DELETE' })
       setModal(null)
       await refresh()
     } catch (err) {
-      setFormError(errorMessage(err))
+      if (modal && modal !== 'add') setFormError(errorMessage(err))
+      else window.alert(errorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -212,6 +213,9 @@ export default function Vehicles() {
                     <td data-label="">
                       <button type="button" className="btn quiet sm" onClick={() => openEdit(vehicle)}>
                         Edit
+                      </button>{' '}
+                      <button type="button" className="btn quiet sm danger" aria-label="Delete" title="Delete" onClick={() => removeVehicle(vehicle)}>
+                        <Trash2 size={15} />
                       </button>
                     </td>
                   </tr>
@@ -330,7 +334,7 @@ export default function Vehicles() {
           <div className="actions">
             {modal !== 'add' ? (
               <>
-                <button type="button" className="btn quiet danger" onClick={removeVehicle} disabled={saving}>
+                <button type="button" className="btn quiet danger" onClick={() => removeVehicle()} disabled={saving}>
                   Delete
                 </button>
                 <span style={{ flex: 1 }} />

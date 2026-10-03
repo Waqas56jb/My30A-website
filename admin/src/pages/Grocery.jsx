@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ShoppingBasket } from 'lucide-react'
+import { ShoppingBasket, Trash2 } from 'lucide-react'
 import Button from '../components/Button.jsx'
 import Drawer from '../components/Drawer.jsx'
 import EmptyState from '../components/EmptyState.jsx'
@@ -309,6 +309,7 @@ export default function Grocery() {
                   <th>Photos</th>
                   <th>Status</th>
                   <th></th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -390,6 +391,20 @@ export default function Grocery() {
                         ) : (
                           <Pill {...statusPill(row.status)}>{statusLabel(row.status)}</Pill>
                         )}
+                      </td>
+                      <td data-label="" className="row-del">
+                        <button
+                          type="button"
+                          className="btn quiet sm danger"
+                          aria-label="Delete"
+                          title="Delete"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            remove(row)
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </td>
                       <RowChevron />
                     </tr>

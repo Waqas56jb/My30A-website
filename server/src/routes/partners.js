@@ -258,4 +258,20 @@ router.post('/listings/:id/photo', upload.single('photo'), async (req, res, next
   }
 })
 
+// Delete a listing for good (guests' saved hearts go with it; a request that created it is kept).
+// Hiding (is_active false) is usually better — it can be switched back on.
+router.delete('/listings/:id', async (req, res, next) => {
+  try {
+    const { data: current } = await supabase.from('explore_vendors').select('id, guide_slug').eq('id', req.params.id).maybeSingle()
+    if (!current) return res.status(404).json({ error: 'Listing not found' })
+    const { error } = await supabase.from('explore_vendors').delete().eq('id', current.id)
+    if (error) return res.status(400).json({ error: error.message })
+    await recountGuides([current.guide_slug])
+    refreshListingCaches()
+    res.json({ ok: true })
+  } catch (error) {
+    next(error)
+  }
+})
+
 export default router

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Check, ExternalLink, ImagePlus, Inbox, Plus, Search, Store, X } from 'lucide-react'
+import { Check, ExternalLink, ImagePlus, Inbox, Plus, Search, Store, Trash2, X } from 'lucide-react'
 import Button from '../components/Button.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import Modal from '../components/Modal.jsx'
@@ -237,6 +237,19 @@ function RequestModal({ request, options, onClose, onDone }) {
     }
   }
 
+  async function removeRequest() {
+    if (!window.confirm(`Delete ${request.business_name}'s request? (An approved listing stays — delete it in Listings if needed.)`)) return
+    setBusy('delete')
+    try {
+      await api(`/api/partners/requests/${request.id}`, { method: 'DELETE' })
+      toast.success('Request deleted')
+      onDone()
+    } catch (err) {
+      setError(errorMessage(err))
+      setBusy('')
+    }
+  }
+
   async function replacePhoto(file) {
     setBusy('photo')
     try {
@@ -314,9 +327,15 @@ function RequestModal({ request, options, onClose, onDone }) {
             </>
           )
         ) : (
-          <button type="button" className="btn quiet" onClick={onClose}>
-            Close
-          </button>
+          <>
+            <button type="button" className="btn quiet danger" onClick={removeRequest} disabled={busy === 'delete'}>
+              <Trash2 size={15} /> Delete request
+            </button>
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn quiet" onClick={onClose}>
+              Close
+            </button>
+          </>
         )}
       </div>
     </Modal>
@@ -444,6 +463,20 @@ function ListingModal({ listing, options, onClose, onSaved }) {
     }
   }
 
+  async function removeListing() {
+    if (!window.confirm(`Delete ${listing.name} for good? Guests' saved hearts go too. (Tip: untick "Shown to guests" to just hide it.)`)) return
+    setError('')
+    setBusy('delete')
+    try {
+      await api(`/api/partners/listings/${listing.id}`, { method: 'DELETE' })
+      toast.success(`${listing.name} deleted`)
+      onSaved(null)
+    } catch (err) {
+      setError(errorMessage(err))
+      setBusy('')
+    }
+  }
+
   async function onFile(file) {
     if (creating) {
       setPhoto(file)
@@ -481,6 +514,11 @@ function ListingModal({ listing, options, onClose, onSaved }) {
       ) : null}
       {error ? <p className="form-error">{error}</p> : null}
       <div className="actions">
+        {!creating ? (
+          <button type="button" className="btn quiet danger" onClick={removeListing} disabled={busy === 'delete'}>
+            <Trash2 size={15} /> Delete
+          </button>
+        ) : null}
         {!creating && listing.website_url ? (
           <a className="btn quiet" href={listing.website_url} target="_blank" rel="noreferrer">
             <ExternalLink size={15} /> Website

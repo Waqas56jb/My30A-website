@@ -315,6 +315,17 @@ export default function Homes() {
     }
   }
 
+  async function removeHome(home) {
+    if (!window.confirm(`Delete ${home.home_name}? Its QR code stops working.`)) return
+    try {
+      await api(`/api/homes/${home.id}`, { method: 'DELETE' })
+      await refresh()
+      toast.success('Property deleted')
+    } catch (err) {
+      toast.error(errorMessage(err))
+    }
+  }
+
   async function newLink() {
     if (!window.confirm('Make a new QR code? The old printed QR code will stop working.')) return
     try {
@@ -452,6 +463,9 @@ export default function Homes() {
                   </button>
                   <button type="button" className="btn sm" onClick={() => setQrHome(home)}>
                     <QrCode size={15} /> QR code
+                  </button>
+                  <button type="button" className="btn quiet sm danger" aria-label="Delete" title="Delete" onClick={() => removeHome(home)}>
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
