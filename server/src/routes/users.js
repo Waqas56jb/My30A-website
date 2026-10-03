@@ -28,12 +28,35 @@ router.post('/', async (req, res, next) => {
 
     if (!password) password = randomPassword()
 
-    const { data, error } = await supabase.auth.admin.createUser({
+    let { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: { name },
     })
+
+    // The email already has a login — usually a guest who signed up in the app before (e.g. a
+    // partner who also books rides). Give that same account the staff roles (keeping its guest
+    // role) and a new temporary password, instead of failing.
+    let existing = false
+    let mergedRoles = roles
+    if (error && /already|registered|exists/i.test(error.message)) {
+      const { data: found } = await supabase
+        .from('profiles')
+        .select('id, roles')
+        .ilike('email', String(email).trim())
+        .maybeSingle()
+      if (!found) return res.status(400).json({ error: error.message })
+      if ((found.roles || []).includes('admin')) {
+        return res.status(400).json({ error: 'This email belongs to an Admin login — use a different email for the staff account.' })
+      }
+      const { error: pwError } = await supabase.auth.admin.updateUserById(found.id, { password })
+      if (pwError) return res.status(400).json({ error: pwError.message })
+      existing = true
+      mergedRoles = [...new Set([...(found.roles || []), ...roles])]
+      data = { user: { id: found.id } }
+      error = null
+    }
 
     if (error) {
       return res.status(400).json({ error: error.message })
@@ -41,7 +64,7 @@ router.post('/', async (req, res, next) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .update({ name, phone: phone || null, roles, email })
+      .update({ name, phone: phone || null, roles: mergedRoles, email })
       .eq('id', data.user.id)
       .select('id, name, email, phone, roles, is_active, created_at')
       .single()
@@ -59,7 +82,7 @@ router.post('/', async (req, res, next) => {
       })
     }
 
-    res.status(201).json({ ...profile, password })
+    res.status(201).json({ ...profile, password, existing })
   } catch (error) {
     next(error)
   }

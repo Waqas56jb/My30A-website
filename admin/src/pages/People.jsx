@@ -50,6 +50,7 @@ export default function People() {
   const [addError, setAddError] = useState('')
   const [addSaving, setAddSaving] = useState(false)
   const [createdPassword, setCreatedPassword] = useState('')
+  const [createdExisting, setCreatedExisting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [ratePerson, setRatePerson] = useState(null)
   const [rateForm, setRateForm] = useState({ type: 'fixed', value: '', effective_from: chicagoToday() })
@@ -157,6 +158,7 @@ export default function People() {
         })
       }
       setCreatedPassword(created.password || '')
+      setCreatedExisting(Boolean(created.existing))
       await refresh()
     } catch (err) {
       setAddError(errorMessage(err))
@@ -390,6 +392,11 @@ export default function People() {
             <p className="sub" style={{ marginBottom: 12 }}>
               Share this temporary password once. They can change it after signing in.
             </p>
+            {createdExisting ? (
+              <p className="sub" style={{ marginBottom: 12 }}>
+                This email already had an account (they had signed up in the guest app), so the new roles were added to that same login. It now uses this new password for both the guest app and the staff app.
+              </p>
+            ) : null}
             <div className="password-box">
               <code>{createdPassword}</code>
               <button type="button" className="btn quiet sm" onClick={() => copyText(createdPassword)}>

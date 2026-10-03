@@ -240,7 +240,7 @@ export default function Settings() {
             <h3 style={{ marginBottom: 12 }}>Platform fee</h3>
             <form onSubmit={save}>
               <div className="field">
-                <label>My30A Host fee when a partner drives their own vehicle</label>
+                <label>My30A Host share when a partner drives their own vehicle</label>
                 <input
                   value={settings.platform_fee_percent}
                   onChange={(event) =>
@@ -248,10 +248,10 @@ export default function Settings() {
                   }
                   style={{ maxWidth: 120 }}
                 />
-                <small className="muted">percent of the customer charge, before tips</small>
+                <small className="muted">percent of the customer charge, before tips · the partner keeps the rest (20% → partner gets 80%)</small>
               </div>
               <div className="field">
-                <label>Default owner fee for new vehicles</label>
+                <label>Vehicle owner’s share when someone else drives their vehicle</label>
                 <input
                   value={settings.default_owner_fee_percent}
                   onChange={(event) =>
@@ -259,6 +259,9 @@ export default function Settings() {
                   }
                   style={{ maxWidth: 120 }}
                 />
+                <small className="muted">
+                  default for new vehicles (each vehicle can have its own in Vehicles) · e.g. you drive a partner’s car: partner 20%, you 80%. A hired driver is paid their own rate from People.
+                </small>
               </div>
               <h3 style={{ margin: '18px 0 12px' }}>Alerts</h3>
               <div className="field">
