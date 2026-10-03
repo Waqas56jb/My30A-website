@@ -35,8 +35,10 @@ export default function ChangePassword({ open, onClose, onSuccess }) {
       // Changing the password ends the current session on the server — sign straight back in with
       // the new one so the next screen doesn't say "Unauthorized".
       if (supabase) {
-        const { data: current } = await supabase.auth.getUser().catch(() => ({ data: null }))
-        const email = current?.user?.email
+        // The email from the session saved on this device (asking the server would fail — the
+        // password change just ended that session).
+        const { data: stored } = await supabase.auth.getSession()
+        const email = stored?.session?.user?.email
         if (email) await supabase.auth.signInWithPassword({ email, password: newPassword })
       }
       setCurrentPassword('')
